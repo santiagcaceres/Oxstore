@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, Loader, RefreshCw } from "lucide-react"
+import { CheckCircle, XCircle, Loader, RefreshCw, AlertTriangle } from "lucide-react"
 
 interface DiagnosticResult {
   test: string
@@ -41,7 +41,7 @@ export default function DiagnosticoPage() {
               ? {
                   test: test.name,
                   status: data.success ? "success" : "error",
-                  message: data.message,
+                  message: data.message || (data.success ? "Exitoso" : "Error"),
                   details: data.details,
                 }
               : result,
@@ -90,6 +90,8 @@ export default function DiagnosticoPage() {
     }
   }
 
+  const hasAuthError = results.some((r) => r.status === "error" && r.details?.status === 401)
+
   return (
     <div className="pt-16 min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -100,6 +102,49 @@ export default function DiagnosticoPage() {
               Verifica que la conexión con la API de Zureo esté funcionando correctamente.
             </p>
           </div>
+
+          {hasAuthError && (
+            <Card className="mb-6 bg-yellow-50 border-yellow-200">
+              <CardHeader>
+                <CardTitle className="text-yellow-800 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Error 401 - Problema de Autenticación
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-yellow-700">
+                  El error 401 indica que las credenciales no son válidas o que tu cuenta no tiene permisos de API
+                  habilitados.
+                </p>
+                <div className="bg-white p-4 rounded border">
+                  <h4 className="font-semibold mb-2">Posibles causas:</h4>
+                  <ul className="text-sm text-gray-700 space-y-1 list-disc list-inside">
+                    <li>
+                      <strong>Credenciales incorrectas:</strong> Usuario, contraseña o dominio mal configurados
+                    </li>
+                    <li>
+                      <strong>Cuenta sin permisos de API:</strong> Tu cuenta de Zureo puede no tener habilitado el
+                      acceso a la API
+                    </li>
+                    <li>
+                      <strong>Cuenta no activada:</strong> Zureo puede no haber activado tu acceso al sistema de
+                      desarrollo
+                    </li>
+                    <li>
+                      <strong>Formato incorrecto:</strong> El formato debe ser exactamente usuario:contraseña:dominio
+                    </li>
+                  </ul>
+
+                  <h4 className="font-semibold mb-2 mt-4">Qué hacer:</h4>
+                  <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+                    <li>Contacta a Santiago de Zureo para confirmar que tu cuenta tiene acceso a la API</li>
+                    <li>Verifica que las credenciales sean exactamente las correctas</li>
+                    <li>Solicita que activen tu acceso al entorno de desarrollo si es necesario</li>
+                  </ol>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <Card className="mb-6">
             <CardHeader>
@@ -156,7 +201,7 @@ export default function DiagnosticoPage() {
             </Card>
           )}
 
-          {results.length > 0 && !isRunning && (
+          {results.length > 0 && !isRunning && !hasAuthError && (
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <h3 className="font-semibold text-blue-900 mb-2">¿Qué significan estos resultados?</h3>
               <ul className="text-sm text-blue-800 space-y-1">
