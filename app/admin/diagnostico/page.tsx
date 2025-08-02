@@ -4,234 +4,181 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, Loader, AlertTriangle, Copy } from "lucide-react"
+import { CheckCircle, XCircle, Loader, RefreshCw } from "lucide-react"
 
-interface TestResult {
-  name: string
-  status: "pending" | "success" | "error"
+interface DiagnosticResult {
+  test: string
+  status: "success" | "error" | "loading"
   message: string
-  data?: any
+  details?: any
 }
 
 export default function DiagnosticoPage() {
-  const [tests, setTests] = useState<TestResult[]>([
-    { name: "Variables de Entorno", status: "pending", message: "No ejecutado" },
-    { name: "Autenticación con Zureo", status: "pending", message: "No ejecutado" },
-    { name: "Obtener lista de empresas", status: "pending", message: "No ejecutado" },
-    { name: "Obtener productos", status: "pending", message: "No ejecutado" },
-  ])
+  const [results, setResults] = useState<DiagnosticResult[]>([])
   const [isRunning, setIsRunning] = useState(false)
 
-  const updateTest = (index: number, status: TestResult["status"], message: string, data?: any) => {
-    setTests((prev) => prev.map((test, i) => (i === index ? { ...test, status, message, data } : test)))
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-  }
-
-  const runDiagnostics = async () => {
+  const runDiagnostic = async () => {
     setIsRunning(true)
+    setResults([])
 
-    // Test 0: Variables de entorno
-    try {
-      updateTest(0, "pending", "Verificando variables de entorno...")
-      const envResponse = await fetch("/api/test-env-vars")
-      const envData = await envResponse.json()
+    const tests = [
+      { name: "Variables de Entorno", endpoint: "/api/test-env-vars" },
+      { name: "Autenticación con Zureo", endpoint: "/api/test-zureo-auth" },
+      { name: "Obtener Empresas", endpoint: "/api/test-zureo-companies" },
+      { name: "Obtener Productos", endpoint: "/api/test-zureo-products" },
+    ]
 
-      if (envResponse.ok && envData.allConfigured) {
-        updateTest(0, "success", "✅ Todas las variables están configuradas", envData)
-      } else {
-        updateTest(0, "error", `❌ Variables faltantes: ${envData.missing?.join(", ") || "Error desconocido"}`, envData)
-        setIsRunning(false)
-        return // No continuar si faltan variables
+    for (const test of tests) {
+      setResults((prev) => [...prev, { test: test.name, status: "loading", message: "Ejecutando..." }])
+
+      try {
+        const response = await fetch(test.endpoint)
+        const data = await response.json()
+
+        setResults((prev) =>
+          prev.map((result) =>
+            result.test === test.name
+              ? {
+                  test: test.name,
+                  status: data.success ? "success" : "error",
+                  message: data.message,
+                  details: data.details,
+                }
+              : result,
+          ),
+        )
+      } catch (error) {
+        setResults((prev) =>
+          prev.map((result) =>
+            result.test === test.name
+              ? {
+                  test: test.name,
+                  status: "error",
+                  message: `Error de conexión: ${error}`,
+                }
+              : result,
+          ),
+        )
       }
-    } catch (error) {
-      updateTest(0, "error", `❌ Error verificando variables: ${error}`)
-      setIsRunning(false)
-      return
-    }
 
-    // Test 1: Autenticación
-    try {
-      updateTest(1, "pending", "Probando autenticación...")
-      const authResponse = await fetch("/api/test-zureo-auth")
-      const authData = await authResponse.json()
-
-      if (authResponse.ok && authData.success) {
-        updateTest(1, "success", "✅ Autenticación exitosa", authData)
-      } else {
-        updateTest(1, "error", `❌ Error: ${authData.error}`, authData)
-      }
-    } catch (error) {
-      updateTest(1, "error", `❌ Error de conexión: ${error}`)
-    }
-
-    // Test 2: Lista de empresas
-    try {
-      updateTest(2, "pending", "Obteniendo empresas...")
-      const companiesResponse = await fetch("/api/test-zureo-companies")
-      const companiesData = await companiesResponse.json()
-
-      if (companiesResponse.ok && companiesData.success) {
-        updateTest(2, "success", `✅ ${companiesData.count || 0} empresas encontradas`, companiesData)
-      } else {
-        updateTest(2, "error", `❌ Error: ${companiesData.error}`, companiesData)
-      }
-    } catch (error) {
-      updateTest(2, "error", `❌ Error: ${error}`)
-    }
-
-    // Test 3: Productos
-    try {
-      updateTest(3, "pending", "Obteniendo productos...")
-      const productsResponse = await fetch("/api/test-zureo-products")
-      const productsData = await productsResponse.json()
-
-      if (productsResponse.ok && productsData.success) {
-        updateTest(3, "success", `✅ ${productsData.count || 0} productos encontrados`, productsData)
-      } else {
-        updateTest(3, "error", `❌ Error: ${productsData.error}`, productsData)
-      }
-    } catch (error) {
-      updateTest(3, "error", `❌ Error: ${error}`)
+      // Pequeña pausa entre tests para mejor UX
+      await new Promise((resolve) => setTimeout(resolve, 500))
     }
 
     setIsRunning(false)
   }
 
-  const getStatusIcon = (status: TestResult["status"]) => {
+  const getStatusIcon = (status: DiagnosticResult["status"]) => {
     switch (status) {
       case "success":
         return <CheckCircle className="h-5 w-5 text-green-600" />
       case "error":
         return <XCircle className="h-5 w-5 text-red-600" />
-      case "pending":
-        return isRunning ? (
-          <Loader className="h-5 w-5 animate-spin text-blue-600" />
-        ) : (
-          <AlertTriangle className="h-5 w-5 text-gray-400" />
-        )
+      case "loading":
+        return <Loader className="h-5 w-5 text-blue-600 animate-spin" />
     }
   }
 
-  const getStatusBadge = (status: TestResult["status"]) => {
+  const getStatusBadge = (status: DiagnosticResult["status"]) => {
     switch (status) {
       case "success":
-        return <Badge className="bg-green-100 text-green-800">Exitoso</Badge>
+        return <Badge className="bg-green-100 text-green-800">✅ Exitoso</Badge>
       case "error":
-        return <Badge className="bg-red-100 text-red-800">Error</Badge>
-      case "pending":
-        return <Badge className="bg-gray-100 text-gray-800">Pendiente</Badge>
+        return <Badge className="bg-red-100 text-red-800">❌ Error</Badge>
+      case "loading":
+        return <Badge className="bg-blue-100 text-blue-800">⏳ Ejecutando</Badge>
     }
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Diagnóstico de Conexión con Zureo</h1>
-          <p className="text-gray-600">
-            Esta página verifica que la conexión con la API de Zureo esté funcionando correctamente.
-          </p>
-        </div>
-
-        <Card className="mb-6 bg-yellow-50 border-yellow-200">
-          <CardHeader>
-            <CardTitle className="text-yellow-800">⚠️ Instrucciones para Configurar Variables de Entorno</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-yellow-700">
-              Si ves errores, necesitas configurar las variables de entorno en Vercel. Sigue estos pasos:
+    <div className="pt-16 min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Diagnóstico de Conexión con Zureo</h1>
+            <p className="text-gray-600">
+              Verifica que la conexión con la API de Zureo esté funcionando correctamente.
             </p>
-            <div className="bg-white p-4 rounded border">
-              <h4 className="font-semibold mb-2">1. Ve a tu proyecto en Vercel:</h4>
-              <p className="text-sm text-gray-600 mb-2">Dashboard → Tu Proyecto → Settings → Environment Variables</p>
+          </div>
 
-              <h4 className="font-semibold mb-2">2. Agrega estas variables:</h4>
-              <div className="space-y-2 text-sm font-mono">
-                <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                  <span>ZUREO_API_USER = patricia_saura@hotmail.com</span>
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard("patricia_saura@hotmail.com")}>
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                  <span>ZUREO_API_PASSWORD = ps1106</span>
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard("ps1106")}>
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                  <span>ZUREO_DOMAIN = 020128150011</span>
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard("020128150011")}>
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                  <span>ZUREO_COMPANY_ID = 1</span>
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard("1")}>
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-
-              <h4 className="font-semibold mb-2 mt-4">3. Después de agregar las variables:</h4>
-              <p className="text-sm text-gray-600">
-                Haz clic en "Redeploy" en Vercel para que los cambios tomen efecto, luego vuelve aquí y ejecuta el
-                diagnóstico.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="mb-6">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Pruebas de Conectividad</CardTitle>
-            <Button onClick={runDiagnostics} disabled={isRunning} className="bg-blue-950 hover:bg-blue-900">
-              {isRunning ? "Ejecutando..." : "Ejecutar Diagnóstico"}
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {tests.map((test, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    {getStatusIcon(test.status)}
-                    <div>
-                      <h3 className="font-medium">{test.name}</h3>
-                      <p className="text-sm text-gray-600">{test.message}</p>
-                    </div>
-                  </div>
-                  {getStatusBadge(test.status)}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {tests.some((test) => test.data) && (
-          <Card>
+          <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Datos Obtenidos</CardTitle>
+              <CardTitle>Ejecutar Diagnóstico</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {tests.map((test, index) => {
-                  if (!test.data) return null
-                  return (
-                    <div key={index}>
-                      <h4 className="font-medium mb-2">{test.name}:</h4>
-                      <pre className="bg-gray-100 p-3 rounded text-xs overflow-auto max-h-40">
-                        {JSON.stringify(test.data, null, 2)}
-                      </pre>
-                    </div>
-                  )
-                })}
-              </div>
+              <Button onClick={runDiagnostic} disabled={isRunning} className="bg-blue-950 hover:bg-blue-900" size="lg">
+                {isRunning ? (
+                  <>
+                    <Loader className="h-4 w-4 mr-2 animate-spin" />
+                    Ejecutando Diagnóstico...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Ejecutar Diagnóstico
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
-        )}
+
+          {results.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Resultados del Diagnóstico</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {results.map((result, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(result.status)}
+                          <h3 className="font-semibold">{result.test}</h3>
+                        </div>
+                        {getStatusBadge(result.status)}
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{result.message}</p>
+                      {result.details && (
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-blue-600 hover:text-blue-800">
+                            Ver detalles técnicos
+                          </summary>
+                          <pre className="mt-2 p-2 bg-gray-100 rounded overflow-x-auto">
+                            {JSON.stringify(result.details, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {results.length > 0 && !isRunning && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-semibold text-blue-900 mb-2">¿Qué significan estos resultados?</h3>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>
+                  <strong>✅ Variables de Entorno:</strong> Las credenciales de Zureo están configuradas en Vercel.
+                </li>
+                <li>
+                  <strong>✅ Autenticación:</strong> Podemos conectarnos exitosamente a la API de Zureo.
+                </li>
+                <li>
+                  <strong>✅ Empresas:</strong> Podemos obtener la lista de empresas disponibles.
+                </li>
+                <li>
+                  <strong>✅ Productos:</strong> Podemos obtener el catálogo de productos desde Zureo.
+                </li>
+              </ul>
+              <p className="text-sm text-blue-800 mt-3">
+                Si todos los tests muestran ✅, ¡tu e-commerce está listo para conectarse con Zureo!
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
