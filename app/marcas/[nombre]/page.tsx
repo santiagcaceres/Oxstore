@@ -1,100 +1,77 @@
+import { Suspense } from "react"
 import { getProductsFromZureo, getBrandsFromZureo } from "@/lib/zureo-api"
 import { transformZureoProduct } from "@/lib/data-transformer"
 import ProductGrid from "@/components/product-grid"
-import { Suspense } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { notFound } from "next/navigation"
+import { ProductGridSkeleton } from "@/components/product-grid-skeleton"
+import { FilterBar } from "@/components/filter-bar"
 
-function BrandPageSkeleton() {
-  return (
-    <div className="pt-16 min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-8">
-        <Skeleton className="h-12 w-64 mb-2" />
-        <Skeleton className="h-6 w-48 mb-8" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="space-y-4">
-              <Skeleton className="aspect-square w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+export const revalidate = 3600 // Revalidate every hour
 
-async function BrandData({ nombre }: { nombre: string }) {
-  try {
-    // Decodificar el nombre de la marca
-    const brandName = decodeURIComponent(nombre)
+export default async function BrandPage({
+  params,
+  searchParams,
+}: {
+  params: { nombre: string }
+  searchParams?: { [key: string]: string | string[] | undefined }
+}) {
+  const brandName = decodeURIComponent(params.nombre)
 
-    // Obtener todas las marcas para verificar que existe
-    const brands = await getBrandsFromZureo()
-    const brand = brands?.find((b: any) => b.nombre?.toLowerCase() === brandName.toLowerCase())
+  const productsData = await getProductsFromZureo({ qty: 1000 })
+  const brandsData = await getBrandsFromZureo()
 
-    if (!brand) {
-      notFound()
+  const allProducts = productsData.map((p: any) => transformZureoProduct(p))
+  const activeProducts = allProducts.filter((p) => p.isActive)
+
+  const brands = brandsData.map((b: any) => b.nombre).filter(Boolean)
+
+  const filteredProducts = activeProducts.filter((product) => {
+    const brandMatch = product.brand.toLowerCase() === brandName.toLowerCase()
+    const minPriceMatch = searchParams?.minPrice
+      ? product.price >= Number.parseFloat(searchParams.minPrice as string)
+      : true
+    const maxPriceMatch = searchParams?.maxPrice
+      ? product.price <= Number.parseFloat(searchParams.maxPrice as string)
+      : true
+    const queryMatch = searchParams?.query
+      ? product.title.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+        product.description.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+        product.brand.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+        product.category.toLowerCase().includes((searchParams.query as string).toLowerCase())
+      : true
+
+    return brandMatch && minPriceMatch && maxPriceMatch && queryMatch
+  })
+
+  const sortedProducts = filteredProducts.sort((a, b) => {
+    if (searchParams?.sort === "price-asc") {
+      return a.price - b.price
     }
+    if (searchParams?.sort === "price-desc") {
+      return b.price - a.price
+    }
+    if (searchParams?.sort === "name-asc") {
+      return a.title.localeCompare(b.title)
+    }
+    if (searchParams?.sort === "name-desc") {
+      return b.title.localeCompare(a.title)
+    }
+    return 0
+  })
 
-    // Obtener todos los productos
-    const allProducts = await getProductsFromZureo({ qty: 1000 })
-
-    // Filtrar productos por marca
-    const brandProducts =
-      allProducts?.filter((product: any) => product.marca?.nombre?.toLowerCase() === brandName.toLowerCase()) || []
-
-    // Transformar productos
-    const transformedProducts = brandProducts
-      .map((product: any) => {
-        try {
-          return transformZureoProduct(product)
-        } catch (error) {
-          console.error("Error transformando producto:", error)
-          return null
-        }
-      })
-      .filter(Boolean)
-
-    return (
-      <div className="pt-16 min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">{brand.nombre}</h1>
-            <p className="text-gray-600">{transformedProducts.length} productos disponibles</p>
-          </div>
-
-          {transformedProducts.length > 0 ? (
-            <ProductGrid products={transformedProducts} />
-          ) : (
-            <div className="text-center py-20">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">No hay productos disponibles</h2>
-              <p className="text-gray-600">Esta marca no tiene productos disponibles en este momento.</p>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  } catch (error) {
-    console.error("Error cargando marca:", error)
-    return (
-      <div className="pt-16 min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-20">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Error cargando marca</h1>
-            <p className="text-gray-600">Hubo un problema cargando los productos de esta marca.</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-}
-
-export default function BrandPage({ params }: { params: { nombre: string } }) {
   return (
-    <Suspense fallback={<BrandPageSkeleton />}>
-      <BrandData nombre={params.nombre} />
-    </Suspense>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8 text-center">Marca: {brandName}</h1>
+      <FilterBar brands={brands} />
+      <Suspense fallback={<ProductGridSkeleton />}>
+        {sortedProducts.length > 0 ? (
+          <ProductGrid products={sortedProducts} />
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-xl text-gray-600">No se encontraron productos para esta marca o selección.</p>
+            <p className="text-md text-gray-500 mt-2">Intenta ajustar tus filtros o buscar otros productos.</p>
+          </div>
+        )}
+      </Suspense>
+    </div>
   )
 }

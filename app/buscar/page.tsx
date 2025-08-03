@@ -1,124 +1,77 @@
-import { getProductsFromZureo } from "@/lib/zureo-api"
+import { Suspense } from "react"
+import { getProductsFromZureo, getBrandsFromZureo } from "@/lib/zureo-api"
 import { transformZureoProduct } from "@/lib/data-transformer"
 import ProductGrid from "@/components/product-grid"
-import { Suspense } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { ProductGridSkeleton } from "@/components/product-grid-skeleton"
+import { FilterBar } from "@/components/filter-bar"
 
-function SearchResultsSkeleton() {
-  return (
-    <div className="pt-16 min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-8">
-        <Skeleton className="h-10 w-64 mb-2" />
-        <Skeleton className="h-6 w-48 mb-8" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="space-y-4">
-              <Skeleton className="aspect-square w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+export const revalidate = 3600 // Revalidate every hour
 
-async function SearchResults({ query }: { query: string }) {
-  try {
-    // Obtener todos los productos y filtrar por búsqueda
-    const allProducts = await getProductsFromZureo({ qty: 1000 })
+export default async function SearchPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined }
+}) {
+  const query = searchParams?.query as string | undefined
+  const productsData = await getProductsFromZureo({ qty: 1000 })
+  const brandsData = await getBrandsFromZureo()
 
-    if (!allProducts || !Array.isArray(allProducts)) {
-      throw new Error("No se pudieron obtener los productos")
+  const allProducts = productsData.map((p: any) => transformZureoProduct(p))
+  const activeProducts = allProducts.filter((p) => p.isActive)
+
+  const brands = brandsData.map((b: any) => b.nombre).filter(Boolean)
+
+  const filteredProducts = activeProducts.filter((product) => {
+    const brandMatch = searchParams?.brand ? product.brand === searchParams.brand : true
+    const minPriceMatch = searchParams?.minPrice
+      ? product.price >= Number.parseFloat(searchParams.minPrice as string)
+      : true
+    const maxPriceMatch = searchParams?.maxPrice
+      ? product.price <= Number.parseFloat(searchParams.maxPrice as string)
+      : true
+    const queryMatch = query
+      ? product.title.toLowerCase().includes(query.toLowerCase()) ||
+        product.description.toLowerCase().includes(query.toLowerCase()) ||
+        product.brand.toLowerCase().includes(query.toLowerCase()) ||
+        product.category.toLowerCase().includes(query.toLowerCase()) ||
+        product.handle.toLowerCase().includes(query.toLowerCase()) // Buscar también por código
+      : true
+
+    return brandMatch && minPriceMatch && maxPriceMatch && queryMatch
+  })
+
+  const sortedProducts = filteredProducts.sort((a, b) => {
+    if (searchParams?.sort === "price-asc") {
+      return a.price - b.price
     }
-
-    const searchResults = allProducts.filter((product) => {
-      if (!product) return false
-
-      const searchTerm = query.toLowerCase()
-      return (
-        product.nombre?.toLowerCase().includes(searchTerm) ||
-        product.descripcion_larga?.toLowerCase().includes(searchTerm) ||
-        product.marca?.nombre?.toLowerCase().includes(searchTerm) ||
-        product.tipo?.nombre?.toLowerCase().includes(searchTerm) ||
-        product.codigo?.toLowerCase().includes(searchTerm)
-      )
-    })
-
-    const transformedProducts = searchResults
-      .map((product) => {
-        try {
-          return transformZureoProduct(product)
-        } catch (error) {
-          console.error("Error transformando producto en búsqueda:", error)
-          return null
-        }
-      })
-      .filter(Boolean)
-
-    return (
-      <div className="pt-16 min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Resultados para "{query}"</h1>
-            <p className="text-gray-600">{transformedProducts.length} productos encontrados</p>
-          </div>
-
-          {transformedProducts.length > 0 ? (
-            <ProductGrid products={transformedProducts} />
-          ) : (
-            <div className="text-center py-20">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">No se encontraron productos</h2>
-              <p className="text-gray-600 mb-6">No hay productos que coincidan con tu búsqueda "{query}".</p>
-              <div className="space-y-2 text-sm text-gray-500">
-                <p>Sugerencias:</p>
-                <ul className="list-disc list-inside space-y-1">
-                  <li>Verifica la ortografía de las palabras</li>
-                  <li>Usa términos más generales</li>
-                  <li>Prueba con sinónimos</li>
-                  <li>Busca por marca o categoría</li>
-                </ul>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  } catch (error) {
-    console.error("Error en búsqueda:", error)
-    return (
-      <div className="pt-16 min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-20">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Error en la búsqueda</h1>
-            <p className="text-gray-600">Hubo un problema realizando la búsqueda. Por favor, intenta nuevamente.</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-}
-
-export default function SearchPage({ searchParams }: { searchParams: { q?: string } }) {
-  const query = searchParams.q || ""
-
-  if (!query) {
-    return (
-      <div className="pt-16 min-h-screen bg-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-20">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Búsqueda vacía</h1>
-            <p className="text-gray-600">Por favor, ingresa un término de búsqueda.</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
+    if (searchParams?.sort === "price-desc") {
+      return b.price - a.price
+    }
+    if (searchParams?.sort === "name-asc") {
+      return a.title.localeCompare(b.title)
+    }
+    if (searchParams?.sort === "name-desc") {
+      return b.title.localeCompare(a.title)
+    }
+    return 0
+  })
 
   return (
-    <Suspense fallback={<SearchResultsSkeleton />}>
-      <SearchResults query={query} />
-    </Suspense>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8 text-center">
+        {query ? `Resultados para "${query}"` : "Todos los Productos"}
+      </h1>
+      <FilterBar brands={brands} />
+      <Suspense fallback={<ProductGridSkeleton />}>
+        {sortedProducts.length > 0 ? (
+          <ProductGrid products={sortedProducts} />
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-xl text-gray-600">No se encontraron productos para esta búsqueda o selección.</p>
+            <p className="text-md text-gray-500 mt-2">Intenta ajustar tus filtros o buscar otros productos.</p>
+          </div>
+        )}
+      </Suspense>
+    </div>
   )
 }

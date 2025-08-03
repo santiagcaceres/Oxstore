@@ -1,90 +1,74 @@
-import { getProductsFromZureo } from "@/lib/zureo-api"
+import { Suspense } from "react"
+import { getProductsFromZureo, getBrandsFromZureo } from "@/lib/zureo-api"
 import { transformZureoProduct } from "@/lib/data-transformer"
 import ProductGrid from "@/components/product-grid"
-import { Suspense } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
+import { ProductGridSkeleton } from "@/components/product-grid-skeleton"
+import { FilterBar } from "@/components/filter-bar"
 
-function ProductGridSkeleton() {
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="space-y-4">
-          <Skeleton className="aspect-square w-full" />
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-4 w-1/2" />
-        </div>
-      ))}
-    </div>
-  )
-}
+export const revalidate = 3600 // Revalidate every hour
 
-async function MenProducts() {
-  // Obtener todos los productos y filtrar por categorías masculinas
-  const allProducts = await getProductsFromZureo({ qty: 1000 })
+export default async function HombrePage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined }
+}) {
+  const productsData = await getProductsFromZureo({ qty: 1000 })
+  const brandsData = await getBrandsFromZureo()
 
-  // Filtrar productos que podrían ser para hombre
-  // Esto es una aproximación basada en nombres de categorías comunes
-  const menProducts = allProducts.filter((product) => {
-    const category = product.tipo?.nombre?.toLowerCase() || ""
-    const name = product.nombre?.toLowerCase() || ""
+  const allProducts = productsData.map((p: any) => transformZureoProduct(p))
+  const activeProducts = allProducts.filter((p) => p.isActive)
 
-    // Palabras clave que indican productos masculinos
-    const menKeywords = [
-      "hombre",
-      "masculino",
-      "men",
-      "caballero",
-      "camisa",
-      "pantalón",
-      "jean",
-      "buzo",
-      "campera",
-      "remera",
-      "polo",
-      "short",
-      "bermuda",
-    ]
+  const brands = brandsData.map((b: any) => b.nombre).filter(Boolean)
 
-    return menKeywords.some((keyword) => category.includes(keyword) || name.includes(keyword))
+  const filteredProducts = activeProducts.filter((product) => {
+    const genderMatch = product.gender === "Hombre" || product.gender === "Unisex"
+    const brandMatch = searchParams?.brand ? product.brand === searchParams.brand : true
+    const minPriceMatch = searchParams?.minPrice
+      ? product.price >= Number.parseFloat(searchParams.minPrice as string)
+      : true
+    const maxPriceMatch = searchParams?.maxPrice
+      ? product.price <= Number.parseFloat(searchParams.maxPrice as string)
+      : true
+    const queryMatch = searchParams?.query
+      ? product.title.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+        product.description.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+        product.brand.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+        product.category.toLowerCase().includes((searchParams.query as string).toLowerCase())
+      : true
+
+    return genderMatch && brandMatch && minPriceMatch && maxPriceMatch && queryMatch
   })
 
-  const transformedProducts = menProducts.map((product) => transformZureoProduct(product))
+  const sortedProducts = filteredProducts.sort((a, b) => {
+    if (searchParams?.sort === "price-asc") {
+      return a.price - b.price
+    }
+    if (searchParams?.sort === "price-desc") {
+      return b.price - a.price
+    }
+    if (searchParams?.sort === "name-asc") {
+      return a.title.localeCompare(b.title)
+    }
+    if (searchParams?.sort === "name-desc") {
+      return b.title.localeCompare(a.title)
+    }
+    return 0
+  })
 
   return (
-    <div className="pt-16 min-h-screen bg-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Hombre</h1>
-          <p className="text-gray-600">Descubre nuestra colección para hombre</p>
-        </div>
-
-        {transformedProducts.length > 0 ? (
-          <ProductGrid products={transformedProducts} />
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-4xl font-bold mb-8 text-center">Colección Hombre</h1>
+      <FilterBar brands={brands} />
+      <Suspense fallback={<ProductGridSkeleton />}>
+        {sortedProducts.length > 0 ? (
+          <ProductGrid products={sortedProducts} />
         ) : (
-          <div className="text-center py-20">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">No hay productos disponibles</h2>
-            <p className="text-gray-600">Falta configurar productos para hombre en Zureo API.</p>
+          <div className="text-center py-12">
+            <p className="text-xl text-gray-600">No se encontraron productos para esta selección.</p>
+            <p className="text-md text-gray-500 mt-2">Intenta ajustar tus filtros o buscar otros productos.</p>
           </div>
         )}
-      </div>
+      </Suspense>
     </div>
-  )
-}
-
-export default function MenPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="pt-16 min-h-screen bg-white">
-          <div className="container mx-auto px-4 py-8">
-            <Skeleton className="h-10 w-64 mb-2" />
-            <Skeleton className="h-6 w-96 mb-8" />
-            <ProductGridSkeleton />
-          </div>
-        </div>
-      }
-    >
-      <MenProducts />
-    </Suspense>
   )
 }
