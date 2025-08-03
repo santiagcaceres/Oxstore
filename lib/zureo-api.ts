@@ -114,6 +114,24 @@ export async function getProductById(id: string): Promise<ZureoProduct | null> {
   }
 }
 
+export async function getProductByCode(code: string): Promise<ZureoProduct | null> {
+  try {
+    // Primero intentamos buscar por código específico
+    const result = await zureoFetch(`/sdk/v1/product/get?code=${code}`)
+    if (result && (result.data || result.product || result)) {
+      return result.data || result.product || result
+    }
+
+    // Si no funciona, buscamos en todos los productos
+    const allProducts = await getProductsFromZureo({ qty: 1000 })
+    const product = allProducts.find((p) => p.codigo === code || p.id === Number.parseInt(code))
+    return product || null
+  } catch (error) {
+    console.error(`Error obteniendo producto por código ${code}:`, error)
+    return null
+  }
+}
+
 export async function getProductImages(id: string, varId?: string): Promise<any> {
   const query = varId ? `id=${id}&var=${varId}` : `id=${id}`
   const result = await zureoFetch(`/sdk/v1/product/image?${query}`)

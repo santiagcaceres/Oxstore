@@ -8,10 +8,34 @@ import { getProductsFromZureo, getBrandsFromZureo } from "@/lib/zureo-api"
 import { transformZureoProduct } from "@/lib/data-transformer"
 
 export default async function HomePage() {
-  // Obtener datos reales para los componentes
-  const rawProducts = await getProductsFromZureo({ qty: 10 })
-  const products = rawProducts.map((p) => transformZureoProduct(p))
-  const brands = await getBrandsFromZureo()
+  let products: any[] = []
+  let brands: any[] = []
+
+  try {
+    // Obtener datos reales para los componentes
+    const rawProducts = await getProductsFromZureo({ qty: 10 })
+
+    if (rawProducts && Array.isArray(rawProducts)) {
+      products = rawProducts
+        .map((p) => {
+          try {
+            return transformZureoProduct(p)
+          } catch (error) {
+            console.error("Error transformando producto:", error)
+            return null
+          }
+        })
+        .filter(Boolean)
+    }
+
+    const rawBrands = await getBrandsFromZureo()
+    if (rawBrands && Array.isArray(rawBrands)) {
+      brands = rawBrands
+    }
+  } catch (error) {
+    console.error("Error cargando datos de la página principal:", error)
+    // Continuar con arrays vacíos si hay error
+  }
 
   return (
     <div className="pt-16">
@@ -67,19 +91,23 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="py-6">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Nuestras Marcas</h2>
-          <BrandCarousel brands={brands} />
-        </div>
-      </section>
+      {brands.length > 0 && (
+        <section className="py-6">
+          <div className="container mx-auto px-4">
+            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Nuestras Marcas</h2>
+            <BrandCarousel brands={brands} />
+          </div>
+        </section>
+      )}
 
-      <section className="py-8 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Productos Destacados</h2>
-          <ProductSlider products={products} />
-        </div>
-      </section>
+      {products.length > 0 && (
+        <section className="py-8 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Productos Destacados</h2>
+            <ProductSlider products={products} />
+          </div>
+        </section>
+      )}
 
       <section className="py-6">
         <div className="container mx-auto px-4">
