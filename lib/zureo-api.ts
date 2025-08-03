@@ -22,23 +22,17 @@ async function getZureoToken(): Promise<string> {
     throw new Error("Credenciales de Zureo no configuradas.")
   }
 
-  // Formato exacto según la guía: usuario:contraseña:dominio
   const credentials = `${user}:${pass}:${domain}`
   const encodedCredentials = Buffer.from(credentials).toString("base64")
 
   try {
-    console.log("Solicitando token a Zureo...")
-    console.log("Usuario:", user)
-    console.log("Dominio:", domain)
-    console.log("Credentials encoded:", encodedCredentials)
-
     const response = await fetch("https://api.zureo.com/sdk/v1/security/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Basic ${encodedCredentials}`,
       },
-      body: "{}", // Body vacío como indica la guía
+      body: "{}",
     })
 
     if (!response.ok) {
@@ -48,7 +42,6 @@ async function getZureoToken(): Promise<string> {
     }
 
     const data = await response.json()
-    console.log("Respuesta de autenticación:", data)
 
     tokenCache = {
       token: data.token,
@@ -91,9 +84,9 @@ async function zureoFetch(endpoint: string, options: RequestInit = {}): Promise<
 
 // --- Funciones para Productos ---
 export async function getProductsFromZureo(
-  params: { emp?: number; qty?: number; from?: number; date?: string } = {},
+  params: { emp?: number; qty?: number; from?: number; date?: string; includeInactive?: boolean } = {},
 ): Promise<ZureoProduct[]> {
-  const { emp = 1, qty = 100, ...otherParams } = params
+  const { emp = 1, qty = 100, includeInactive = false, ...otherParams } = params
   const query = new URLSearchParams({
     emp: emp.toString(),
     qty: qty.toString(),
@@ -101,13 +94,28 @@ export async function getProductsFromZureo(
   }).toString()
 
   const result = await zureoFetch(`/sdk/v1/product/all?${query}`)
-  return result.data || result.products || result
+  const products = result.data || result.products || result || []
+
+  // Filtrar productos dados de baja si no se especifica incluirlos
+  if (!includeInactive) {
+    return products.filter((product: ZureoProduct) => !product.baja)
+  }
+
+  return products
 }
 
 export async function getProductById(id: string): Promise<ZureoProduct | null> {
   try {
     const result = await zureoFetch(`/sdk/v1/product/get?id=${id}`)
-    return result.data || result.product || result
+    const product = result.data || result.product || result
+
+    // Verificar que el producto no esté dado de baja
+    if (product && product.baja) {
+      console.log(`Producto ${id} está dado de baja`)
+      return null
+    }
+
+    return product
   } catch (error) {
     console.error(`Error obteniendo producto ${id}:`, error)
     return null
@@ -116,26 +124,31 @@ export async function getProductById(id: string): Promise<ZureoProduct | null> {
 
 export async function getProductByCode(code: string): Promise<ZureoProduct | null> {
   try {
-    // Primero intentamos buscar por código específico
-    const result = await zureoFetch(`/sdk/v1/product/get?code=${code}`)
-    if (result && (result.data || result.product || result)) {
-      return result.data || result.product || result
+    // Buscar en todos los productos por código
+    const allProducts = await getProductsFromZureo({ qty: 1000, includeInactive: false })
+    const product = allProducts.find((p) => p.codigo === code)
+
+    if (!product) {
+      console.log(`Producto con código ${code} no encontrado o está dado de baja`)
+      return null
     }
 
-    // Si no funciona, buscamos en todos los productos
-    const allProducts = await getProductsFromZureo({ qty: 1000 })
-    const product = allProducts.find((p) => p.codigo === code || p.id === Number.parseInt(code))
-    return product || null
+    return product
   } catch (error) {
     console.error(`Error obteniendo producto por código ${code}:`, error)
     return null
   }
 }
 
-export async function getProductImages(id: string, varId?: string): Promise<any> {
-  const query = varId ? `id=${id}&var=${varId}` : `id=${id}`
-  const result = await zureoFetch(`/sdk/v1/product/image?${query}`)
-  return result.data || result
+export async function getProductImages(id: string, varId?: string): Promise<any[]> {
+  try {
+    const query = varId ? `id=${id}&var=${varId}` : `id=${id}`
+    const result = await zureoFetch(`/sdk/v1/product/image?${query}`)
+    return result.data || result || []
+  } catch (error) {
+    console.error(`Error obteniendo imágenes del producto ${id}:`, error)
+    return []
+  }
 }
 
 // --- Funciones para Empresas ---
@@ -197,4 +210,38 @@ export async function getStockBySucursal(emp = 1, suc = 1, date?: string): Promi
   const query = date ? `emp=${emp}&suc=${suc}&date=${date}` : `emp=${emp}&suc=${suc}`
   const result = await zureoFetch(`/sdk/v1/product/stock-by-sucursal?${query}`)
   return result.data || result
+}
+
+// --- Función para subir imágenes ---
+export async function uploadProductImage(productId: string, imageFile: File): Promise<any> {
+  try {
+    // Convertir imagen a base64
+    const base64 = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result as string
+        // Remover el prefijo data:image/...;base64,
+        const base64Data = result.split(",")[1]
+        resolve(base64Data)
+      }
+      reader.readAsDataURL(imageFile)
+    })
+
+    const imageData = {
+      id_producto: Number.parseInt(productId),
+      base64: base64,
+      descripcion: imageFile.name,
+      filename: imageFile.name,
+    }
+
+    const result = await zureoFetch("/sdk/v1/product/image/add", {
+      method: "POST",
+      body: JSON.stringify(imageData),
+    })
+
+    return result
+  } catch (error) {
+    console.error(`Error subiendo imagen para producto ${productId}:`, error)
+    throw error
+  }
 }

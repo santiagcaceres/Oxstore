@@ -1,104 +1,103 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
-import { Upload, X, Search } from "lucide-react"
+import { Upload, X, Search, ImageIcon, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { getProductsFromZureo, uploadProductImage } from "@/lib/zureo-api"
+import { uploadImageToBlob, optimizeImage } from "@/lib/image-upload"
+import type { ZureoProduct } from "@/types/zureo"
 
-interface ZureoProduct {
-  codigo: string
-  nombre: string
-  descripcion: string
-  precio: number
-  categoria: string
-  subcategoria: string
-  genero: string
-  tallas: string[]
-  colores: string[]
-  marca: string
-  stock: number
+interface UploadedImage {
+  file: File
+  preview: string
+  uploaded: boolean
+  blobUrl?: string
 }
 
 export default function SubirProductosPage() {
   const [searchCode, setSearchCode] = useState("")
   const [selectedProduct, setSelectedProduct] = useState<ZureoProduct | null>(null)
-  const [images, setImages] = useState<File[]>([])
+  const [images, setImages] = useState<UploadedImage[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-
-  // Simulamos productos de Zureo
-  const zureoProducts: ZureoProduct[] = [
-    {
-      codigo: "ZUR001",
-      nombre: "Remera Premium Algodón",
-      descripcion: "Remera de algodón 100% premium, perfecta para el uso diario",
-      precio: 35,
-      categoria: "Vestimenta",
-      subcategoria: "Remeras",
-      genero: "Hombre",
-      tallas: ["S", "M", "L", "XL"],
-      colores: ["Negro", "Blanco", "Gris"],
-      marca: "Premium",
-      stock: 25,
-    },
-    {
-      codigo: "ZUR002",
-      nombre: "Jean Clásico Denim",
-      descripcion: "Jean de corte clásico en denim de alta calidad",
-      precio: 85,
-      categoria: "Vestimenta",
-      subcategoria: "Pantalones",
-      genero: "Mujer",
-      tallas: ["28", "30", "32", "34"],
-      colores: ["Azul", "Negro"],
-      marca: "Denim Co",
-      stock: 15,
-    },
-    {
-      codigo: "ZUR003",
-      nombre: "Gorra Snapback Urban",
-      descripcion: "Gorra snapback de estilo urbano con bordado frontal",
-      precio: 25,
-      categoria: "Accesorios",
-      subcategoria: "Gorras",
-      genero: "Unisex",
-      tallas: ["Única"],
-      colores: ["Negro", "Blanco", "Rojo"],
-      marca: "Urban Style",
-      stock: 30,
-    },
-  ]
 
   const searchProduct = async () => {
     if (!searchCode.trim()) return
 
     setIsSearching(true)
 
-    // Simular búsqueda en Zureo
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Buscar en productos reales de Zureo
+      const products = await getProductsFromZureo({ qty: 1000, includeInactive: true })
+      const product = products.find(
+        (p) =>
+          p.codigo.toLowerCase().includes(searchCode.toLowerCase()) ||
+          p.nombre?.toLowerCase().includes(searchCode.toLowerCase()),
+      )
 
-    const product = zureoProducts.find((p) => p.codigo.toLowerCase() === searchCode.toLowerCase())
-    setSelectedProduct(product || null)
+      setSelectedProduct(product || null)
 
-    if (!product) {
-      alert("Producto no encontrado en Zureo. Verifica el código.")
+      if (!product) {
+        alert("Producto no encontrado en Zureo. Verifica el código o nombre.")
+      }
+    } catch (error) {
+      console.error("Error buscando producto:", error)
+      alert("Error al buscar el producto. Verifica tu conexión.")
     }
 
     setIsSearching(false)
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    setImages([...images, ...files])
+
+    for (const file of files) {
+      // Optimizar imagen antes de subirla
+      const optimizedFile = await optimizeImage(file, 800, 0.85)
+
+      const uploadedImage: UploadedImage = {
+        file: optimizedFile,
+        preview: URL.createObjectURL(optimizedFile),
+        uploaded: false,
+      }
+
+      setImages((prev) => [...prev, uploadedImage])
+    }
   }
 
   const removeImage = (index: number) => {
     const newImages = images.filter((_, i) => i !== index)
     setImages(newImages)
+  }
+
+  const uploadSingleImage = async (imageIndex: number) => {
+    if (!selectedProduct) return
+
+    const image = images[imageIndex]
+    if (image.uploaded) return
+
+    try {
+      // Subir a Vercel Blob para optimización
+      const blobResult = await uploadImageToBlob(image.file, `products/${selectedProduct.codigo}`)
+
+      // También subir a Zureo si es necesario
+      await uploadProductImage(String(selectedProduct.id), image.file)
+
+      // Actualizar estado
+      setImages((prev) =>
+        prev.map((img, i) => (i === imageIndex ? { ...img, uploaded: true, blobUrl: blobResult.url } : img)),
+      )
+
+      alert(`Imagen ${imageIndex + 1} subida exitosamente!`)
+    } catch (error) {
+      console.error("Error subiendo imagen:", error)
+      alert(`Error subiendo imagen ${imageIndex + 1}`)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,31 +115,42 @@ export default function SubirProductosPage() {
 
     setIsUploading(true)
 
-    // Simular subida de producto
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      // Subir todas las imágenes que no estén subidas
+      for (let i = 0; i < images.length; i++) {
+        if (!images[i].uploaded) {
+          await uploadSingleImage(i)
+        }
+      }
 
-    alert(`Producto ${selectedProduct.codigo} subido exitosamente con ${images.length} imágenes!`)
+      alert(`¡Todas las imágenes del producto ${selectedProduct.codigo} fueron subidas exitosamente!`)
 
-    // Resetear formulario
-    setSearchCode("")
-    setSelectedProduct(null)
-    setImages([])
+      // Resetear formulario
+      setSearchCode("")
+      setSelectedProduct(null)
+      setImages([])
+    } catch (error) {
+      console.error("Error en el proceso de subida:", error)
+      alert("Hubo un error subiendo algunas imágenes")
+    }
+
     setIsUploading(false)
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Subir Producto desde Zureo</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Subir Imágenes de Productos</h1>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">¿Cómo funciona?</h3>
-        <ol className="text-sm text-blue-800 space-y-1">
-          <li>1. Busca el producto por su código de Zureo</li>
-          <li>2. Sube las imágenes del producto</li>
-          <li>3. El sistema asociará automáticamente toda la información</li>
-        </ol>
+        <h3 className="font-semibold text-blue-900 mb-2">Sistema Optimizado de Imágenes</h3>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>• Las imágenes se optimizan automáticamente para web</li>
+          <li>• Se suben a Vercel Blob para máxima velocidad</li>
+          <li>• También se sincronizan con tu sistema Zureo</li>
+          <li>• Formatos soportados: JPG, PNG, WebP</li>
+        </ul>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -152,12 +162,12 @@ export default function SubirProductosPage() {
           <CardContent className="space-y-4">
             <div className="flex gap-4">
               <div className="flex-1">
-                <Label htmlFor="searchCode">Código del Producto</Label>
+                <Label htmlFor="searchCode">Código o Nombre del Producto</Label>
                 <Input
                   id="searchCode"
                   value={searchCode}
                   onChange={(e) => setSearchCode(e.target.value)}
-                  placeholder="Ej: ZUR001"
+                  placeholder="Ej: 00346980021 o nombre del producto"
                   className="mt-1"
                 />
               </div>
@@ -182,12 +192,6 @@ export default function SubirProductosPage() {
                 </Button>
               </div>
             </div>
-
-            <div className="text-sm text-gray-600">
-              <p>
-                <strong>Códigos de ejemplo:</strong> ZUR001, ZUR002, ZUR003
-              </p>
-            </div>
           </CardContent>
         </Card>
 
@@ -195,7 +199,10 @@ export default function SubirProductosPage() {
         {selectedProduct && (
           <Card>
             <CardHeader>
-              <CardTitle className="text-green-700">✓ Producto Encontrado</CardTitle>
+              <CardTitle className="text-green-700 flex items-center gap-2">
+                <Check className="h-5 w-5" />
+                Producto Encontrado
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-6">
@@ -206,7 +213,7 @@ export default function SubirProductosPage() {
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">Nombre:</span>
-                    <span className="ml-2">{selectedProduct.nombre}</span>
+                    <span className="ml-2">{selectedProduct.nombre || `Producto ${selectedProduct.codigo}`}</span>
                   </div>
                   <div>
                     <span className="font-medium text-gray-700">Precio:</span>
@@ -219,29 +226,33 @@ export default function SubirProductosPage() {
                 </div>
                 <div className="space-y-3">
                   <div>
+                    <span className="font-medium text-gray-700">Marca:</span>
+                    <span className="ml-2">{selectedProduct.marca?.nombre || "Sin marca"}</span>
+                  </div>
+                  <div>
                     <span className="font-medium text-gray-700">Categoría:</span>
-                    <span className="ml-2">
-                      {selectedProduct.categoria} → {selectedProduct.subcategoria}
-                    </span>
+                    <span className="ml-2">{selectedProduct.tipo?.nombre || "Sin categoría"}</span>
                   </div>
                   <div>
-                    <span className="font-medium text-gray-700">Género:</span>
-                    <span className="ml-2">{selectedProduct.genero}</span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Tallas:</span>
-                    <span className="ml-2">{selectedProduct.tallas.join(", ")}</span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Colores:</span>
-                    <span className="ml-2">{selectedProduct.colores.join(", ")}</span>
+                    <span className="font-medium text-gray-700">Estado:</span>
+                    {selectedProduct.baja ? (
+                      <Badge variant="destructive" className="ml-2">
+                        Dado de baja
+                      </Badge>
+                    ) : (
+                      <Badge variant="default" className="ml-2 bg-green-600">
+                        Activo
+                      </Badge>
+                    )}
                   </div>
                 </div>
               </div>
-              <div className="mt-4">
-                <span className="font-medium text-gray-700">Descripción:</span>
-                <p className="mt-1 text-gray-600">{selectedProduct.descripcion}</p>
-              </div>
+              {selectedProduct.descripcion_larga && (
+                <div className="mt-4">
+                  <span className="font-medium text-gray-700">Descripción:</span>
+                  <p className="mt-1 text-gray-600">{selectedProduct.descripcion_larga}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -250,7 +261,10 @@ export default function SubirProductosPage() {
         {selectedProduct && (
           <Card>
             <CardHeader>
-              <CardTitle>Imágenes del Producto</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5" />
+                Imágenes del Producto
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
@@ -258,7 +272,9 @@ export default function SubirProductosPage() {
                 <div className="mt-4">
                   <Label htmlFor="images" className="cursor-pointer">
                     <span className="mt-2 block text-sm font-medium text-gray-900">Subir imágenes del producto</span>
-                    <span className="mt-1 block text-sm text-gray-500">PNG, JPG, GIF hasta 10MB cada una</span>
+                    <span className="mt-1 block text-sm text-gray-500">
+                      PNG, JPG, WebP hasta 10MB cada una (se optimizarán automáticamente)
+                    </span>
                   </Label>
                   <Input
                     id="images"
@@ -273,15 +289,29 @@ export default function SubirProductosPage() {
 
               {images.length > 0 && (
                 <div>
-                  <h4 className="font-medium mb-3">Imágenes subidas ({images.length})</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {images.map((file, index) => (
+                  <h4 className="font-medium mb-3">Imágenes ({images.length})</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {images.map((image, index) => (
                       <div key={index} className="relative">
                         <img
-                          src={URL.createObjectURL(file) || "/placeholder.svg"}
+                          src={image.preview || "/placeholder.svg"}
                           alt={`Preview ${index + 1}`}
                           className="w-full h-32 object-cover rounded-lg"
                         />
+
+                        {/* Estado de subida */}
+                        <div className="absolute top-2 left-2">
+                          {image.uploaded ? (
+                            <Badge className="bg-green-600 text-white">
+                              <Check className="h-3 w-3 mr-1" />
+                              Subida
+                            </Badge>
+                          ) : (
+                            <Badge variant="secondary">Pendiente</Badge>
+                          )}
+                        </div>
+
+                        {/* Botón eliminar */}
                         <Button
                           type="button"
                           variant="destructive"
@@ -291,6 +321,18 @@ export default function SubirProductosPage() {
                         >
                           <X className="h-4 w-4" />
                         </Button>
+
+                        {/* Botón subir individual */}
+                        {!image.uploaded && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="absolute bottom-2 right-2 h-6 px-2 text-xs"
+                            onClick={() => uploadSingleImage(index)}
+                          >
+                            Subir
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -301,23 +343,18 @@ export default function SubirProductosPage() {
         )}
 
         {/* Botón de envío */}
-        {selectedProduct && (
+        {selectedProduct && images.length > 0 && (
           <div className="flex justify-end">
-            <Button
-              type="submit"
-              disabled={isUploading || images.length === 0}
-              className="bg-blue-950 hover:bg-blue-900"
-              size="lg"
-            >
+            <Button type="submit" disabled={isUploading} className="bg-blue-950 hover:bg-blue-900" size="lg">
               {isUploading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Subiendo Producto...
+                  Subiendo Todas las Imágenes...
                 </>
               ) : (
                 <>
                   <Upload className="h-4 w-4 mr-2" />
-                  Publicar Producto
+                  Subir Todas las Imágenes
                 </>
               )}
             </Button>
