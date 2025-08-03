@@ -4,65 +4,82 @@ import { transformZureoProduct } from "@/lib/data-transformer"
 import ProductGrid from "@/components/product-grid"
 import { ProductGridSkeleton } from "@/components/product-grid-skeleton"
 import { FilterBar } from "@/components/filter-bar"
+import { notFound } from "next/navigation"
 
 export const revalidate = 3600 // Revalidate every hour
 
-export default async function BrandPage({
-  params,
-  searchParams,
-}: {
-  params: { nombre: string }
-  searchParams?: { [key: string]: string | string[] | undefined }
-}) {
-  const brandName = decodeURIComponent(params.nombre)
+async function BrandProducts({ params, searchParams }: { params: any; searchParams: any }) {
+  try {
+    const brandName = decodeURIComponent(params.nombre)
+    const productsData = await getProductsFromZureo({ qty: 1000 })
+    const brandsData = await getBrandsFromZureo()
 
-  const productsData = await getProductsFromZureo({ qty: 1000 })
-  const brandsData = await getBrandsFromZureo()
-
-  const allProducts = productsData.map((p: any) => transformZureoProduct(p))
-  const activeProducts = allProducts.filter((p) => p.isActive)
-
-  const brands = brandsData.map((b: any) => b.nombre).filter(Boolean)
-
-  const filteredProducts = activeProducts.filter((product) => {
-    const brandMatch = product.brand.toLowerCase() === brandName.toLowerCase()
-    const minPriceMatch = searchParams?.minPrice
-      ? product.price >= Number.parseFloat(searchParams.minPrice as string)
-      : true
-    const maxPriceMatch = searchParams?.maxPrice
-      ? product.price <= Number.parseFloat(searchParams.maxPrice as string)
-      : true
-    const queryMatch = searchParams?.query
-      ? product.title.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
-        product.description.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
-        product.brand.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
-        product.category.toLowerCase().includes((searchParams.query as string).toLowerCase())
-      : true
-
-    return brandMatch && minPriceMatch && maxPriceMatch && queryMatch
-  })
-
-  const sortedProducts = filteredProducts.sort((a, b) => {
-    if (searchParams?.sort === "price-asc") {
-      return a.price - b.price
+    if (!productsData || !Array.isArray(productsData)) {
+      return (
+        <div className="text-center py-12">
+          <p className="text-xl text-gray-600">Error al cargar productos.</p>
+        </div>
+      )
     }
-    if (searchParams?.sort === "price-desc") {
-      return b.price - a.price
-    }
-    if (searchParams?.sort === "name-asc") {
-      return a.title.localeCompare(b.title)
-    }
-    if (searchParams?.sort === "name-desc") {
-      return b.title.localeCompare(a.title)
-    }
-    return 0
-  })
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8 text-center">Marca: {brandName}</h1>
-      <FilterBar brands={brands} />
-      <Suspense fallback={<ProductGridSkeleton />}>
+    const allProducts = productsData
+      .map((p: any) => {
+        try {
+          return transformZureoProduct(p)
+        } catch (error) {
+          console.error("Error transformando producto:", error)
+          return null
+        }
+      })
+      .filter(Boolean)
+
+    const activeProducts = allProducts.filter((p) => p && p.isActive)
+    const brands = brandsData?.map((b: any) => b.nombre).filter(Boolean) || []
+
+    const filteredProducts = activeProducts.filter((product) => {
+      if (!product) return false
+
+      const brandMatch = product.brand.toLowerCase() === brandName.toLowerCase()
+      const minPriceMatch = searchParams?.minPrice
+        ? product.price >= Number.parseFloat(searchParams.minPrice as string)
+        : true
+      const maxPriceMatch = searchParams?.maxPrice
+        ? product.price <= Number.parseFloat(searchParams.maxPrice as string)
+        : true
+      const queryMatch = searchParams?.query
+        ? product.title.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+          product.description.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+          product.brand.toLowerCase().includes((searchParams.query as string).toLowerCase()) ||
+          product.category.toLowerCase().includes((searchParams.query as string).toLowerCase())
+        : true
+
+      return brandMatch && minPriceMatch && maxPriceMatch && queryMatch
+    })
+
+    if (filteredProducts.length === 0 && !searchParams?.minPrice && !searchParams?.maxPrice && !searchParams?.query) {
+      notFound()
+    }
+
+    const sortedProducts = filteredProducts.sort((a, b) => {
+      if (searchParams?.sort === "price-asc") {
+        return a.price - b.price
+      }
+      if (searchParams?.sort === "price-desc") {
+        return b.price - a.price
+      }
+      if (searchParams?.sort === "name-asc") {
+        return a.title.localeCompare(b.title)
+      }
+      if (searchParams?.sort === "name-desc") {
+        return b.title.localeCompare(a.title)
+      }
+      return 0
+    })
+
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-4xl font-bold mb-8 text-center">Marca: {brandName}</h1>
+        <FilterBar brands={brands} />
         {sortedProducts.length > 0 ? (
           <ProductGrid products={sortedProducts} />
         ) : (
@@ -71,7 +88,29 @@ export default async function BrandPage({
             <p className="text-md text-gray-500 mt-2">Intenta ajustar tus filtros o buscar otros productos.</p>
           </div>
         )}
-      </Suspense>
-    </div>
+      </div>
+    )
+  } catch (error) {
+    console.error("Error en página de marca:", error)
+    return (
+      <div className="text-center py-12">
+        <p className="text-xl text-gray-600">Error al cargar la página.</p>
+      </div>
+    )
+  }
+}
+
+export default function BrandPage({ params, searchParams }: { params: any; searchParams: any }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-8">
+          <div className="h-10 w-64 bg-gray-200 rounded mb-8 mx-auto" />
+          <ProductGridSkeleton />
+        </div>
+      }
+    >
+      <BrandProducts params={params} searchParams={searchParams} />
+    </Suspense>
   )
 }
