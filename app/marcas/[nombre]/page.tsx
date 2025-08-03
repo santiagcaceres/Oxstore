@@ -18,44 +18,23 @@ function ProductGridSkeleton() {
   )
 }
 
-async function MenProducts() {
-  // Obtener todos los productos y filtrar por categorías masculinas
+async function BrandProducts({ brandName }: { brandName: string }) {
+  const decodedBrandName = decodeURIComponent(brandName)
+
+  // Obtener todos los productos y filtrar por marca
   const allProducts = await getProductsFromZureo({ qty: 1000 })
+  const brandProducts = allProducts.filter(
+    (product) => product.marca?.nombre?.toLowerCase() === decodedBrandName.toLowerCase(),
+  )
 
-  // Filtrar productos que podrían ser para hombre
-  // Esto es una aproximación basada en nombres de categorías comunes
-  const menProducts = allProducts.filter((product) => {
-    const category = product.tipo?.nombre?.toLowerCase() || ""
-    const name = product.nombre?.toLowerCase() || ""
-
-    // Palabras clave que indican productos masculinos
-    const menKeywords = [
-      "hombre",
-      "masculino",
-      "men",
-      "caballero",
-      "camisa",
-      "pantalón",
-      "jean",
-      "buzo",
-      "campera",
-      "remera",
-      "polo",
-      "short",
-      "bermuda",
-    ]
-
-    return menKeywords.some((keyword) => category.includes(keyword) || name.includes(keyword))
-  })
-
-  const transformedProducts = menProducts.map((product) => transformZureoProduct(product))
+  const transformedProducts = brandProducts.map((product) => transformZureoProduct(product))
 
   return (
     <div className="pt-16 min-h-screen bg-white">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Hombre</h1>
-          <p className="text-gray-600">Descubre nuestra colección para hombre</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">{decodedBrandName}</h1>
+          <p className="text-gray-600">{transformedProducts.length} productos encontrados</p>
         </div>
 
         {transformedProducts.length > 0 ? (
@@ -63,7 +42,9 @@ async function MenProducts() {
         ) : (
           <div className="text-center py-20">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">No hay productos disponibles</h2>
-            <p className="text-gray-600">Falta configurar productos para hombre en Zureo API.</p>
+            <p className="text-gray-600">
+              La marca "{decodedBrandName}" no tiene productos disponibles en este momento.
+            </p>
           </div>
         )}
       </div>
@@ -71,20 +52,20 @@ async function MenProducts() {
   )
 }
 
-export default function MenPage() {
+export default function BrandPage({ params }: { params: { nombre: string } }) {
   return (
     <Suspense
       fallback={
         <div className="pt-16 min-h-screen bg-white">
           <div className="container mx-auto px-4 py-8">
             <Skeleton className="h-10 w-64 mb-2" />
-            <Skeleton className="h-6 w-96 mb-8" />
+            <Skeleton className="h-6 w-48 mb-8" />
             <ProductGridSkeleton />
           </div>
         </div>
       }
     >
-      <MenProducts />
+      <BrandProducts brandName={params.nombre} />
     </Suspense>
   )
 }

@@ -4,22 +4,26 @@ import HeroSlider from "@/components/hero-slider"
 import ProductSlider from "@/components/product-slider"
 import BrandCarousel from "@/components/brand-carousel"
 import { Button } from "@/components/ui/button"
+import { getProductsFromZureo, getBrandsFromZureo } from "@/lib/zureo-api"
+import { transformZureoProduct } from "@/lib/data-transformer"
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Obtener datos reales para los componentes
+  const rawProducts = await getProductsFromZureo({ qty: 10 })
+  const products = rawProducts.map((p) => transformZureoProduct(p))
+  const brands = await getBrandsFromZureo()
+
   return (
     <div className="pt-16">
-      {/* Hero Slider */}
       <HeroSlider />
 
-      {/* Secciones Hombre/Mujer - Más compactas */}
       <section className="py-8 bg-gray-50">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Sección Hombre */}
             <Link href="/hombre" className="group">
               <div className="relative h-64 overflow-hidden rounded-lg">
                 <Image
-                  src="/placeholder.svg?height=300&width=600&text=Colección+Hombre"
+                  src="/placeholder.svg?height=300&width=600"
                   alt="Colección Hombre"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -38,11 +42,10 @@ export default function HomePage() {
               </div>
             </Link>
 
-            {/* Sección Mujer */}
             <Link href="/mujer" className="group">
               <div className="relative h-64 overflow-hidden rounded-lg">
                 <Image
-                  src="/placeholder.svg?height=300&width=600&text=Colección+Mujer"
+                  src="/placeholder.svg?height=300&width=600"
                   alt="Colección Mujer"
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -64,27 +67,26 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Carrusel de Marcas - Sin título y más compacto */}
       <section className="py-6">
         <div className="container mx-auto px-4">
-          <BrandCarousel />
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Nuestras Marcas</h2>
+          <BrandCarousel brands={brands} />
         </div>
       </section>
 
-      {/* Slider de Productos - Sin título */}
       <section className="py-8 bg-gray-50">
         <div className="container mx-auto px-4">
-          <ProductSlider />
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Productos Destacados</h2>
+          <ProductSlider products={products} />
         </div>
       </section>
 
-      {/* Banner de Anuncios */}
       <section className="py-6">
         <div className="container mx-auto px-4">
-          <Link href="/promocion" className="block">
+          <Link href="/ofertas" className="block">
             <div className="relative h-32 overflow-hidden rounded-lg">
               <Image
-                src="/placeholder.svg?height=150&width=1200&text=Banner+Promocional"
+                src="/placeholder.svg?height=150&width=1200"
                 alt="Banner Promocional"
                 fill
                 className="object-cover hover:scale-105 transition-transform duration-300"

@@ -1,22 +1,43 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Search, ShoppingCart, Menu, X, User, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/context/cart-context"
+import { getBrandsFromZureo } from "@/lib/zureo-api"
+
+type Brand = {
+  id: number
+  nombre: string
+}
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
   const { state } = useCart()
+  const router = useRouter()
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50)
     }
+    const fetchBrands = async () => {
+      try {
+        const zureoBrands = await getBrandsFromZureo()
+        setBrands(zureoBrands)
+      } catch (error) {
+        console.error("Error fetching brands:", error)
+      }
+    }
 
+    fetchBrands()
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
@@ -32,6 +53,15 @@ export default function Header() {
       document.body.style.overflow = "unset"
     }
   }, [isMenuOpen])
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/buscar?q=${encodeURIComponent(searchQuery.trim())}`)
+      setIsSearchOpen(false)
+      setSearchQuery("")
+    }
+  }
 
   const menCategories = [
     { name: "Remeras", href: "/hombre/remeras" },
@@ -51,9 +81,7 @@ export default function Header() {
   ]
 
   const headerClass = isScrolled ? "bg-blue-950 text-white shadow-lg" : "bg-white text-gray-800 shadow-sm border-b"
-
   const buttonClass = isScrolled ? "text-white hover:bg-blue-900" : "text-gray-700 hover:bg-gray-100"
-
   const logoClass = isScrolled ? "text-white" : "text-blue-950"
 
   return (
@@ -112,6 +140,33 @@ export default function Header() {
                     {category.name}
                   </Link>
                 ))}
+              </div>
+            </div>
+
+            {/* Marcas con dropdown */}
+            <div className="relative group">
+              <span
+                className={`flex items-center gap-1 cursor-pointer transition-colors hover:opacity-80 ${
+                  isScrolled ? "text-white" : "text-gray-700"
+                }`}
+              >
+                MARCAS
+                <ChevronDown className="h-4 w-4" />
+              </span>
+              <div className="absolute top-full left-0 bg-white shadow-lg rounded-lg py-2 min-w-[200px] max-h-96 overflow-y-auto opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                {brands.length > 0 ? (
+                  brands.map((brand) => (
+                    <Link
+                      key={brand.id}
+                      href={`/marcas/${encodeURIComponent(brand.nombre)}`}
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-blue-950 transition-colors"
+                    >
+                      {brand.nombre}
+                    </Link>
+                  ))
+                ) : (
+                  <span className="block px-4 py-2 text-gray-500">Cargando...</span>
+                )}
               </div>
             </div>
 
@@ -175,15 +230,17 @@ export default function Header() {
         {/* Search Bar */}
         {isSearchOpen && (
           <div className="py-4 border-t">
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <input
                 type="text"
                 placeholder="Buscar productos..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-950 focus:border-transparent text-gray-900"
                 autoFocus
               />
-            </div>
+            </form>
           </div>
         )}
       </div>
@@ -192,6 +249,18 @@ export default function Header() {
       {isMenuOpen && (
         <div className="lg:hidden fixed inset-0 top-16 bg-white z-50 overflow-y-auto">
           <div className="px-4 py-6 space-y-6">
+            {/* Mobile Search */}
+            <form onSubmit={handleSearch} className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Buscar productos..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-950 focus:border-transparent text-gray-900"
+              />
+            </form>
+
             {/* Mobile Navigation */}
             <div className="space-y-4">
               <div>
@@ -223,6 +292,26 @@ export default function Header() {
                       {category.name}
                     </Link>
                   ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2">MARCAS</h3>
+                <div className="pl-4 space-y-2 max-h-48 overflow-y-auto">
+                  {brands.length > 0 ? (
+                    brands.map((brand) => (
+                      <Link
+                        key={brand.id}
+                        href={`/marcas/${encodeURIComponent(brand.nombre)}`}
+                        className="block text-gray-600 hover:text-blue-950 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {brand.nombre}
+                      </Link>
+                    ))
+                  ) : (
+                    <span className="block px-4 py-2 text-gray-500">Cargando...</span>
+                  )}
                 </div>
               </div>
 

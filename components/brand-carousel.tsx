@@ -1,68 +1,69 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import Image from "next/image"
+import { useState } from "react"
+import Link from "next/link"
+import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
-const brands = [
-  { id: 1, name: "Nike", logo: "/placeholder.svg?height=60&width=120&text=Nike" },
-  { id: 2, name: "Adidas", logo: "/placeholder.svg?height=60&width=120&text=Adidas" },
-  { id: 3, name: "Puma", logo: "/placeholder.svg?height=60&width=120&text=Puma" },
-  { id: 4, name: "Reebok", logo: "/placeholder.svg?height=60&width=120&text=Reebok" },
-  { id: 5, name: "Converse", logo: "/placeholder.svg?height=60&width=120&text=Converse" },
-  { id: 6, name: "Vans", logo: "/placeholder.svg?height=60&width=120&text=Vans" },
-  { id: 7, name: "New Balance", logo: "/placeholder.svg?height=60&width=120&text=New+Balance" },
-  { id: 8, name: "Under Armour", logo: "/placeholder.svg?height=60&width=120&text=Under+Armour" },
-]
+type Brand = {
+  id: number
+  nombre: string
+}
 
-export default function BrandCarousel() {
-  const scrollRef = useRef<HTMLDivElement>(null)
+export default function BrandCarousel({ brands }: { brands: Brand[] }) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const itemsPerView = 6
 
-  useEffect(() => {
-    const scrollContainer = scrollRef.current
-    if (!scrollContainer) return
+  if (!brands || brands.length === 0) {
+    return <div className="text-center py-10">No hay marcas para mostrar.</div>
+  }
 
-    let animationId: number
-    let scrollPosition = 0
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1 >= brands.length - itemsPerView + 1 ? 0 : prev + 1))
+  }
 
-    const animate = () => {
-      scrollPosition += 0.5
-
-      if (scrollPosition >= scrollContainer.scrollWidth / 2) {
-        scrollPosition = 0
-      }
-
-      scrollContainer.scrollLeft = scrollPosition
-      animationId = requestAnimationFrame(animate)
-    }
-
-    animationId = requestAnimationFrame(animate)
-
-    return () => {
-      if (animationId) {
-        cancelAnimationFrame(animationId)
-      }
-    }
-  }, [])
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev === 0 ? Math.max(0, brands.length - itemsPerView) : prev - 1))
+  }
 
   return (
-    <div className="overflow-hidden">
-      <div ref={scrollRef} className="flex space-x-12 overflow-x-hidden" style={{ scrollBehavior: "auto" }}>
-        {/* Duplicamos las marcas para el efecto infinito */}
-        {[...brands, ...brands].map((brand, index) => (
-          <div
-            key={`${brand.id}-${index}`}
-            className="flex-shrink-0 flex items-center justify-center p-4 bg-gray-50 rounded-lg hover:shadow-md transition-shadow"
-          >
-            <Image
-              src={brand.logo || "/placeholder.svg"}
-              alt={brand.name}
-              width={120}
-              height={60}
-              className="object-contain opacity-70 hover:opacity-100 transition-opacity"
-            />
-          </div>
-        ))}
+    <div className="relative">
+      <div className="overflow-hidden">
+        <div
+          className="flex items-center transition-transform duration-300 ease-in-out"
+          style={{ transform: `translateX(-${currentIndex * (100 / itemsPerView)}%)` }}
+        >
+          {brands.map((brand) => (
+            <div key={brand.id} className="w-1/6 flex-shrink-0 px-4">
+              <Link href={`/marcas/${encodeURIComponent(brand.nombre)}`} className="group block">
+                <div className="aspect-[3/2] flex items-center justify-center bg-gray-100 rounded-lg p-4 grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300">
+                  <span className="text-lg font-bold text-gray-700 text-center">{brand.nombre}</span>
+                </div>
+              </Link>
+            </div>
+          ))}
+        </div>
       </div>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-4 bg-white shadow-lg hover:bg-gray-50"
+        onClick={prevSlide}
+        disabled={currentIndex === 0}
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="sm"
+        className="absolute right-0 top-1/2 transform -translate-y-1/2 translate-x-4 bg-white shadow-lg hover:bg-gray-50"
+        onClick={nextSlide}
+        disabled={currentIndex >= brands.length - itemsPerView}
+      >
+        <ChevronRight className="h-5 w-5" />
+      </Button>
     </div>
   )
 }
