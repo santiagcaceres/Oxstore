@@ -1,79 +1,90 @@
 import Link from "next/link"
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react"
+import Image from "next/image"
+import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from 'lucide-react'
 
 export default function Footer() {
   return (
-    <footer className="bg-blue-950 text-white">
+    <footer className="bg-black text-white">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid md:grid-cols-4 gap-8">
-          {/* Información de la tienda */}
-          <div>
-            <h3 className="text-xl font-bold mb-4">OXSTORE</h3>
-            <p className="text-blue-100 mb-4">
-              Tu tienda de moda en Santa Lucía. Calidad, estilo y las mejores marcas.
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {/* Logo y descripción */}
+          <div className="space-y-4">
+            <Image src="/logo-claro.png" alt="OXSTORE" width={120} height={40} className="h-8 w-auto" />
+            <p className="text-gray-400 text-sm">
+              Tu tienda de confianza para la mejor moda y accesorios. Calidad, estilo y las mejores marcas en un solo lugar.
             </p>
             <div className="flex space-x-4">
-              <Link href="#" className="text-blue-100 hover:text-white">
+              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Facebook className="h-5 w-5" />
               </Link>
-              <Link href="#" className="text-blue-100 hover:text-white">
+              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Instagram className="h-5 w-5" />
               </Link>
-              <Link href="#" className="text-blue-100 hover:text-white">
+              <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Twitter className="h-5 w-5" />
               </Link>
             </div>
           </div>
 
-          {/* Enlaces rápidos */}
+          {/* Categorías */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Enlaces Rápidos</h4>
-            <ul className="space-y-2 text-blue-100">
+            <h3 className="font-semibold mb-4">Categorías</h3>
+            <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/hombre" className="hover:text-white">
+                <Link href="/hombre" className="text-gray-400 hover:text-white transition-colors">
                   Hombre
                 </Link>
               </li>
               <li>
-                <Link href="/mujer" className="hover:text-white">
+                <Link href="/mujer" className="text-gray-400 hover:text-white transition-colors">
                   Mujer
                 </Link>
               </li>
               <li>
-                <Link href="/accesorios" className="hover:text-white">
+                <Link href="/accesorios" className="text-gray-400 hover:text-white transition-colors">
                   Accesorios
                 </Link>
               </li>
               <li>
-                <Link href="/ofertas" className="hover:text-white">
-                  Ofertas
+                <Link href="/sale" className="text-gray-400 hover:text-white transition-colors">
+                  Sale
+                </Link>
+              </li>
+              <li>
+                <Link href="/nuevo" className="text-gray-400 hover:text-white transition-colors">
+                  Nuevo
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Atención al cliente */}
+          {/* Ayuda */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Atención al Cliente</h4>
-            <ul className="space-y-2 text-blue-100">
+            <h3 className="font-semibold mb-4">Ayuda</h3>
+            <ul className="space-y-2 text-sm">
               <li>
-                <Link href="/contacto" className="hover:text-white">
-                  Contacto
+                <Link href="/ayuda/envios" className="text-gray-400 hover:text-white transition-colors">
+                  Información de envíos
                 </Link>
               </li>
               <li>
-                <Link href="/envios" className="hover:text-white">
-                  Envíos
-                </Link>
-              </li>
-              <li>
-                <Link href="/devoluciones" className="hover:text-white">
+                <Link href="/ayuda/devoluciones" className="text-gray-400 hover:text-white transition-colors">
                   Devoluciones
                 </Link>
               </li>
               <li>
-                <Link href="/tallas" className="hover:text-white">
-                  Guía de Tallas
+                <Link href="/ayuda/tallas" className="text-gray-400 hover:text-white transition-colors">
+                  Guía de tallas
+                </Link>
+              </li>
+              <li>
+                <Link href="/ayuda/contacto" className="text-gray-400 hover:text-white transition-colors">
+                  Contacto
+                </Link>
+              </li>
+              <li>
+                <Link href="/ayuda/faq" className="text-gray-400 hover:text-white transition-colors">
+                  Preguntas frecuentes
                 </Link>
               </li>
             </ul>
@@ -81,33 +92,38 @@ export default function Footer() {
 
           {/* Contacto */}
           <div>
-            <h4 className="text-lg font-semibold mb-4">Contacto</h4>
-            <div className="space-y-3 text-blue-100">
-              <div className="flex items-center">
-                <MapPin className="h-4 w-4 mr-2" />
-                <span>Santa Lucía, Uruguay</span>
+            <h3 className="font-semibold mb-4">Contacto</h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center space-x-2">
+                <Mail className="h-4 w-4 text-gray-400" />
+                <span className="text-gray-400">info@oxstore.com</span>
               </div>
-              <div className="flex items-center">
-                <Phone className="h-4 w-4 mr-2" />
-                <span>+598 1234 5678</span>
+              <div className="flex items-center space-x-2">
+                <Phone className="h-4 w-4 text-gray-400" />
+                <span className="text-gray-400">+54 11 1234-5678</span>
               </div>
-              <div className="flex items-center">
-                <Mail className="h-4 w-4 mr-2" />
-                <span>info@oxstore.uy</span>
+              <div className="flex items-center space-x-2">
+                <MapPin className="h-4 w-4 text-gray-400" />
+                <span className="text-gray-400">Buenos Aires, Argentina</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-blue-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
-          <p className="text-blue-100 text-sm">© 2024 OXSTORE. Todos los derechos reservados.</p>
-          <div className="mt-4 md:mt-0">
-            <p className="text-blue-100 text-sm">
-              Desarrollado por{" "}
-              <Link href="https://launchbyte.dev" className="text-white font-semibold hover:underline" target="_blank">
-                Launchbyte
+        {/* Línea divisoria */}
+        <div className="border-t border-gray-800 mt-8 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+            <div className="text-sm text-gray-400">
+              © 2024 OXSTORE. Todos los derechos reservados.
+            </div>
+            <div className="flex space-x-6 text-sm">
+              <Link href="/privacidad" className="text-gray-400 hover:text-white transition-colors">
+                Política de privacidad
               </Link>
-            </p>
+              <Link href="/terminos" className="text-gray-400 hover:text-white transition-colors">
+                Términos y condiciones
+              </Link>
+            </div>
           </div>
         </div>
       </div>

@@ -1,233 +1,222 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { Edit, Trash2, Plus, Search, Eye } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Search, Plus, Eye, EyeOff, Package, AlertTriangle } from 'lucide-react'
+import Link from "next/link"
+import { getAllZureoProducts } from "@/lib/zureo-api"
+import { transformZureoProduct } from "@/lib/data-transformer"
+import type { ZureoProduct } from "@/types/zureo"
+import type { Product } from "@/types"
 
-interface Product {
-  id: string
-  name: string
-  price: number
-  category: string
-  subcategory: string
-  stock: number
-  status: "active" | "inactive" | "out_of_stock"
-  image: string
-  createdAt: string
-}
+export default function AdminProductsPage() {
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [activeTab, setActiveTab] = useState("all")
 
-export default function ProductosPage() {
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: "1",
-      name: "Remera Premium Algodón",
-      price: 35,
-      category: "Vestimenta",
-      subcategory: "Remeras",
-      stock: 25,
-      status: "active",
-      image: "/placeholder.svg?width=100&height=100&text=Remera",
-      createdAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Jean Clásico",
-      price: 85,
-      category: "Vestimenta",
-      subcategory: "Pantalones",
-      stock: 0,
-      status: "out_of_stock",
-      image: "/placeholder.svg?width=100&height=100&text=Jean",
-      createdAt: "2024-01-14",
-    },
-    {
-      id: "3",
-      name: "Gorra Snapback",
-      price: 25,
-      category: "Accesorios",
-      subcategory: "Gorras",
-      stock: 15,
-      status: "active",
-      image: "/placeholder.svg?width=100&height=100&text=Gorra",
-      createdAt: "2024-01-13",
-    },
-  ])
-
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-100 text-green-800"
-      case "inactive":
-        return "bg-gray-100 text-gray-800"
-      case "out_of_stock":
-        return "bg-red-100 text-red-800"
-      default:
-        return "bg-gray-100 text-gray-800"
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true)
+        const zureoProducts = await getAllZureoProducts()
+        const transformedProducts = zureoProducts.map(transformZureoProduct)
+        setProducts(transformedProducts)
+      } catch (error) {
+        console.error("Error fetching products:", error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "active":
-        return "Activo"
-      case "inactive":
-        return "Inactivo"
-      case "out_of_stock":
-        return "Sin Stock"
-      default:
-        return status
-    }
-  }
+    fetchProducts()
+  }, [])
 
   const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || product.status === statusFilter
-    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
-    return matchesSearch && matchesStatus && matchesCategory
+    const matchesSearch = 
+      product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.handle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.vendor?.toLowerCase().includes(searchQuery.toLowerCase())
+
+    if (activeTab === "active") {
+      return matchesSearch && product.availableForSale
+    }
+    if (activeTab === "inactive") {
+      return matchesSearch && !product.availableForSale
+    }
+    return matchesSearch
   })
 
-  const deleteProduct = (id: string) => {
-    if (confirm("¿Estás seguro de que quieres eliminar este producto?")) {
-      setProducts(products.filter((p) => p.id !== id))
-    }
+  const activeProducts = products.filter(p => p.availableForSale)
+  const inactiveProducts = products.filter(p => !p.availableForSale)
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Package className="h-12 w-12 mx-auto mb-4 text-gray-400 animate-pulse" />
+            <p className="text-gray-600">Cargando productos...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Productos</h1>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">Gestión de Productos</h1>
+          <p className="text-gray-600 mt-2">
+            Administra tu inventario y productos de Zureo
+          </p>
+        </div>
         <Link href="/admin/productos/subir">
-          <Button className="bg-blue-950 hover:bg-blue-900">
+          <Button className="bg-black hover:bg-gray-800">
             <Plus className="h-4 w-4 mr-2" />
-            Nuevo Producto
+            Subir Imágenes
           </Button>
         </Link>
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Buscar productos..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrar por estado" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos los estados</SelectItem>
-            <SelectItem value="active">Activo</SelectItem>
-            <SelectItem value="inactive">Inactivo</SelectItem>
-            <SelectItem value="out_of_stock">Sin Stock</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filtrar por categoría" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas las categorías</SelectItem>
-            <SelectItem value="Vestimenta">Vestimenta</SelectItem>
-            <SelectItem value="Accesorios">Accesorios</SelectItem>
-            <SelectItem value="Calzado">Calzado</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{products.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Productos Activos</CardTitle>
+            <Eye className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{activeProducts.length}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Productos Inactivos</CardTitle>
+            <EyeOff className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{inactiveProducts.length}</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Tabla de productos */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Producto
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Categoría
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Precio
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stock
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Estado
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+      {/* Search and Filters */}
+      <Card className="mb-6">
+        <CardContent className="pt-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Buscar productos por nombre, código o marca..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Products Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="all">
+            Todos ({products.length})
+          </TabsTrigger>
+          <TabsTrigger value="active">
+            Activos ({activeProducts.length})
+          </TabsTrigger>
+          <TabsTrigger value="inactive">
+            Inactivos ({inactiveProducts.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value={activeTab} className="mt-6">
+          {filteredProducts.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-medium mb-2">No se encontraron productos</h3>
+                  <p className="text-gray-600">
+                    {searchQuery 
+                      ? "Intenta con otros términos de búsqueda" 
+                      : "No hay productos en esta categoría"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <img
-                        src={product.image || "/placeholder.svg"}
-                        alt={product.name}
-                        className="h-12 w-12 rounded-lg object-cover mr-4"
-                      />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                        <div className="text-sm text-gray-500">ID: {product.id}</div>
+                <Card key={product.id} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-4">
+                    <div className="aspect-square bg-gray-100 rounded-lg mb-4 overflow-hidden">
+                      {product.featuredImage ? (
+                        <img
+                          src={product.featuredImage.url || "/placeholder.svg"}
+                          alt={product.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-12 w-12 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <h3 className="font-medium text-sm line-clamp-2">{product.title}</h3>
+                        <Badge variant={product.availableForSale ? "default" : "secondary"}>
+                          {product.availableForSale ? (
+                            <Eye className="h-3 w-3 mr-1" />
+                          ) : (
+                            <EyeOff className="h-3 w-3 mr-1" />
+                          )}
+                          {product.availableForSale ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </div>
+                      
+                      <p className="text-xs text-gray-600">Código: {product.handle}</p>
+                      
+                      {product.vendor && (
+                        <p className="text-xs text-gray-600">Marca: {product.vendor}</p>
+                      )}
+                      
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="font-bold text-lg">
+                          ${product.priceRange.minVariantPrice.amount}
+                        </span>
+                        <Link href={`/producto/${product.handle}`}>
+                          <Button variant="outline" size="sm">
+                            Ver Producto
+                          </Button>
+                        </Link>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{product.category}</div>
-                    <div className="text-sm text-gray-500">{product.subcategory}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${product.price}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.stock} unidades</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge className={getStatusColor(product.status)}>{getStatusText(product.status)}</Badge>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteProduct(product.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </td>
-                </tr>
+                  </CardContent>
+                </Card>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {filteredProducts.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500 text-lg">No se encontraron productos.</p>
-        </div>
-      )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

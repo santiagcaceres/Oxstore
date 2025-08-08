@@ -86,22 +86,25 @@ async function zureoFetch(endpoint: string, options: RequestInit = {}): Promise<
 export async function getProductsFromZureo(
   params: { emp?: number; qty?: number; from?: number; date?: string; includeInactive?: boolean } = {},
 ): Promise<ZureoProduct[]> {
-  const { emp = 1, qty = 100, includeInactive = false, ...otherParams } = params
+  const { emp = 1, qty = 1000, includeInactive = false, ...otherParams } = params
   const query = new URLSearchParams({
     emp: emp.toString(),
     qty: qty.toString(),
     ...Object.fromEntries(Object.entries(otherParams).map(([k, v]) => [k, String(v)])),
   }).toString()
 
-  const result = await zureoFetch(`/sdk/v1/product/all?${query}`)
-  const products = result.data || result.products || result || []
+  try {
+    const result = await zureoFetch(`/sdk/v1/product/all?${query}`)
+    const products = result.data || result.products || []
 
-  // Filtrar productos dados de baja si no se especifica incluirlos
-  if (!includeInactive) {
+    if (includeInactive) {
+      return products
+    }
     return products.filter((product: ZureoProduct) => !product.baja)
+  } catch (error) {
+    console.error("Error fetching products from Zureo:", error)
+    return []
   }
-
-  return products
 }
 
 export async function getProductById(id: string): Promise<ZureoProduct | null> {
@@ -122,21 +125,44 @@ export async function getProductById(id: string): Promise<ZureoProduct | null> {
   }
 }
 
-export async function getProductByCode(code: string): Promise<ZureoProduct | null> {
+export async function getProductByCode(code: string, includeInactive = false): Promise<ZureoProduct | null> {
   try {
-    // Buscar en todos los productos por código
-    const allProducts = await getProductsFromZureo({ qty: 1000, includeInactive: false })
+    const allProducts = await getProductsFromZureo({ qty: 5000, includeInactive })
     const product = allProducts.find((p) => p.codigo === code)
+    return product || null
+  } catch (error) {
+    console.error(`Error getting product by code ${code}:`, error)
+    return null
+  }
+}
 
-    if (!product) {
-      console.log(`Producto con código ${code} no encontrado o está dado de baja`)
-      return null
+export async function searchZureoProducts(query: string): Promise<ZureoProduct[]> {
+  try {
+    const products = await getProductsFromZureo()
+
+    if (!query.trim()) {
+      return products
     }
 
-    return product
+    const searchTerm = query.toLowerCase().trim()
+
+    return products.filter((product) => {
+      const searchableText = [
+        product.descripcion,
+        product.codigo,
+        product.marca,
+        product.rubro,
+        product.subrubro,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+
+      return searchableText.includes(searchTerm)
+    })
   } catch (error) {
-    console.error(`Error obteniendo producto por código ${code}:`, error)
-    return null
+    console.error("Error searching Zureo products:", error)
+    return []
   }
 }
 

@@ -1,126 +1,96 @@
-import Image from "next/image"
-import Link from "next/link"
 import HeroSlider from "@/components/hero-slider"
 import ProductSlider from "@/components/product-slider"
 import BrandCarousel from "@/components/brand-carousel"
-import { Button } from "@/components/ui/button"
-import { getProductsFromZureo, getBrandsFromZureo } from "@/lib/zureo-api"
+import { getProductsFromZureo } from "@/lib/zureo-api"
 import { transformZureoProduct } from "@/lib/data-transformer"
 
 export default async function HomePage() {
-  let products: any[] = []
-  let brands: any[] = []
+  let featuredProducts = []
+  let newProducts = []
 
   try {
-    // Obtener datos reales para los componentes
-    const rawProducts = await getProductsFromZureo({ qty: 10 })
-
-    if (rawProducts && Array.isArray(rawProducts)) {
-      products = rawProducts
-        .map((p) => {
-          try {
-            return transformZureoProduct(p)
-          } catch (error) {
-            console.error("Error transformando producto:", error)
-            return null
-          }
-        })
-        .filter(Boolean)
-    }
-
-    const rawBrands = await getBrandsFromZureo()
-    if (rawBrands && Array.isArray(rawBrands)) {
-      brands = rawBrands
-    }
+    const zureoProducts = await getProductsFromZureo()
+    const activeProducts = zureoProducts.filter(product => product.activo)
+    
+    featuredProducts = activeProducts
+      .slice(0, 8)
+      .map(transformZureoProduct)
+    
+    newProducts = activeProducts
+      .slice(8, 16)
+      .map(transformZureoProduct)
   } catch (error) {
-    console.error("Error cargando datos de la página principal:", error)
-    // Continuar con arrays vacíos si hay error
+    console.error("Error loading products:", error)
   }
 
   return (
-    <div className="pt-16">
+    <div className="min-h-screen">
       <HeroSlider />
-
-      <section className="py-8 bg-gray-50">
+      
+      <section className="py-16 bg-white">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-6">
-            <Link href="/hombre" className="group">
-              <div className="relative h-64 overflow-hidden rounded-lg">
-                <Image
-                  src="/placeholder.svg?height=300&width=600"
-                  alt="Colección Hombre"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <h3 className="text-3xl font-bold mb-3">HOMBRE</h3>
-                    <Button
-                      variant="outline"
-                      className="text-white border-white hover:bg-white hover:text-black bg-transparent"
-                    >
-                      Ver Colección
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Link>
-
-            <Link href="/mujer" className="group">
-              <div className="relative h-64 overflow-hidden rounded-lg">
-                <Image
-                  src="/placeholder.svg?height=300&width=600"
-                  alt="Colección Mujer"
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <h3 className="text-3xl font-bold mb-3">MUJER</h3>
-                    <Button
-                      variant="outline"
-                      className="text-white border-white hover:bg-white hover:text-black bg-transparent"
-                    >
-                      Ver Colección
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </Link>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+              Productos Destacados
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Descubre nuestra selección de productos más populares y tendencias actuales
+            </p>
           </div>
+          <ProductSlider products={featuredProducts} />
         </div>
       </section>
 
-      {brands.length > 0 && (
-        <section className="py-6">
-          <div className="container mx-auto px-4">
-            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Nuestras Marcas</h2>
-            <BrandCarousel brands={brands} />
-          </div>
-        </section>
-      )}
-
-      {products.length > 0 && (
-        <section className="py-8 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Productos Destacados</h2>
-            <ProductSlider products={products} />
-          </div>
-        </section>
-      )}
-
-      <section className="py-6">
+      <section className="py-16 bg-gray-50">
         <div className="container mx-auto px-4">
-          <Link href="/ofertas" className="block">
-            <div className="relative h-32 overflow-hidden rounded-lg">
-              <Image
-                src="/placeholder.svg?height=150&width=1200"
-                alt="Banner Promocional"
-                fill
-                className="object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-          </Link>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+              Nuevos Productos
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Las últimas incorporaciones a nuestro catálogo
+            </p>
+          </div>
+          <ProductSlider products={newProducts} />
+        </div>
+      </section>
+
+      <section className="py-16 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-black mb-4">
+              Nuestras Marcas
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Trabajamos con las mejores marcas del mercado
+            </p>
+          </div>
+          <BrandCarousel />
+        </div>
+      </section>
+
+      <section className="py-16 bg-black text-white">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            ¿Necesitas ayuda?
+          </h2>
+          <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+            Nuestro equipo está aquí para ayudarte con cualquier consulta sobre productos, envíos o devoluciones.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a 
+              href="mailto:info@oxstore.com" 
+              className="bg-white text-black px-8 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
+            >
+              Contactar por Email
+            </a>
+            <a 
+              href="tel:+1234567890" 
+              className="border border-white text-white px-8 py-3 rounded-lg font-medium hover:bg-white hover:text-black transition-colors"
+            >
+              Llamar Ahora
+            </a>
+          </div>
         </div>
       </section>
     </div>

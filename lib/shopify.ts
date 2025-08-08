@@ -1,90 +1,90 @@
+// Mock data for development - replace with actual Shopify integration
 export interface Product {
   id: string
   title: string
-  description: string
   handle: string
-  images: {
-    url: string
-    altText: string
-  }[]
-  priceRange: {
-    minVariantPrice: {
-      amount: string
-      currencyCode: string
-    }
-  }
-  tags: string[]
-  createdAt: string
-  collections: {
-    handle: string
+  description: string
+  images: { url: string; altText: string }[]
+  variants: {
+    id: string
     title: string
+    price: { amount: string; currencyCode: string }
+    availableForSale: boolean
   }[]
+  tags: string[]
+  vendor: string
+  productType: string
+  createdAt: string
+  updatedAt: string
 }
 
-export interface CartItem {
+export interface Collection {
   id: string
   title: string
-  price: number
-  quantity: number
-  image: string
+  handle: string
+  description: string
+  image?: { url: string; altText: string }
+  products: Product[]
 }
 
-export async function shopifyFetch({ query, variables }: { query: string; variables?: any }) {
-  const endpoint = `https://${process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN}/api/2023-10/graphql.json`
-  const key = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_ACCESS_TOKEN
-
-  try {
-    const result = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Storefront-Access-Token": key!,
+// Mock products data
+const mockProducts: Product[] = [
+  {
+    id: '1',
+    title: 'Remera Básica Negra',
+    handle: 'remera-basica-negra',
+    description: 'Remera básica de algodón 100% en color negro. Perfecta para el día a día.',
+    images: [
+      { url: '/placeholder.svg?height=400&width=400&text=Remera+Negra', altText: 'Remera Básica Negra' }
+    ],
+    variants: [
+      {
+        id: '1-s',
+        title: 'S',
+        price: { amount: '2500', currencyCode: 'ARS' },
+        availableForSale: true
       },
-      body: JSON.stringify({ query, variables }),
-    })
-
-    return await result.json()
-  } catch (error) {
-    console.error("Shopify fetch error:", error)
-    return null
+      {
+        id: '1-m',
+        title: 'M',
+        price: { amount: '2500', currencyCode: 'ARS' },
+        availableForSale: true
+      },
+      {
+        id: '1-l',
+        title: 'L',
+        price: { amount: '2500', currencyCode: 'ARS' },
+        availableForSale: true
+      }
+    ],
+    tags: ['remera', 'básica', 'algodón'],
+    vendor: 'OX Store',
+    productType: 'Remera',
+    createdAt: '2024-01-01',
+    updatedAt: '2024-01-01'
   }
+]
+
+export async function getProducts(): Promise<Product[]> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 100))
+  return mockProducts
 }
 
-export const GET_PRODUCTS_QUERY = `
-  query getProducts($first: Int!, $query: String) {
-    products(first: $first, query: $query) {
-      edges {
-        node {
-          id
-          title
-          description
-          handle
-          createdAt
-          tags
-          images(first: 5) {
-            edges {
-              node {
-                url
-                altText
-              }
-            }
-          }
-          priceRange {
-            minVariantPrice {
-              amount
-              currencyCode
-            }
-          }
-          collections(first: 5) {
-            edges {
-              node {
-                handle
-                title
-              }
-            }
-          }
-        }
-      }
+export async function getProduct(handle: string): Promise<Product | null> {
+  await new Promise(resolve => setTimeout(resolve, 100))
+  return mockProducts.find(product => product.handle === handle) || null
+}
+
+export async function getCollections(): Promise<Collection[]> {
+  await new Promise(resolve => setTimeout(resolve, 100))
+  return [
+    {
+      id: '1',
+      title: 'Remeras',
+      handle: 'remeras',
+      description: 'Colección de remeras',
+      products: mockProducts
     }
-  }
-`
+  ]
+}
