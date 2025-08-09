@@ -1,17 +1,17 @@
 import Link from "next/link"
 import Image from "next/image"
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from 'lucide-react'
+import { Facebook, Instagram, Twitter, Mail, Phone, MapPin } from "lucide-react"
 
 export default function Footer() {
   return (
     <footer className="bg-black text-white">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Logo y descripción */}
           <div className="space-y-4">
             <Image src="/logo-claro.png" alt="OXSTORE" width={120} height={40} className="h-8 w-auto" />
             <p className="text-gray-400 text-sm">
-              Tu tienda de confianza para la mejor moda y accesorios. Calidad, estilo y las mejores marcas en un solo lugar.
+              Tu tienda de moda online. Las mejores marcas y tendencias al mejor precio.
             </p>
             <div className="flex space-x-4">
               <Link href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -46,13 +46,13 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/sale" className="text-gray-400 hover:text-white transition-colors">
-                  Sale
+                <Link href="/nuevo" className="text-gray-400 hover:text-white transition-colors">
+                  Nuevo
                 </Link>
               </li>
               <li>
-                <Link href="/nuevo" className="text-gray-400 hover:text-white transition-colors">
-                  Nuevo
+                <Link href="/ofertas" className="text-gray-400 hover:text-white transition-colors">
+                  Ofertas
                 </Link>
               </li>
             </ul>
@@ -64,7 +64,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link href="/ayuda/envios" className="text-gray-400 hover:text-white transition-colors">
-                  Información de envíos
+                  Envíos
                 </Link>
               </li>
               <li>
@@ -84,7 +84,7 @@ export default function Footer() {
               </li>
               <li>
                 <Link href="/ayuda/faq" className="text-gray-400 hover:text-white transition-colors">
-                  Preguntas frecuentes
+                  FAQ
                 </Link>
               </li>
             </ul>
@@ -94,37 +94,24 @@ export default function Footer() {
           <div>
             <h3 className="font-semibold mb-4">Contacto</h3>
             <div className="space-y-3 text-sm">
-              <div className="flex items-center space-x-2">
-                <Mail className="h-4 w-4 text-gray-400" />
-                <span className="text-gray-400">info@oxstore.com</span>
+              <div className="flex items-center space-x-2 text-gray-400">
+                <Mail className="h-4 w-4" />
+                <span>info@oxstore.com</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <Phone className="h-4 w-4 text-gray-400" />
-                <span className="text-gray-400">+54 11 1234-5678</span>
+              <div className="flex items-center space-x-2 text-gray-400">
+                <Phone className="h-4 w-4" />
+                <span>+54 11 1234-5678</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <MapPin className="h-4 w-4 text-gray-400" />
-                <span className="text-gray-400">Buenos Aires, Argentina</span>
+              <div className="flex items-center space-x-2 text-gray-400">
+                <MapPin className="h-4 w-4" />
+                <span>Buenos Aires, Argentina</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Línea divisoria */}
-        <div className="border-t border-gray-800 mt-8 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            <div className="text-sm text-gray-400">
-              © 2024 OXSTORE. Todos los derechos reservados.
-            </div>
-            <div className="flex space-x-6 text-sm">
-              <Link href="/privacidad" className="text-gray-400 hover:text-white transition-colors">
-                Política de privacidad
-              </Link>
-              <Link href="/terminos" className="text-gray-400 hover:text-white transition-colors">
-                Términos y condiciones
-              </Link>
-            </div>
-          </div>
+        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
+          <p>&copy; 2024 OXSTORE. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>

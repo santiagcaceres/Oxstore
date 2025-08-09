@@ -24,11 +24,6 @@
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
     --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
   }
 
   .dark {
@@ -51,11 +46,6 @@
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
     --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
   }
 }
 
@@ -68,117 +58,86 @@
   }
 }
 
+/* Eliminar todos los colores azules y reemplazar con negro/gris */
 @layer components {
-  .card-hover {
-    transition: all 0.3s ease;
+  /* Links y botones azules -> negro */
+  .text-blue-600,
+  .text-blue-500,
+  .text-blue-700 {
+    @apply text-black;
   }
-  
+
+  .hover\:text-blue-600:hover,
+  .hover\:text-blue-500:hover,
+  .hover\:text-blue-700:hover {
+    @apply hover:text-gray-700;
+  }
+
+  /* Fondos azules -> negro */
+  .bg-blue-600,
+  .bg-blue-500,
+  .bg-blue-700 {
+    @apply bg-black;
+  }
+
+  .hover\:bg-blue-600:hover,
+  .hover\:bg-blue-500:hover,
+  .hover\:bg-blue-700:hover {
+    @apply hover:bg-gray-800;
+  }
+
+  /* Bordes azules -> negro */
+  .border-blue-600,
+  .border-blue-500,
+  .border-blue-700 {
+    @apply border-black;
+  }
+
+  .focus\:border-blue-600:focus,
+  .focus\:border-blue-500:focus,
+  .focus\:border-blue-700:focus {
+    @apply focus:border-black;
+  }
+
+  /* Ring/outline azul -> negro */
+  .focus\:ring-blue-600:focus,
+  .focus\:ring-blue-500:focus,
+  .focus\:ring-blue-700:focus {
+    @apply focus:ring-black;
+  }
+
+  /* Efectos hover para cards */
+  .card-hover {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
   .card-hover:hover {
     transform: translateY(-4px);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    @apply shadow-lg;
   }
-}
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #000;
-}
-
-/* Loading animations */
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
+  /* Animaciones */
+  @keyframes pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
   }
-  50% {
-    opacity: 0.5;
+
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
-}
 
-.animate-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.loading-shimmer {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
+  /* Scrollbar personalizado */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
-  100% {
-    background-position: 200% 0;
-  }
-}
 
-/* Remove all blue colors and make everything black */
-.text-blue-600,
-.text-blue-500,
-.text-blue-700 {
-  @apply text-black;
-}
-
-.bg-blue-600,
-.bg-blue-500,
-.bg-blue-700 {
-  @apply bg-black;
-}
-
-.border-blue-600,
-.border-blue-500,
-.border-blue-700 {
-  @apply border-black;
-}
-
-.hover\:text-blue-600:hover,
-.hover\:text-blue-500:hover,
-.hover\:text-blue-700:hover {
-  @apply text-gray-700;
-}
-
-.hover\:bg-blue-600:hover,
-.hover\:bg-blue-500:hover,
-.hover\:bg-blue-700:hover {
-  @apply bg-gray-800;
-}
-
-/* Focus states */
-.focus\:border-blue-500:focus,
-.focus\:border-blue-600:focus {
-  @apply border-black;
-}
-
-.focus\:ring-blue-500:focus,
-.focus\:ring-blue-600:focus {
-  @apply ring-black;
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-  .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-}
-
-/* Print styles */
-@media print {
-  .no-print {
-    display: none !important;
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

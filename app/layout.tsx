@@ -1,5 +1,6 @@
+import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from 'next/font/google'
+import { Inter } from "next/font/google"
 import "./globals.css"
 import { CartProvider } from "@/context/cart-context"
 import { AdminProvider } from "@/context/admin-context"

@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Search, ShoppingCart, Menu, User, Heart, ChevronDown } from 'lucide-react'
+import { Search, ShoppingCart, Menu, User, Heart, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCart } from "@/context/cart-context"
@@ -93,40 +93,35 @@ export default function Header() {
     },
   ]
 
-  const headerClass = isScrolled 
-    ? "bg-black text-white shadow-lg" 
-    : "bg-white text-black border-b border-gray-100"
+  const headerClass = isScrolled ? "bg-black text-white shadow-lg" : "bg-white text-black border-b border-gray-100"
 
   const logoSrc = isScrolled ? "/logo-claro.png" : "/logo-oscuro.png"
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${headerClass}`}>
       {/* Top Bar */}
-      <div className={`border-b ${isScrolled ? 'border-gray-700' : 'border-gray-100'}`}>
+      <div className={`border-b ${isScrolled ? "border-gray-700" : "border-gray-100"}`}>
         <div className="container mx-auto px-4">
           <div className="flex h-10 items-center justify-between text-sm">
             <div className="hidden md:flex items-center space-x-4">
-              <span className={isScrolled ? 'text-gray-300' : 'text-gray-600'}>
+              <span className={isScrolled ? "text-gray-300" : "text-gray-600"}>
                 Envío gratis en compras superiores a $50.000
               </span>
             </div>
             <div className="flex items-center space-x-4">
-              <Link 
-                href="/ofertas" 
-                className={`hover:opacity-80 transition-colors ${isScrolled ? 'text-gray-300' : 'text-gray-600'}`}
+              <Link
+                href="/ofertas"
+                className={`hover:opacity-80 transition-colors ${isScrolled ? "text-gray-300" : "text-gray-600"}`}
               >
                 Ofertas
               </Link>
-              <Link 
-                href="/nuevo" 
-                className={`hover:opacity-80 transition-colors ${isScrolled ? 'text-gray-300' : 'text-gray-600'}`}
+              <Link
+                href="/nuevo"
+                className={`hover:opacity-80 transition-colors ${isScrolled ? "text-gray-300" : "text-gray-600"}`}
               >
                 Nuevo
               </Link>
-              <Link 
-                href="/sale" 
-                className="text-black hover:text-gray-600 transition-colors font-medium"
-              >
+              <Link href="/sale" className="text-black hover:text-gray-600 transition-colors font-medium">
                 Sale
               </Link>
             </div>
@@ -138,24 +133,19 @@ export default function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Mobile Menu Button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="md:hidden"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
+          <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMenuOpen(!isMenuOpen)}>
             <Menu className="h-6 w-6" />
           </Button>
 
           {/* Logo - Fixed size for mobile */}
           <Link href="/" className="flex items-center">
-            <Image 
-              src={logoSrc || "/placeholder.svg"} 
-              alt="OXSTORE" 
-              width={140} 
-              height={45} 
-              className="h-10 w-auto md:h-12" 
-              priority 
+            <Image
+              src={logoSrc || "/placeholder.svg"}
+              alt="OXSTORE"
+              width={160}
+              height={48}
+              className="h-12 w-auto"
+              priority
             />
           </Link>
 
@@ -166,7 +156,7 @@ export default function Header() {
                 <Link
                   href={category.href}
                   className={`flex items-center gap-1 font-medium hover:opacity-80 transition-colors ${
-                    isScrolled ? 'text-white' : 'text-black'
+                    isScrolled ? "text-white" : "text-black"
                   }`}
                 >
                   {category.name}
@@ -197,7 +187,7 @@ export default function Header() {
             <div className="relative group">
               <span
                 className={`flex items-center gap-1 font-medium cursor-pointer hover:opacity-80 transition-colors ${
-                  isScrolled ? 'text-white' : 'text-black'
+                  isScrolled ? "text-white" : "text-black"
                 }`}
               >
                 Marcas
@@ -233,10 +223,10 @@ export default function Header() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-64 pr-10 bg-white border-gray-200 text-black placeholder:text-gray-500"
                 />
-                <Button 
-                  type="submit" 
-                  size="icon" 
-                  variant="ghost" 
+                <Button
+                  type="submit"
+                  size="icon"
+                  variant="ghost"
                   className="absolute right-0 top-0 h-full px-3 text-black hover:text-gray-600"
                 >
                   <Search className="h-4 w-4" />
@@ -245,12 +235,7 @@ export default function Header() {
             </div>
 
             {/* Mobile Search Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="md:hidden"
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-            >
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsSearchOpen(!isSearchOpen)}>
               <Search className="h-5 w-5" />
             </Button>
 
@@ -294,10 +279,10 @@ export default function Header() {
                 className="w-full pr-10 bg-white border-gray-200 text-black placeholder:text-gray-500"
                 autoFocus
               />
-              <Button 
-                type="submit" 
-                size="icon" 
-                variant="ghost" 
+              <Button
+                type="submit"
+                size="icon"
+                variant="ghost"
                 className="absolute right-0 top-0 h-full px-3 text-black hover:text-gray-600"
               >
                 <Search className="h-4 w-4" />
@@ -334,7 +319,7 @@ export default function Header() {
                 </div>
               </div>
             ))}
-            
+
             <div className="pt-4 border-t">
               <h3 className="font-medium mb-2">Marcas</h3>
               <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">

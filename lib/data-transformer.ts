@@ -1,106 +1,103 @@
-import type { ZureoProduct, ZureoVariety } from "@/types/zureo"
+import type { ZureoProduct } from "@/types/zureo"
 
-// Define el tipo de producto unificado que usarán los componentes
-export interface TransformedProduct {
+export interface Product {
   id: string
-  handle: string
   title: string
+  handle: string
   description: string
   price: number
-  compareAtPrice: number | null
-  inStock: boolean
-  stock: number
-  brand: string
-  category: string
+  compareAtPrice?: number
   images: string[]
-  sizes: string[]
-  colors: { name: string; value: string }[]
-  rating: number
-  reviewCount: number
-  isActive: boolean // Nuevo campo para productos dados de baja
+  tags: string[]
+  vendor: string
+  productType: string
+  variants: ProductVariant[]
+  available: boolean
+  stock: number
 }
 
-// Transforma un producto de Zureo al formato unificado
-export function transformZureoProduct(product: ZureoProduct, images: any[] = []): TransformedProduct {
-  if (!product) {
-    throw new Error("Producto de Zureo no válido")
+export interface ProductVariant {
+  id: string
+  title: string
+  price: number
+  available: boolean
+  inventory_quantity: number
+  option1?: string
+  option2?: string
+  option3?: string
+}
+
+export function transformZureoProduct(zureoProduct: ZureoProduct): Product {
+  if (!zureoProduct) {
+    throw new Error("Producto Zureo no válido")
   }
 
-  const getSizes = (varieties: ZureoVariety[]): string[] => {
-    if (!varieties || !Array.isArray(varieties)) return []
+  // Generar handle a partir del nombre
+  const handle =
+    zureoProduct.nombre
+      ?.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .trim() || `producto-${zureoProduct.id}`
 
-    const sizes = new Set<string>()
-    varieties.forEach((v) => {
-      if (v && v.atributos && Array.isArray(v.atributos)) {
-        const sizeAttr = v.atributos.find(
-          (a) =>
-            a &&
-            a.atributo &&
-            (a.atributo.toLowerCase().includes("talle") || a.atributo.toLowerCase().includes("size")),
-        )
-        if (sizeAttr && sizeAttr.valor) sizes.add(sizeAttr.valor)
-      }
+  // Transformar variedades a variants
+  const variants: ProductVariant[] =
+    zureoProduct.variedades?.map((variedad, index) => ({
+      id: `${zureoProduct.id}-${variedad.id || index}`,
+      title: variedad.nombre || "Variante por defecto",
+      price: variedad.precio || zureoProduct.precio || 0,
+      available: (variedad.stock || 0) > 0,
+      inventory_quantity: variedad.stock || 0,
+      option1: variedad.atributos?.find((attr) => attr.atributo === "Color")?.valor,
+      option2: variedad.atributos?.find((attr) => attr.atributo === "Talle")?.valor,
+      option3: variedad.atributos?.find((attr) => attr.atributo === "Tamaño")?.valor,
+    })) || []
+
+  // Si no hay variedades, crear una variante por defecto
+  if (variants.length === 0) {
+    variants.push({
+      id: `${zureoProduct.id}-default`,
+      title: "Por defecto",
+      price: zureoProduct.precio || 0,
+      available: (zureoProduct.stock || 0) > 0,
+      inventory_quantity: zureoProduct.stock || 0,
     })
-    return Array.from(sizes)
   }
 
-  const getColors = (varieties: ZureoVariety[]): { name: string; value: string }[] => {
-    if (!varieties || !Array.isArray(varieties)) return []
-
-    const colors = new Map<string, string>()
-    varieties.forEach((v) => {
-      if (v && v.atributos && Array.isArray(v.atributos)) {
-        const colorAttr = v.atributos.find((a) => a && a.atributo && a.atributo.toLowerCase().includes("color"))
-        if (colorAttr && colorAttr.valor) {
-          colors.set(colorAttr.valor, colorAttr.valor.toLowerCase())
-        }
-      }
-    })
-    return Array.from(colors.entries()).map(([name, value]) => ({ name, value }))
-  }
-
-  const totalStock = (product.variedades || []).reduce(
-    (acc, v) => {
-      return acc + (v && typeof v.stock === "number" ? v.stock : 0)
-    },
-    typeof product.stock === "number" ? product.stock : 0,
-  )
-
-  // Procesar imágenes de manera segura
-  let productImages: string[] = ["/placeholder.svg?height=400&width=400&text=Sin+Imagen"]
-
-  if (images && Array.isArray(images) && images.length > 0) {
-    const validImages = images
-      .filter((img) => img && img.base64 && typeof img.base64 === "string")
-      .map((img) => `data:image/jpeg;base64,${img.base64}`)
-
-    if (validImages.length > 0) {
-      productImages = validImages
-    }
-  }
-
-  // Usar el código como nombre si no hay nombre disponible
-  const productTitle =
-    product.nombre && product.nombre.trim() !== ""
-      ? product.nombre
-      : `Producto ${product.codigo || product.id || "Sin código"}`
+  // Calcular stock total
+  const totalStock = variants.reduce((sum, variant) => sum + (variant.inventory_quantity || 0), 0)
 
   return {
-    id: String(product.id || Math.random()),
-    handle: product.codigo || String(product.id || Math.random()),
-    title: productTitle,
-    description: product.descripcion_larga || product.descripcion_corta || "Descripción no disponible",
-    price: typeof product.precio === "number" ? product.precio : 0,
-    compareAtPrice: null,
-    inStock: totalStock > 0 && !product.baja,
+    id: zureoProduct.id?.toString() || "0",
+    title: zureoProduct.nombre || "Producto sin nombre",
+    handle,
+    description: zureoProduct.descripcion_larga || zureoProduct.descripcion_corta || "",
+    price: zureoProduct.precio || 0,
+    compareAtPrice: undefined,
+    images: ["/placeholder.svg?height=400&width=400&text=" + encodeURIComponent(zureoProduct.nombre || "Producto")],
+    tags: [zureoProduct.tipo?.nombre, zureoProduct.marca?.nombre].filter(Boolean),
+    vendor: zureoProduct.marca?.nombre || "Sin marca",
+    productType: zureoProduct.tipo?.nombre || "Sin categoría",
+    variants,
+    available: !zureoProduct.baja && totalStock > 0,
     stock: totalStock,
-    brand: (product.marca && product.marca.nombre) || "Sin marca",
-    category: (product.tipo && product.tipo.nombre) || "Sin categoría",
-    images: productImages,
-    sizes: getSizes(product.variedades || []),
-    colors: getColors(product.variedades || []),
-    rating: 4.5,
-    reviewCount: 12,
-    isActive: !product.baja,
   }
+}
+
+export function transformZureoProducts(zureoProducts: ZureoProduct[]): Product[] {
+  if (!Array.isArray(zureoProducts)) {
+    return []
+  }
+
+  return zureoProducts
+    .filter((product) => product && !product.baja) // Solo productos activos
+    .map((product) => {
+      try {
+        return transformZureoProduct(product)
+      } catch (error) {
+        console.error(`Error transformando producto ${product?.id}:`, error)
+        return null
+      }
+    })
+    .filter((product): product is Product => product !== null)
 }

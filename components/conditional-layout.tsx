@@ -1,24 +1,28 @@
 "use client"
 
-import { usePathname } from "next/navigation"
-import Header from "./header"
-import Footer from "./footer"
+import type React from "react"
 
-export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
+import { usePathname } from "next/navigation"
+import Header from "@/components/header"
+import Footer from "@/components/footer"
+
+export default function ConditionalLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const pathname = usePathname()
-  
-  // Only show header on home page
+
+  // Solo mostrar header en la página principal
   const showHeader = pathname === "/"
-  
-  // Don't show footer on admin pages
+
+  // No mostrar footer en páginas de admin
   const showFooter = !pathname.startsWith("/admin")
 
   return (
     <>
       {showHeader && <Header />}
-      <main className={showHeader ? "pt-[104px]" : ""}>
-        {children}
-      </main>
+      <main className={showHeader ? "pt-[104px]" : ""}>{children}</main>
       {showFooter && <Footer />}
     </>
   )
