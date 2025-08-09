@@ -63,33 +63,39 @@
   /* Links y botones azules -> negro */
   .text-blue-600,
   .text-blue-500,
-  .text-blue-700 {
+  .text-blue-700,
+  .text-blue-950 {
     @apply text-black;
   }
 
   .hover\:text-blue-600:hover,
   .hover\:text-blue-500:hover,
-  .hover\:text-blue-700:hover {
+  .hover\:text-blue-700:hover,
+  .hover\:text-blue-950:hover {
     @apply hover:text-gray-700;
   }
 
   /* Fondos azules -> negro */
   .bg-blue-600,
   .bg-blue-500,
-  .bg-blue-700 {
+  .bg-blue-700,
+  .bg-blue-950 {
     @apply bg-black;
   }
 
   .hover\:bg-blue-600:hover,
   .hover\:bg-blue-500:hover,
-  .hover\:bg-blue-700:hover {
+  .hover\:bg-blue-700:hover,
+  .hover\:bg-blue-950:hover {
     @apply hover:bg-gray-800;
   }
 
   /* Bordes azules -> negro */
   .border-blue-600,
   .border-blue-500,
-  .border-blue-700 {
+  .border-blue-700,
+  .border-blue-800,
+  .border-blue-950 {
     @apply border-black;
   }
 
@@ -115,29 +121,52 @@
     transform: translateY(-4px);
     @apply shadow-lg;
   }
+}
 
-  /* Animaciones */
-  @keyframes pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #000;
+}
+
+/* Loading animations */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
   }
-
-  .animate-pulse {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  50% {
+    opacity: 0.5;
   }
+}
 
-  /* Scrollbar personalizado */
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
+}
 
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
   }
 }

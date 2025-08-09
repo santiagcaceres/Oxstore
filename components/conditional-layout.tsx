@@ -13,17 +13,17 @@ export default function ConditionalLayout({
 }) {
   const pathname = usePathname()
 
-  // Solo mostrar header en la página principal
-  const showHeader = pathname === "/"
+  // Don't show header/footer on admin pages
+  const isAdminPage = pathname.startsWith("/admin")
 
-  // No mostrar footer en páginas de admin
-  const showFooter = !pathname.startsWith("/admin")
+  // Only show header on home page
+  const isHomePage = pathname === "/"
 
   return (
     <>
-      {showHeader && <Header />}
-      <main className={showHeader ? "pt-[104px]" : ""}>{children}</main>
-      {showFooter && <Footer />}
+      {!isAdminPage && isHomePage && <Header />}
+      <main className={!isAdminPage && isHomePage ? "pt-[104px]" : ""}>{children}</main>
+      {!isAdminPage && <Footer />}
     </>
   )
 }

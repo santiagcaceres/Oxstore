@@ -2,31 +2,32 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const slides = [
   {
     id: 1,
-    image: "/placeholder.svg?height=600&width=1200&text=Nueva+Colección+Verano",
     title: "Nueva Colección Verano",
     subtitle: "Descubre las últimas tendencias",
+    image: "/placeholder.svg?height=600&width=1200&text=Colección+Verano",
     cta: "Ver Colección",
     link: "/nuevo",
   },
   {
     id: 2,
-    image: "/placeholder.svg?height=600&width=1200&text=Ofertas+Especiales",
     title: "Ofertas Especiales",
     subtitle: "Hasta 50% de descuento",
+    image: "/placeholder.svg?height=600&width=1200&text=Ofertas+Especiales",
     cta: "Ver Ofertas",
     link: "/ofertas",
   },
   {
     id: 3,
-    image: "/placeholder.svg?height=600&width=1200&text=Accesorios+Premium",
     title: "Accesorios Premium",
     subtitle: "Completa tu look",
+    image: "/placeholder.svg?height=600&width=1200&text=Accesorios+Premium",
     cta: "Explorar",
     link: "/accesorios",
   },
@@ -52,7 +53,7 @@ export default function HeroSlider() {
   }
 
   return (
-    <div className="relative h-[70vh] overflow-hidden">
+    <div className="relative h-[70vh] overflow-hidden bg-black">
       {slides.map((slide, index) => (
         <div
           key={slide.id}
@@ -60,21 +61,23 @@ export default function HeroSlider() {
             index === currentSlide ? "translate-x-0" : index < currentSlide ? "-translate-x-full" : "translate-x-full"
           }`}
         >
-          <Image
-            src={slide.image || "/placeholder.svg"}
-            alt={slide.title}
-            fill
-            className="object-cover"
-            priority={index === 0}
-          />
-          <div className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-white max-w-2xl px-4">
-              <h1 className="text-4xl md:text-6xl font-bold mb-4">{slide.title}</h1>
-              <p className="text-xl md:text-2xl mb-8">{slide.subtitle}</p>
-              <Button size="lg" className="bg-white text-black hover:bg-gray-100" asChild>
-                <a href={slide.link}>{slide.cta}</a>
-              </Button>
+          <div className="relative h-full">
+            <Image
+              src={slide.image || "/placeholder.svg"}
+              alt={slide.title}
+              fill
+              className="object-cover"
+              priority={index === 0}
+            />
+            <div className="absolute inset-0 bg-black bg-opacity-40" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center text-white max-w-2xl px-4">
+                <h1 className="text-4xl md:text-6xl font-bold mb-4">{slide.title}</h1>
+                <p className="text-xl md:text-2xl mb-8 text-gray-200">{slide.subtitle}</p>
+                <Button asChild size="lg" className="bg-white text-black hover:bg-gray-100">
+                  <Link href={slide.link}>{slide.cta}</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>

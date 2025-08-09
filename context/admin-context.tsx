@@ -1,6 +1,7 @@
 "use client"
 
-import { createContext, useContext, useState, type ReactNode } from "react"
+import type React from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 
 interface AdminUser {
   id: string
@@ -11,57 +12,74 @@ interface AdminUser {
 
 interface AdminContextType {
   user: AdminUser | null
+  isAuthenticated: boolean
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
-  isAuthenticated: boolean
+  isLoading: boolean
 }
 
-const AdminContext = createContext<AdminContextType | null>(null)
+const AdminContext = createContext<AdminContextType | undefined>(undefined)
 
-export function AdminProvider({ children }: { children: ReactNode }) {
+export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const token = localStorage.getItem("oxstore_admin_token")
+    const userData = localStorage.getItem("oxstore_admin_user")
+
+    if (token === "authenticated" && userData) {
+      try {
+        setUser(JSON.parse(userData))
+      } catch (error) {
+        console.error("Error parsing user data:", error)
+        localStorage.removeItem("oxstore_admin_token")
+        localStorage.removeItem("oxstore_admin_user")
+      }
+    }
+    setIsLoading(false)
+  }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // En producción, esto sería una llamada real a tu API
-    if (email === "admin@oxstore.uy" && password === "admin123") {
-      const userData = {
+    // Simple authentication - in production, this would be a real API call
+    if (email === "admin@oxstore.com" && password === "admin123") {
+      const userData: AdminUser = {
         id: "1",
-        email: "admin@oxstore.uy",
-        name: "Administrador OXSTORE",
-        role: "admin" as const,
+        email: "admin@oxstore.com",
+        name: "Administrador",
+        role: "admin",
       }
-      setUser(userData)
+
       localStorage.setItem("oxstore_admin_token", "authenticated")
       localStorage.setItem("oxstore_admin_user", JSON.stringify(userData))
+      setUser(userData)
       return true
     }
     return false
   }
 
   const logout = () => {
-    setUser(null)
     localStorage.removeItem("oxstore_admin_token")
     localStorage.removeItem("oxstore_admin_user")
+    setUser(null)
   }
 
-  return (
-    <AdminContext.Provider
-      value={{
-        user,
-        login,
-        logout,
-        isAuthenticated: !!user,
-      }}
-    >
-      {children}
-    </AdminContext.Provider>
-  )
+  const value = {
+    user,
+    isAuthenticated: !!user,
+    login,
+    logout,
+    isLoading,
+  }
+
+  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>
 }
 
 export function useAdmin() {
   const context = useContext(AdminContext)
-  if (!context) {
-    throw new Error("useAdmin must be used within AdminProvider")
+  if (context === undefined) {
+    throw new Error("useAdmin must be used within an AdminProvider")
   }
   return context
 }

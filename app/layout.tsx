@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "OXSTORE - Tienda de Ropa Online",
-  description: "La mejor selección de ropa y accesorios para hombre y mujer",
+  description: "La mejor tienda de ropa online con las últimas tendencias en moda",
   icons: {
     icon: "/favicon.png",
   },
@@ -26,13 +26,13 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <CartProvider>
-          <AdminProvider>
+        <AdminProvider>
+          <CartProvider>
             <OrderProvider>
               <ConditionalLayout>{children}</ConditionalLayout>
             </OrderProvider>
-          </AdminProvider>
-        </CartProvider>
+          </CartProvider>
+        </AdminProvider>
       </body>
     </html>
   )

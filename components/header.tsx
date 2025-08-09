@@ -94,7 +94,6 @@ export default function Header() {
   ]
 
   const headerClass = isScrolled ? "bg-black text-white shadow-lg" : "bg-white text-black border-b border-gray-100"
-
   const logoSrc = isScrolled ? "/logo-claro.png" : "/logo-oscuro.png"
 
   return (
@@ -137,16 +136,11 @@ export default function Header() {
             <Menu className="h-6 w-6" />
           </Button>
 
-          {/* Logo - Fixed size for mobile */}
-          <Link href="/" className="flex items-center">
-            <Image
-              src={logoSrc || "/placeholder.svg"}
-              alt="OXSTORE"
-              width={160}
-              height={48}
-              className="h-12 w-auto"
-              priority
-            />
+          {/* Logo - Fixed aspect ratio, no deformation */}
+          <Link href="/" className="flex items-center flex-shrink-0">
+            <div className="relative w-32 h-10 md:w-40 md:h-12">
+              <Image src={logoSrc || "/placeholder.svg"} alt="OXSTORE" fill className="object-contain" priority />
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
