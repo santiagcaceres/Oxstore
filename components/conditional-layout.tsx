@@ -6,24 +6,23 @@ import { usePathname } from "next/navigation"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 
-export default function ConditionalLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   // Don't show header/footer on admin pages
   const isAdminPage = pathname.startsWith("/admin")
 
   // Only show header on home page
-  const isHomePage = pathname === "/"
+  const showHeader = pathname === "/" && !isAdminPage
+
+  // Show footer on all pages except admin
+  const showFooter = !isAdminPage
 
   return (
     <>
-      {!isAdminPage && isHomePage && <Header />}
-      <main className={!isAdminPage && isHomePage ? "pt-[104px]" : ""}>{children}</main>
-      {!isAdminPage && <Footer />}
+      {showHeader && <Header />}
+      <main className={showHeader ? "" : "pt-0"}>{children}</main>
+      {showFooter && <Footer />}
     </>
   )
 }

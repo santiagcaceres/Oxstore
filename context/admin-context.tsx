@@ -1,79 +1,45 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
-
-interface AdminUser {
-  id: string
-  email: string
-  name: string
-  role: "admin" | "manager"
-}
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
 interface AdminContextType {
-  user: AdminUser | null
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => boolean
   logout: () => void
   isLoading: boolean
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined)
 
-export function AdminProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AdminUser | null>(null)
+export function AdminProvider({ children }: { children: ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Check if user is already logged in
-    const token = localStorage.getItem("oxstore_admin_token")
-    const userData = localStorage.getItem("oxstore_admin_user")
-
-    if (token === "authenticated" && userData) {
-      try {
-        setUser(JSON.parse(userData))
-      } catch (error) {
-        console.error("Error parsing user data:", error)
-        localStorage.removeItem("oxstore_admin_token")
-        localStorage.removeItem("oxstore_admin_user")
-      }
+    const adminAuth = localStorage.getItem("admin-auth")
+    if (adminAuth === "true") {
+      setIsAuthenticated(true)
     }
     setIsLoading(false)
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simple authentication - in production, this would be a real API call
+  const login = (email: string, password: string): boolean => {
+    // Simple authentication - in production, this should be more secure
     if (email === "admin@oxstore.com" && password === "admin123") {
-      const userData: AdminUser = {
-        id: "1",
-        email: "admin@oxstore.com",
-        name: "Administrador",
-        role: "admin",
-      }
-
-      localStorage.setItem("oxstore_admin_token", "authenticated")
-      localStorage.setItem("oxstore_admin_user", JSON.stringify(userData))
-      setUser(userData)
+      setIsAuthenticated(true)
+      localStorage.setItem("admin-auth", "true")
       return true
     }
     return false
   }
 
   const logout = () => {
-    localStorage.removeItem("oxstore_admin_token")
-    localStorage.removeItem("oxstore_admin_user")
-    setUser(null)
+    setIsAuthenticated(false)
+    localStorage.removeItem("admin-auth")
   }
 
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    login,
-    logout,
-    isLoading,
-  }
-
-  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>
+  return <AdminContext.Provider value={{ isAuthenticated, login, logout, isLoading }}>{children}</AdminContext.Provider>
 }
 
 export function useAdmin() {

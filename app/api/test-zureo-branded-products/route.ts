@@ -1,55 +1,40 @@
 import { NextResponse } from "next/server"
+import { getProductsFromZureo } from "@/lib/zureo-api"
 
 export async function GET() {
   try {
-    const user = process.env.ZUREO_API_USER
-    const password = process.env.ZUREO_API_PASSWORD
-    const domain = process.env.ZUREO_DOMAIN
-    const companyId = process.env.ZUREO_COMPANY_ID
-
-    if (!user || !password || !domain || !companyId) {
-      return NextResponse.json({
-        success: false,
-        message: "Variables de entorno de Zureo no configuradas",
-      })
-    }
-
-    const credentials = Buffer.from(`${user}:${password}`).toString("base64")
-    const url = `https://${domain}/api/productos?empresa_id=${companyId}`
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        "Content-Type": "application/json",
-      },
-    })
-
-    if (!response.ok) {
-      return NextResponse.json({
-        success: false,
-        message: `Error HTTP: ${response.status}`,
-      })
-    }
-
-    const data = await response.json()
+    const allProducts = await getProductsFromZureo({ qty: 1000, includeInactive: true })
 
     // Filter products that have a brand assigned (marca.nombre != null)
-    const brandedProducts = data.filter(
-      (product: any) => product.marca && product.marca.nombre !== null && product.marca.nombre !== "",
+    const brandedProducts = allProducts.filter(
+      (product) => product.marca && product.marca.nombre && product.marca.nombre.trim() !== "",
     )
 
     return NextResponse.json({
       success: true,
-      message: `${brandedProducts.length} productos con marca encontrados`,
-      products: brandedProducts,
-      total: data.length,
+      message: `${brandedProducts.length} productos con marca de ${allProducts.length} totales`,
+      products: brandedProducts.map((product) => ({
+        id: product.id,
+        codigo: product.codigo,
+        nombre: product.nombre,
+        marca: {
+          id: product.marca.id,
+          nombre: product.marca.nombre,
+        },
+        stock: product.stock || 0,
+        precio: product.precio || 0,
+      })),
+      data: {
+        total: allProducts.length,
+        withBrand: brandedProducts.length,
+        withoutBrand: allProducts.length - brandedProducts.length,
+      },
     })
   } catch (error) {
-    console.error("Error fetching branded products:", error)
     return NextResponse.json({
       success: false,
-      message: "Error al obtener productos con marca",
-      error: error instanceof Error ? error.message : "Error desconocido",
+      message: "Error obteniendo productos con marca",
+      details: { error: error instanceof Error ? error.message : "Error desconocido" },
     })
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { Buffer } from "buffer"
+import { getCompaniesFromZureo } from "@/lib/zureo-api"
 
 async function getZureoToken() {
   const user = process.env.ZUREO_API_USER
@@ -33,60 +34,18 @@ async function getZureoToken() {
 
 export async function GET() {
   try {
-    const token = await getZureoToken()
-
-    console.log("Obteniendo empresas con token:", token ? "Token válido" : "Sin token")
-
-    const response = await fetch("https://api.zureo.com/sdk/v1/company/all", {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    console.log("Companies response status:", response.status)
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error("Companies error:", errorText)
-
-      return NextResponse.json({
-        success: false,
-        message: `Error al obtener empresas: ${response.status} ${response.statusText}`,
-        details: {
-          status: response.status,
-          error: errorText,
-          tokenUsed: token ? token.substring(0, 20) + "..." : "No token",
-        },
-      })
-    }
-
-    const data = await response.json()
-    console.log("Companies data:", data)
-
-    // La respuesta puede venir en data o directamente
-    const companies = data.data || data
-    const companiesArray = Array.isArray(companies) ? companies : [companies]
+    const companies = await getCompaniesFromZureo()
 
     return NextResponse.json({
       success: true,
-      message: `Se encontraron ${companiesArray.length} empresas disponibles`,
-      details: {
-        companies: companiesArray,
-        count: companiesArray.length,
-        configuredCompanyId: process.env.ZUREO_COMPANY_ID,
-        rawResponse: data,
-      },
+      message: `Se obtuvieron ${Array.isArray(companies) ? companies.length : 1} empresas`,
+      details: companies,
     })
   } catch (error) {
-    console.error("Error obteniendo empresas:", error)
     return NextResponse.json({
       success: false,
-      message: "Error al obtener empresas",
-      details: {
-        error: String(error),
-        type: "api_error",
-      },
+      message: "Error obteniendo empresas de Zureo",
+      details: { error: error instanceof Error ? error.message : "Error desconocido" },
     })
   }
 }

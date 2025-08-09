@@ -1,25 +1,25 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react"
+import { CheckCircle, XCircle, AlertCircle, Loader2, RefreshCw } from "lucide-react"
 
 interface DiagnosticTest {
   name: string
-  status: "loading" | "success" | "error" | "warning"
+  status: "idle" | "loading" | "success" | "error" | "warning"
   message: string
-  details?: string
+  details?: any
 }
 
-interface ZureoProduct {
+interface BrandedProduct {
   id: number
   codigo: string
   nombre: string
   marca: {
     id: number
-    nombre: string | null
+    nombre: string
   }
   stock: number
   precio: number
@@ -27,106 +27,91 @@ interface ZureoProduct {
 
 export default function DiagnosticoPage() {
   const [tests, setTests] = useState<DiagnosticTest[]>([
-    { name: "Variables de Entorno", status: "loading", message: "Verificando..." },
-    { name: "Autenticación Zureo", status: "loading", message: "Verificando..." },
-    { name: "Conexión API Zureo", status: "loading", message: "Verificando..." },
-    { name: "Productos Zureo", status: "loading", message: "Verificando..." },
-    { name: "Productos con Marca", status: "loading", message: "Verificando..." },
+    { name: "Variables de Entorno", status: "idle", message: "No ejecutado" },
+    { name: "Autenticación Zureo", status: "idle", message: "No ejecutado" },
+    { name: "Conexión API Zureo", status: "idle", message: "No ejecutado" },
+    { name: "Productos Zureo", status: "idle", message: "No ejecutado" },
+    { name: "Productos con Marca", status: "idle", message: "No ejecutado" },
   ])
 
-  const [brandedProducts, setBrandedProducts] = useState<ZureoProduct[]>([])
+  const [brandedProducts, setBrandedProducts] = useState<BrandedProduct[]>([])
   const [showBrandedProducts, setShowBrandedProducts] = useState(false)
+  const [isRunning, setIsRunning] = useState(false)
 
-  useEffect(() => {
-    runDiagnostics()
-  }, [])
+  const updateTest = (index: number, status: DiagnosticTest["status"], message: string, details?: any) => {
+    setTests((prev) => prev.map((test, i) => (i === index ? { ...test, status, message, details } : test)))
+  }
 
-  const runDiagnostics = async () => {
-    // Test 1: Environment Variables
+  const runSingleTest = async (index: number) => {
+    const testEndpoints = [
+      "/api/test-env-vars",
+      "/api/test-zureo-auth",
+      "/api/test-zureo-companies",
+      "/api/test-zureo-products",
+      "/api/test-zureo-branded-products",
+    ]
+
+    updateTest(index, "loading", "Ejecutando...")
+
     try {
-      const envResponse = await fetch("/api/test-env-vars")
-      const envData = await envResponse.json()
-      updateTest(0, envData.success ? "success" : "error", envData.message, envData.details)
-    } catch (error) {
-      updateTest(0, "error", "Error al verificar variables de entorno")
-    }
+      const response = await fetch(testEndpoints[index])
+      const data = await response.json()
 
-    // Test 2: Zureo Authentication
-    try {
-      const authResponse = await fetch("/api/test-zureo-auth")
-      const authData = await authResponse.json()
-      updateTest(1, authData.success ? "success" : "error", authData.message, authData.details)
-    } catch (error) {
-      updateTest(1, "error", "Error al verificar autenticación")
-    }
+      if (data.success) {
+        updateTest(index, "success", data.message, data.details || data.data)
 
-    // Test 3: Zureo API Connection
-    try {
-      const apiResponse = await fetch("/api/test-zureo-companies")
-      const apiData = await apiResponse.json()
-      updateTest(2, apiData.success ? "success" : "error", apiData.message, apiData.details)
-    } catch (error) {
-      updateTest(2, "error", "Error al conectar con API Zureo")
-    }
-
-    // Test 4: Zureo Products
-    try {
-      const productsResponse = await fetch("/api/test-zureo-products")
-      const productsData = await productsResponse.json()
-      updateTest(3, productsData.success ? "success" : "error", productsData.message, productsData.details)
-    } catch (error) {
-      updateTest(3, "error", "Error al obtener productos")
-    }
-
-    // Test 5: Branded Products
-    try {
-      const brandedResponse = await fetch("/api/test-zureo-branded-products")
-      const brandedData = await brandedResponse.json()
-
-      if (brandedData.success) {
-        setBrandedProducts(brandedData.products || [])
-        const count = brandedData.products?.length || 0
-        updateTest(
-          4,
-          count > 0 ? "success" : "warning",
-          count > 0 ? `${count} productos con marca encontrados` : "No se encontraron productos con marca",
-          `Total de productos con marca asignada: ${count}`,
-        )
+        // If it's the branded products test, save the products
+        if (index === 4 && data.products) {
+          setBrandedProducts(data.products)
+        }
       } else {
-        updateTest(4, "error", brandedData.message)
+        updateTest(index, "error", data.message || "Error desconocido", data.details)
       }
     } catch (error) {
-      updateTest(4, "error", "Error al obtener productos con marca")
+      updateTest(index, "error", `Error de conexión: ${error instanceof Error ? error.message : "Error desconocido"}`)
     }
   }
 
-  const updateTest = (index: number, status: DiagnosticTest["status"], message: string, details?: string) => {
-    setTests((prev) => prev.map((test, i) => (i === index ? { ...test, status, message, details } : test)))
+  const runAllTests = async () => {
+    setIsRunning(true)
+    setBrandedProducts([])
+
+    for (let i = 0; i < tests.length; i++) {
+      await runSingleTest(i)
+      // Small delay between tests
+      await new Promise((resolve) => setTimeout(resolve, 500))
+    }
+
+    setIsRunning(false)
   }
 
   const getStatusIcon = (status: DiagnosticTest["status"]) => {
     switch (status) {
       case "loading":
-        return <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+        return <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
       case "success":
         return <CheckCircle className="h-5 w-5 text-green-500" />
       case "error":
         return <XCircle className="h-5 w-5 text-red-500" />
       case "warning":
         return <AlertCircle className="h-5 w-5 text-yellow-500" />
+      default:
+        return <div className="h-5 w-5 rounded-full bg-gray-300" />
     }
   }
 
   const getStatusColor = (status: DiagnosticTest["status"]) => {
     switch (status) {
       case "loading":
-        return "bg-gray-100 text-gray-800"
+        return "bg-blue-100 text-blue-800"
       case "success":
         return "bg-green-100 text-green-800"
       case "error":
         return "bg-red-100 text-red-800"
       case "warning":
         return "bg-yellow-100 text-yellow-800"
+      default:
+        return "bg-gray-100 text-gray-800"
     }
   }
 
@@ -138,12 +123,23 @@ export default function DiagnosticoPage() {
       </div>
 
       <div className="flex gap-4">
-        <Button onClick={runDiagnostics} className="bg-black hover:bg-gray-800">
-          Ejecutar Diagnóstico
+        <Button onClick={runAllTests} disabled={isRunning} className="bg-black hover:bg-gray-800">
+          {isRunning ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Ejecutando...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Ejecutar Todos los Tests
+            </>
+          )}
         </Button>
+
         {brandedProducts.length > 0 && (
           <Button variant="outline" onClick={() => setShowBrandedProducts(!showBrandedProducts)}>
-            {showBrandedProducts ? "Ocultar" : "Ver"} Productos con Marca
+            {showBrandedProducts ? "Ocultar" : "Ver"} Productos con Marca ({brandedProducts.length})
           </Button>
         )}
       </div>
@@ -157,14 +153,33 @@ export default function DiagnosticoPage() {
                   {getStatusIcon(test.status)}
                   {test.name}
                 </CardTitle>
-                <Badge className={getStatusColor(test.status)}>
-                  {test.status === "loading" ? "Verificando" : test.status}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge className={getStatusColor(test.status)}>
+                    {test.status === "idle" ? "Pendiente" : test.status}
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => runSingleTest(index)}
+                    disabled={test.status === "loading"}
+                  >
+                    Ejecutar
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               <p className="text-gray-700">{test.message}</p>
-              {test.details && <p className="text-sm text-gray-500 mt-2">{test.details}</p>}
+              {test.details && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
+                    Ver detalles técnicos
+                  </summary>
+                  <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-x-auto">
+                    {JSON.stringify(test.details, null, 2)}
+                  </pre>
+                </details>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -175,7 +190,9 @@ export default function DiagnosticoPage() {
         <Card>
           <CardHeader>
             <CardTitle>Productos con Marca Asignada</CardTitle>
-            <CardDescription>Lista de productos que tienen una marca asignada en Zureo</CardDescription>
+            <CardDescription>
+              Lista de productos que tienen una marca asignada en Zureo ({brandedProducts.length} productos)
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -186,8 +203,10 @@ export default function DiagnosticoPage() {
                     <p className="text-sm text-gray-500">Código: {product.codigo}</p>
                   </div>
                   <div className="text-right">
-                    <Badge variant="outline">{product.marca.nombre}</Badge>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <Badge variant="outline" className="mb-1">
+                      {product.marca.nombre}
+                    </Badge>
+                    <p className="text-sm text-gray-500">
                       Stock: {product.stock} | ${product.precio.toFixed(2)}
                     </p>
                   </div>

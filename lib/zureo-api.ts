@@ -107,6 +107,10 @@ export async function getProductsFromZureo(
   }
 }
 
+export async function getAllZureoProducts(): Promise<ZureoProduct[]> {
+  return getProductsFromZureo({ qty: 5000, includeInactive: true })
+}
+
 export async function getProductById(id: string): Promise<ZureoProduct | null> {
   try {
     const result = await zureoFetch(`/sdk/v1/product/get?id=${id}`)
@@ -147,13 +151,7 @@ export async function searchZureoProducts(query: string): Promise<ZureoProduct[]
     const searchTerm = query.toLowerCase().trim()
 
     return products.filter((product) => {
-      const searchableText = [
-        product.descripcion,
-        product.codigo,
-        product.marca,
-        product.rubro,
-        product.subrubro,
-      ]
+      const searchableText = [product.descripcion, product.codigo, product.marca, product.rubro, product.subrubro]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
