@@ -1,48 +1,28 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-// En una implementación real, aquí guardarías en tu base de datos
-// Por ahora simulamos el guardado
-let saleProducts: any[] = []
-
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { products } = await request.json()
+    const { productCodes, discountPercentage } = await request.json()
 
-    if (!Array.isArray(products) || products.length === 0) {
-      return NextResponse.json({
-        success: false,
-        message: "Se requiere un array de productos",
-      })
+    if (!productCodes || !Array.isArray(productCodes) || !discountPercentage) {
+      return NextResponse.json({ success: false, error: "Datos inválidos" }, { status: 400 })
     }
 
-    // Simular guardado en base de datos
-    saleProducts = products.map((product) => ({
-      ...product,
-      appliedAt: new Date().toISOString(),
-      status: "active",
-    }))
+    // En una implementación real, aquí actualizarías la base de datos
+    // Por ahora, simulamos la operación
+    console.log(`Aplicando ${discountPercentage}% de descuento a productos:`, productCodes)
 
-    // En una implementación real, aquí actualizarías tu base de datos
-    // await updateProductsSaleStatus(products)
+    // Simular delay de procesamiento
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     return NextResponse.json({
       success: true,
-      message: `Oferta aplicada a ${products.length} productos`,
-      appliedProducts: saleProducts.length,
+      message: `Oferta aplicada a ${productCodes.length} productos`,
+      appliedTo: productCodes.length,
+      discount: discountPercentage,
     })
   } catch (error) {
     console.error("Error applying sale:", error)
-    return NextResponse.json({
-      success: false,
-      message: "Error al aplicar ofertas",
-      error: error instanceof Error ? error.message : "Error desconocido",
-    })
+    return NextResponse.json({ success: false, error: "Error interno del servidor" }, { status: 500 })
   }
-}
-
-export async function GET() {
-  return NextResponse.json({
-    success: true,
-    saleProducts: saleProducts,
-  })
 }

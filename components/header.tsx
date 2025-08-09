@@ -6,10 +6,9 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Search, ShoppingCart, Menu, X, User } from "lucide-react"
-import { useCart } from "@/context/cart-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useCart } from "@/context/cart-context"
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
@@ -23,6 +22,7 @@ export default function Header() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50)
     }
+
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
@@ -37,17 +37,17 @@ export default function Header() {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? "bg-white shadow-lg" : "bg-transparent"
+        isScrolled ? "bg-white shadow-lg" : "bg-white/95 backdrop-blur-sm"
       }`}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
-            <div className="relative h-12 w-32 md:h-14 md:w-40">
+            <div className="relative h-10 w-24 md:h-12 md:w-32">
               <Image
-                src={isScrolled ? "/logo-oscuro.png" : "/logo-claro.png"}
-                alt="OX Store"
+                src={isScrolled ? "/logo-oscuro.png" : "/logo-oscuro.png"}
+                alt="OXSTORE"
                 fill
                 className="object-contain"
                 priority
@@ -56,69 +56,48 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-8">
-            <Link href="/nuevo" className="text-sm font-medium hover:text-gray-600 transition-colors">
+          <nav className="hidden md:flex items-center space-x-8">
+            <Link href="/nuevo" className="text-black hover:text-gray-600 font-medium">
               Nuevo
             </Link>
-            <Link href="/hombre" className="text-sm font-medium hover:text-gray-600 transition-colors">
+            <Link href="/hombre" className="text-black hover:text-gray-600 font-medium">
               Hombre
             </Link>
-            <Link href="/mujer" className="text-sm font-medium hover:text-gray-600 transition-colors">
+            <Link href="/mujer" className="text-black hover:text-gray-600 font-medium">
               Mujer
             </Link>
-            <Link href="/vestimenta" className="text-sm font-medium hover:text-gray-600 transition-colors">
-              Vestimenta
-            </Link>
-            <Link href="/accesorios" className="text-sm font-medium hover:text-gray-600 transition-colors">
+            <Link href="/accesorios" className="text-black hover:text-gray-600 font-medium">
               Accesorios
             </Link>
-            <Link href="/sale" className="text-sm font-medium text-black hover:text-gray-600 transition-colors">
+            <Link href="/sale" className="text-black hover:text-gray-600 font-medium">
               Sale
             </Link>
           </nav>
 
           {/* Search Bar */}
-          <div className="hidden md:flex items-center flex-1 max-w-md mx-8">
+          <div className="hidden md:flex flex-1 max-w-md mx-8">
             <form onSubmit={handleSearch} className="relative w-full">
               <Input
                 type="text"
                 placeholder="Buscar productos..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border-gray-300 focus:border-black focus:ring-black"
+                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
               />
-              <Button
-                type="submit"
-                size="sm"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 bg-black hover:bg-gray-800"
-              >
-                <Search className="h-4 w-4" />
-              </Button>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             </form>
           </div>
 
-          {/* Right Side Icons */}
+          {/* Right Icons */}
           <div className="flex items-center space-x-4">
-            {/* User Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="p-2">
-                  <User className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href="/perfil">Mi Perfil</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/admin">Admin</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Link href="/perfil">
+              <Button variant="ghost" size="sm" className="text-black hover:text-gray-600">
+                <User className="h-5 w-5" />
+              </Button>
+            </Link>
 
-            {/* Cart */}
-            <Link href="/carrito">
-              <Button variant="ghost" size="sm" className="relative p-2">
+            <Link href="/carrito" className="relative">
+              <Button variant="ghost" size="sm" className="text-black hover:text-gray-600">
                 <ShoppingCart className="h-5 w-5" />
                 {itemCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -132,7 +111,7 @@ export default function Header() {
             <Button
               variant="ghost"
               size="sm"
-              className="lg:hidden p-2"
+              className="md:hidden text-black"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -142,7 +121,7 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden bg-white border-t">
+          <div className="md:hidden bg-white border-t border-gray-200">
             <div className="px-4 py-4 space-y-4">
               {/* Mobile Search */}
               <form onSubmit={handleSearch} className="relative">
@@ -151,57 +130,44 @@ export default function Header() {
                   placeholder="Buscar productos..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border-gray-300 focus:border-black focus:ring-black"
+                  className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-full"
                 />
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 p-0 bg-black hover:bg-gray-800"
-                >
-                  <Search className="h-4 w-4" />
-                </Button>
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               </form>
 
               {/* Mobile Navigation */}
-              <nav className="space-y-2">
+              <nav className="flex flex-col space-y-2">
                 <Link
                   href="/nuevo"
-                  className="block py-2 text-sm font-medium hover:text-gray-600"
+                  className="text-black hover:text-gray-600 font-medium py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Nuevo
                 </Link>
                 <Link
                   href="/hombre"
-                  className="block py-2 text-sm font-medium hover:text-gray-600"
+                  className="text-black hover:text-gray-600 font-medium py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Hombre
                 </Link>
                 <Link
                   href="/mujer"
-                  className="block py-2 text-sm font-medium hover:text-gray-600"
+                  className="text-black hover:text-gray-600 font-medium py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Mujer
                 </Link>
                 <Link
-                  href="/vestimenta"
-                  className="block py-2 text-sm font-medium hover:text-gray-600"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Vestimenta
-                </Link>
-                <Link
                   href="/accesorios"
-                  className="block py-2 text-sm font-medium hover:text-gray-600"
+                  className="text-black hover:text-gray-600 font-medium py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Accesorios
                 </Link>
                 <Link
                   href="/sale"
-                  className="block py-2 text-sm font-medium text-black hover:text-gray-600"
+                  className="text-black hover:text-gray-600 font-medium py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Sale

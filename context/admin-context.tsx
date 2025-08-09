@@ -17,7 +17,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Check if user is already logged in
-    const adminAuth = localStorage.getItem("admin-auth")
+    const adminAuth = localStorage.getItem("admin-authenticated")
     if (adminAuth === "true") {
       setIsAuthenticated(true)
     }
@@ -28,7 +28,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     // Simple authentication - in production, this should be more secure
     if (email === "admin@oxstore.com" && password === "admin123") {
       setIsAuthenticated(true)
-      localStorage.setItem("admin-auth", "true")
+      localStorage.setItem("admin-authenticated", "true")
       return true
     }
     return false
@@ -36,7 +36,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setIsAuthenticated(false)
-    localStorage.removeItem("admin-auth")
+    localStorage.removeItem("admin-authenticated")
   }
 
   return <AdminContext.Provider value={{ isAuthenticated, login, logout, isLoading }}>{children}</AdminContext.Provider>

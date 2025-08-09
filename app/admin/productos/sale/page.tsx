@@ -1,99 +1,74 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Plus, Trash2, Tag, Check } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Search, Tag, Trash2 } from "lucide-react"
 
 interface Product {
   id: number
   codigo: string
   nombre: string
+  precio: number
   marca: {
     nombre: string
   }
-  precio: number
   stock: number
-  onSale?: boolean
-  salePrice?: number
 }
 
 export default function SaleManagementPage() {
-  const [searchCodes, setSearchCodes] = useState("")
-  const [foundProducts, setFoundProducts] = useState<Product[]>([])
-  const [saleProducts, setSaleProducts] = useState<Product[]>([])
-  const [isSearching, setIsSearching] = useState(false)
-  const [salePercentage, setSalePercentage] = useState(20)
+  const [codes, setCodes] = useState("")
+  const [discount, setDiscount] = useState("")
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState("")
 
-  const searchProductsByCodes = async () => {
-    if (!searchCodes.trim()) return
+  const searchProducts = async () => {
+    if (!codes.trim()) return
 
-    setIsSearching(true)
-    const codes = searchCodes
-      .split(/[,\n\s]+/)
-      .map((code) => code.trim())
-      .filter((code) => code.length > 0)
+    setLoading(true)
+    setMessage("")
 
     try {
+      const codeList = codes
+        .split(/[\n,;]/)
+        .map((code) => code.trim())
+        .filter((code) => code.length > 0)
+
       const response = await fetch("/api/products/search-by-codes", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ codes }),
+        body: JSON.stringify({ codes: codeList }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setFoundProducts(data.products || [])
+        setProducts(data.products)
+        setMessage(`Se encontraron ${data.products.length} productos`)
       } else {
-        alert("Error buscando productos: " + data.message)
+        setMessage("Error al buscar productos")
       }
     } catch (error) {
-      console.error("Error searching products:", error)
-      alert("Error de conexión al buscar productos")
+      setMessage("Error al buscar productos")
+      console.error("Search error:", error)
     } finally {
-      setIsSearching(false)
+      setLoading(false)
     }
   }
 
-  const addToSale = (product: Product) => {
-    const salePrice = product.precio * (1 - salePercentage / 100)
-    const saleProduct = {
-      ...product,
-      onSale: true,
-      salePrice: Math.round(salePrice * 100) / 100,
-    }
+  const applySale = async () => {
+    if (products.length === 0 || !discount) return
 
-    setSaleProducts((prev) => {
-      const exists = prev.find((p) => p.id === product.id)
-      if (exists) return prev
-      return [...prev, saleProduct]
-    })
-
-    // Remover de productos encontrados
-    setFoundProducts((prev) => prev.filter((p) => p.id !== product.id))
-  }
-
-  const removeFromSale = (productId: number) => {
-    const product = saleProducts.find((p) => p.id === productId)
-    if (product) {
-      // Volver a agregar a productos encontrados
-      setFoundProducts((prev) => [...prev, { ...product, onSale: false, salePrice: undefined }])
-    }
-
-    setSaleProducts((prev) => prev.filter((p) => p.id !== productId))
-  }
-
-  const applySaleToAll = async () => {
-    if (saleProducts.length === 0) {
-      alert("No hay productos en la lista de ofertas")
-      return
-    }
+    setLoading(true)
+    setMessage("")
 
     try {
       const response = await fetch("/api/products/apply-sale", {
@@ -102,94 +77,61 @@ export default function SaleManagementPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          products: saleProducts.map((p) => ({
-            id: p.id,
-            codigo: p.codigo,
-            salePrice: p.salePrice,
-            originalPrice: p.precio,
-          })),
+          productCodes: products.map((p) => p.codigo),
+          discountPercentage: Number.parseFloat(discount),
         }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        alert(`¡Oferta aplicada a ${saleProducts.length} productos!`)
-        setSaleProducts([])
-        setFoundProducts([])
-        setSearchCodes("")
+        setMessage(`Oferta aplicada a ${products.length} productos`)
+        setProducts([])
+        setCodes("")
+        setDiscount("")
       } else {
-        alert("Error aplicando ofertas: " + data.message)
+        setMessage("Error al aplicar la oferta")
       }
     } catch (error) {
-      console.error("Error applying sale:", error)
-      alert("Error de conexión al aplicar ofertas")
+      setMessage("Error al aplicar la oferta")
+      console.error("Apply sale error:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const clearSale = () => {
-    // Mover todos los productos de sale de vuelta a found
-    setFoundProducts((prev) => [...prev, ...saleProducts.map((p) => ({ ...p, onSale: false, salePrice: undefined }))])
-    setSaleProducts([])
+  const removeProduct = (codigo: string) => {
+    setProducts((prev) => prev.filter((p) => p.codigo !== codigo))
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-black">Gestión de Ofertas</h1>
-        <p className="text-gray-600 mt-2">Busca productos por código y agrégalos a ofertas especiales</p>
+        <p className="text-gray-600">Busca productos por código y agrégalos a ofertas</p>
       </div>
 
-      {/* Configuración de descuento */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Tag className="h-5 w-5" />
-            Configuración de Descuento
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium">Porcentaje de descuento:</label>
-            <Input
-              type="number"
-              value={salePercentage}
-              onChange={(e) => setSalePercentage(Number(e.target.value))}
-              className="w-20"
-              min="1"
-              max="90"
-            />
-            <span className="text-sm text-gray-500">%</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Búsqueda por códigos */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            Buscar Productos por Código
-          </CardTitle>
+          <CardTitle>Buscar Productos</CardTitle>
+          <CardDescription>
+            Ingresa los códigos de productos separados por comas, punto y coma o saltos de línea
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium mb-2 block">
-              Códigos de productos (separados por comas, espacios o líneas)
-            </label>
+            <Label htmlFor="codes">Códigos de Productos</Label>
             <Textarea
-              placeholder="Ej: 00346980021, 00346980022, 00346980023..."
-              value={searchCodes}
-              onChange={(e) => setSearchCodes(e.target.value)}
-              rows={4}
+              id="codes"
+              placeholder="00346980021&#10;00346980022&#10;00346980023"
+              value={codes}
+              onChange={(e) => setCodes(e.target.value)}
+              rows={6}
             />
           </div>
-          <Button
-            onClick={searchProductsByCodes}
-            disabled={isSearching || !searchCodes.trim()}
-            className="bg-black hover:bg-gray-800"
-          >
-            {isSearching ? (
+
+          <Button onClick={searchProducts} disabled={loading || !codes.trim()}>
+            {loading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                 Buscando...
@@ -201,112 +143,78 @@ export default function SaleManagementPage() {
               </>
             )}
           </Button>
+
+          {message && (
+            <Alert className={message.includes("Error") ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}>
+              <AlertDescription className={message.includes("Error") ? "text-red-700" : "text-green-700"}>
+                {message}
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Productos encontrados */}
+      {products.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Productos Encontrados ({foundProducts.length})</CardTitle>
+            <CardTitle>Productos Encontrados ({products.length})</CardTitle>
+            <CardDescription>Revisa los productos y configura la oferta</CardDescription>
           </CardHeader>
-          <CardContent>
-            {foundProducts.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Search className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No hay productos encontrados</p>
-                <p className="text-sm">Busca productos usando sus códigos</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {foundProducts.map((product) => (
-                  <div key={product.id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">{product.nombre}</h4>
-                        <p className="text-sm text-gray-500">Código: {product.codigo}</p>
-                        <Badge variant="outline">{product.marca.nombre}</Badge>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold">${product.precio.toFixed(2)}</p>
-                        <p className="text-sm text-green-600">
-                          Oferta: ${(product.precio * (1 - salePercentage / 100)).toFixed(2)}
-                        </p>
-                        <Button
-                          size="sm"
-                          onClick={() => addToSale(product)}
-                          className="mt-2 bg-black hover:bg-gray-800"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Agregar
-                        </Button>
-                      </div>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 max-h-96 overflow-y-auto">
+              {products.map((product) => (
+                <div key={product.codigo} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{product.codigo}</Badge>
+                      <Badge variant="secondary">{product.marca.nombre}</Badge>
                     </div>
+                    <h3 className="font-medium mt-1">{product.nombre}</h3>
+                    <p className="text-sm text-gray-600">
+                      Precio: ${product.precio.toFixed(2)} | Stock: {product.stock}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Productos en oferta */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Productos en Oferta ({saleProducts.length})</span>
-              {saleProducts.length > 0 && (
-                <Button variant="outline" size="sm" onClick={clearSale}>
-                  Limpiar Todo
-                </Button>
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {saleProducts.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Tag className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>No hay productos en oferta</p>
-                <p className="text-sm">Agrega productos desde la búsqueda</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-3 max-h-80 overflow-y-auto mb-4">
-                  {saleProducts.map((product) => (
-                    <div key={product.id} className="p-3 border rounded-lg bg-red-50">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">{product.nombre}</h4>
-                          <p className="text-sm text-gray-500">Código: {product.codigo}</p>
-                          <Badge variant="outline">{product.marca.nombre}</Badge>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500 line-through">${product.precio.toFixed(2)}</p>
-                          <p className="font-bold text-red-600">${product.salePrice?.toFixed(2)}</p>
-                          <p className="text-xs text-green-600">-{salePercentage}%</p>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeFromSale(product.id)}
-                            className="mt-2"
-                          >
-                            <Trash2 className="h-3 w-3 mr-1" />
-                            Quitar
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  <Button variant="outline" size="sm" onClick={() => removeProduct(product.codigo)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
+              ))}
+            </div>
 
-                <Button onClick={applySaleToAll} className="w-full bg-red-600 hover:bg-red-700 text-white" size="lg">
-                  <Check className="h-4 w-4 mr-2" />
-                  Aplicar Oferta a {saleProducts.length} Productos
-                </Button>
-              </>
-            )}
+            <div className="border-t pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="discount">Porcentaje de Descuento (%)</Label>
+                  <Input
+                    id="discount"
+                    type="number"
+                    min="1"
+                    max="90"
+                    placeholder="20"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={applySale} disabled={loading || !discount} className="w-full">
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Aplicando...
+                      </>
+                    ) : (
+                      <>
+                        <Tag className="h-4 w-4 mr-2" />
+                        Aplicar Oferta
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   )
 }

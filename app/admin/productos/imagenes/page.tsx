@@ -3,14 +3,16 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Upload, Search, ImageIcon, X } from "lucide-react"
-import { uploadImageToBlob } from "@/lib/image-upload"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Upload, X, Check } from "lucide-react"
+import Image from "next/image"
 
-interface ProductWithBrand {
+interface Product {
   id: number
   codigo: string
   nombre: string
@@ -19,155 +21,83 @@ interface ProductWithBrand {
     nombre: string
   }
   precio: number
-  stock: number
-  images?: string[]
 }
 
 export default function ProductImagesPage() {
-  const [products, setProducts] = useState<ProductWithBrand[]>([])
-  const [filteredProducts, setFilteredProducts] = useState<ProductWithBrand[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedProduct, setSelectedProduct] = useState<ProductWithBrand | null>(null)
-  const [uploadingImages, setUploadingImages] = useState<File[]>([])
-  const [isUploading, setIsUploading] = useState(false)
+  const [products, setProducts] = useState<Product[]>([])
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [images, setImages] = useState<File[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadProductsWithBrand()
+    fetchBrandedProducts()
   }, [])
 
-  useEffect(() => {
-    const filtered = products.filter(
-      (product) =>
-        product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.marca.nombre.toLowerCase().includes(searchTerm.toLowerCase()),
-    )
-    setFilteredProducts(filtered)
-  }, [searchTerm, products])
-
-  const loadProductsWithBrand = async () => {
+  const fetchBrandedProducts = async () => {
     try {
       const response = await fetch("/api/test-zureo-branded-products")
       const data = await response.json()
-
       if (data.success) {
-        setProducts(data.products || [])
-        setFilteredProducts(data.products || [])
+        setProducts(data.products)
       }
     } catch (error) {
-      console.error("Error loading products:", error)
+      console.error("Error fetching products:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || [])
-    setUploadingImages(files)
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"))
+    setImages((prev) => [...prev, ...imageFiles])
+  }
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index))
   }
 
   const uploadImages = async () => {
-    if (!selectedProduct || uploadingImages.length === 0) return
+    if (!selectedProduct || images.length === 0) return
 
-    setIsUploading(true)
-    const uploadedUrls: string[] = []
+    setUploading(true)
+    setMessage("")
 
     try {
-      for (const file of uploadingImages) {
-        // Optimizar imagen
-        const optimizedFile = await optimizeImage(file)
+      const uploadPromises = images.map(async (image) => {
+        const formData = new FormData()
+        formData.append("file", image)
+        formData.append("productCode", selectedProduct.codigo)
 
-        // Subir a Vercel Blob
-        const result = await uploadImageToBlob(
-          optimizedFile,
-          `products/${selectedProduct.codigo}/${Date.now()}-${file.name}`,
-        )
+        const response = await fetch("/api/upload-product-image", {
+          method: "POST",
+          body: formData,
+        })
 
-        uploadedUrls.push(result.url)
-      }
-
-      // Actualizar producto con las nuevas imágenes
-      const updatedProduct = {
-        ...selectedProduct,
-        images: [...(selectedProduct.images || []), ...uploadedUrls],
-      }
-
-      // Actualizar en la base de datos local (aquí podrías hacer una llamada a tu API)
-      setProducts((prev) => prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p)))
-
-      setSelectedProduct(updatedProduct)
-      setUploadingImages([])
-
-      alert(`${uploadedUrls.length} imágenes subidas exitosamente`)
-    } catch (error) {
-      console.error("Error uploading images:", error)
-      alert("Error subiendo imágenes")
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  const optimizeImage = async (file: File): Promise<File> => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")!
-      const img = new Image()
-
-      img.onload = () => {
-        // Redimensionar a máximo 800px manteniendo proporción
-        const maxSize = 800
-        let { width, height } = img
-
-        if (width > height && width > maxSize) {
-          height = (height * maxSize) / width
-          width = maxSize
-        } else if (height > maxSize) {
-          width = (width * maxSize) / height
-          height = maxSize
+        if (!response.ok) {
+          throw new Error(`Error uploading ${image.name}`)
         }
 
-        canvas.width = width
-        canvas.height = height
+        return response.json()
+      })
 
-        ctx.drawImage(img, 0, 0, width, height)
-
-        canvas.toBlob(
-          (blob) => {
-            const optimizedFile = new File([blob!], file.name, {
-              type: "image/jpeg",
-              lastModified: Date.now(),
-            })
-            resolve(optimizedFile)
-          },
-          "image/jpeg",
-          0.85,
-        )
-      }
-
-      img.src = URL.createObjectURL(file)
-    })
-  }
-
-  const removeImage = (imageUrl: string) => {
-    if (!selectedProduct) return
-
-    const updatedProduct = {
-      ...selectedProduct,
-      images: selectedProduct.images?.filter((url) => url !== imageUrl) || [],
+      await Promise.all(uploadPromises)
+      setMessage("Imágenes subidas exitosamente")
+      setImages([])
+    } catch (error) {
+      setMessage("Error al subir las imágenes")
+      console.error("Upload error:", error)
+    } finally {
+      setUploading(false)
     }
-
-    setSelectedProduct(updatedProduct)
-    setProducts((prev) => prev.map((p) => (p.id === selectedProduct.id ? updatedProduct : p)))
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando productos con marca...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-96">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
       </div>
     )
   }
@@ -176,162 +106,123 @@ export default function ProductImagesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-black">Gestión de Imágenes</h1>
-        <p className="text-gray-600 mt-2">Sube imágenes para productos que tienen marca asignada</p>
+        <p className="text-gray-600">Sube imágenes para productos con marca asignada</p>
       </div>
 
-      {/* Búsqueda */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Buscar por nombre, código o marca..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        <CardHeader>
+          <CardTitle>Seleccionar Producto</CardTitle>
+          <CardDescription>Solo productos con marca pueden tener imágenes</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="product">Producto</Label>
+            <Select
+              onValueChange={(value) => {
+                const product = products.find((p) => p.codigo === value)
+                setSelectedProduct(product || null)
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un producto" />
+              </SelectTrigger>
+              <SelectContent>
+                {products.map((product) => (
+                  <SelectItem key={product.codigo} value={product.codigo}>
+                    {product.nombre} - {product.marca.nombre} (${product.precio})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
+
+          {selectedProduct && (
+            <Alert>
+              <Check className="h-4 w-4" />
+              <AlertDescription>
+                Producto seleccionado: <strong>{selectedProduct.nombre}</strong> - Marca:{" "}
+                <strong>{selectedProduct.marca.nombre}</strong>
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Lista de productos */}
+      {selectedProduct && (
         <Card>
           <CardHeader>
-            <CardTitle>Productos con Marca ({filteredProducts.length})</CardTitle>
+            <CardTitle>Subir Imágenes</CardTitle>
+            <CardDescription>Selecciona las imágenes para el producto</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {filteredProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedProduct?.id === product.id
-                      ? "border-black bg-gray-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                  onClick={() => setSelectedProduct(product)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">{product.nombre}</h4>
-                      <p className="text-sm text-gray-500">Código: {product.codigo}</p>
-                      <Badge variant="outline" className="mt-1">
-                        {product.marca.nombre}
-                      </Badge>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">${product.precio.toFixed(2)}</p>
-                      <p className="text-sm text-gray-500">{product.images?.length || 0} imágenes</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="images">Imágenes</Label>
+              <Input
+                id="images"
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="cursor-pointer"
+              />
             </div>
-          </CardContent>
-        </Card>
 
-        {/* Panel de imágenes */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5" />
-              {selectedProduct ? `Imágenes - ${selectedProduct.nombre}` : "Selecciona un producto"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {selectedProduct ? (
+            {images.length > 0 && (
               <div className="space-y-4">
-                {/* Imágenes existentes */}
-                {selectedProduct.images && selectedProduct.images.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-2">Imágenes actuales</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {selectedProduct.images.map((imageUrl, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={imageUrl || "/placeholder.svg"}
-                            alt={`Imagen ${index + 1}`}
-                            className="w-full h-24 object-cover rounded border"
-                          />
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => removeImage(imageUrl)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ))}
+                <h3 className="font-medium">Imágenes seleccionadas ({images.length})</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {images.map((image, index) => (
+                    <div key={index} className="relative">
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                        <Image
+                          src={URL.createObjectURL(image) || "/placeholder.svg"}
+                          alt={`Preview ${index + 1}`}
+                          width={200}
+                          height={200}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                        onClick={() => removeImage(index)}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                      <p className="text-xs text-gray-500 mt-1 truncate">{image.name}</p>
                     </div>
-                  </div>
-                )}
-
-                {/* Subir nuevas imágenes */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <div>
-                    <label htmlFor="image-upload" className="cursor-pointer">
-                      <span className="text-sm font-medium text-gray-900">Subir nuevas imágenes</span>
-                      <span className="block text-sm text-gray-500 mt-1">
-                        PNG, JPG hasta 10MB (se optimizarán automáticamente)
-                      </span>
-                    </label>
-                    <input
-                      id="image-upload"
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </div>
+                  ))}
                 </div>
 
-                {/* Preview de imágenes a subir */}
-                {uploadingImages.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-2">Imágenes a subir ({uploadingImages.length})</h4>
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      {uploadingImages.map((file, index) => (
-                        <div key={index} className="relative">
-                          <img
-                            src={URL.createObjectURL(file) || "/placeholder.svg"}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded border"
-                          />
-                          <div className="absolute bottom-1 left-1 bg-black bg-opacity-75 text-white text-xs px-1 rounded">
-                            {(file.size / 1024 / 1024).toFixed(1)}MB
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <Button onClick={uploadImages} disabled={isUploading} className="w-full bg-black hover:bg-gray-800">
-                      {isUploading ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                          Subiendo...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Subir {uploadingImages.length} Imágenes
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                )}
+                <Button onClick={uploadImages} disabled={uploading} className="w-full">
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Subiendo...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Subir {images.length} imagen{images.length > 1 ? "es" : ""}
+                    </>
+                  )}
+                </Button>
               </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <ImageIcon className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                <p>Selecciona un producto para gestionar sus imágenes</p>
-              </div>
+            )}
+
+            {message && (
+              <Alert
+                className={message.includes("Error") ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}
+              >
+                <AlertDescription className={message.includes("Error") ? "text-red-700" : "text-green-700"}>
+                  {message}
+                </AlertDescription>
+              </Alert>
             )}
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   )
 }

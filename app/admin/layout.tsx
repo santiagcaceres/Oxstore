@@ -1,43 +1,28 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { LayoutDashboard, Package, ShoppingCart, Users, Settings, LogOut, ImageIcon, Tag, Activity } from "lucide-react"
+import { LayoutDashboard, Package, ShoppingCart, Settings, LogOut, ImageIcon, Tag, Activity } from "lucide-react"
+import { useAdmin } from "@/context/admin-context"
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const { isAuthenticated, logout, isLoading } = useAdmin()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    const checkAuth = () => {
-      const adminAuth = localStorage.getItem("admin-authenticated")
-      if (adminAuth === "true") {
-        setIsAuthenticated(true)
-      } else if (pathname !== "/admin/login") {
-        router.push("/admin/login")
-      }
-      setIsLoading(false)
+    if (!isLoading && !isAuthenticated && pathname !== "/admin/login") {
+      router.push("/admin/login")
     }
-
-    checkAuth()
-  }, [pathname, router])
-
-  const handleLogout = () => {
-    localStorage.removeItem("admin-authenticated")
-    setIsAuthenticated(false)
-    router.push("/admin/login")
-  }
+  }, [isAuthenticated, isLoading, pathname, router])
 
   if (isLoading) {
     return (
@@ -61,9 +46,8 @@ export default function AdminLayout({
     { name: "Subir Imágenes", href: "/admin/productos/imagenes", icon: ImageIcon },
     { name: "Gestión Sale", href: "/admin/productos/sale", icon: Tag },
     { name: "Pedidos", href: "/admin/pedidos", icon: ShoppingCart },
-    { name: "Ventas", href: "/admin/ventas", icon: Users },
     { name: "Diagnóstico", href: "/admin/diagnostico", icon: Activity },
-    { name: "Configuración", href: "/admin/configuracion", icon: Settings },
+    { name: "Configuración", href: "/admin/banners", icon: Settings },
   ]
 
   return (
@@ -73,8 +57,9 @@ export default function AdminLayout({
         <div className="w-64 bg-black text-white min-h-screen">
           <div className="p-6">
             <div className="flex items-center gap-3 mb-8">
-              <Image src="/logo-claro.png" alt="OX Store" width={40} height={40} className="object-contain" />
-              <h1 className="text-xl font-bold">Admin Panel</h1>
+              <div className="relative h-8 w-24">
+                <Image src="/logo-claro.png" alt="OXSTORE Admin" fill className="object-contain" />
+              </div>
             </div>
 
             <nav className="space-y-2">
@@ -97,8 +82,13 @@ export default function AdminLayout({
           </div>
 
           <div className="absolute bottom-6 left-6 right-6">
+            <Link href="/" className="block mb-3">
+              <Button variant="outline" className="w-full text-white border-gray-600 hover:bg-gray-800 bg-transparent">
+                Ver Tienda →
+              </Button>
+            </Link>
             <Button
-              onClick={handleLogout}
+              onClick={logout}
               variant="outline"
               className="w-full text-white border-gray-600 hover:bg-gray-800 bg-transparent"
             >

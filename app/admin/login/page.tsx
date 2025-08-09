@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAdmin } from "@/context/admin-context"
@@ -44,7 +43,7 @@ export default function AdminLoginPage() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="relative h-12 w-32 mx-auto mb-6">
-            <Image src="/logo-oscuro.png" alt="OX Store" fill className="object-contain" />
+            <Image src="/logo-oscuro.png" alt="OXSTORE" fill className="object-contain" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Panel de Administración</h2>
           <p className="mt-2 text-sm text-gray-600">Ingresa tus credenciales para continuar</p>
