@@ -2,29 +2,47 @@
 
 import type React from "react"
 
-import { AdminProvider, useAdmin } from "@/context/admin-context"
-import { usePathname, useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useState, useEffect } from "react"
+import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { LogOut, Package, ShoppingCart, BarChart3, Settings, Activity } from "lucide-react"
+import { LayoutDashboard, Package, ShoppingCart, Users, Settings, LogOut, ImageIcon, Tag, Activity } from "lucide-react"
 
-function AdminLayoutContent({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, logout, isLoading } = useAdmin()
-  const pathname = usePathname()
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && pathname !== "/admin/login") {
-      router.push("/admin/login")
+    const checkAuth = () => {
+      const adminAuth = localStorage.getItem("admin-authenticated")
+      if (adminAuth === "true") {
+        setIsAuthenticated(true)
+      } else if (pathname !== "/admin/login") {
+        router.push("/admin/login")
+      }
+      setIsLoading(false)
     }
-  }, [isAuthenticated, isLoading, pathname, router])
+
+    checkAuth()
+  }, [pathname, router])
+
+  const handleLogout = () => {
+    localStorage.removeItem("admin-authenticated")
+    setIsAuthenticated(false)
+    router.push("/admin/login")
+  }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     )
   }
@@ -34,80 +52,65 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }
 
   if (pathname === "/admin/login") {
-    return <div className="min-h-screen bg-gray-50">{children}</div>
+    return <div className="min-h-screen bg-gray-100">{children}</div>
   }
 
   const navigation = [
-    { name: "Dashboard", href: "/admin", icon: BarChart3 },
+    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Productos", href: "/admin/productos", icon: Package },
+    { name: "Subir Imágenes", href: "/admin/productos/imagenes", icon: ImageIcon },
+    { name: "Gestión Sale", href: "/admin/productos/sale", icon: Tag },
     { name: "Pedidos", href: "/admin/pedidos", icon: ShoppingCart },
-    { name: "Ventas", href: "/admin/ventas", icon: BarChart3 },
+    { name: "Ventas", href: "/admin/ventas", icon: Users },
     { name: "Diagnóstico", href: "/admin/diagnostico", icon: Activity },
-    { name: "Configuración", href: "/admin/banners", icon: Settings },
+    { name: "Configuración", href: "/admin/configuracion", icon: Settings },
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 z-50 w-64 bg-black">
-        <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex h-16 shrink-0 items-center px-6">
-            <Link href="/admin">
-              <div className="relative h-8 w-24">
-                <Image src="/logo-claro.png" alt="OX Store Admin" fill className="object-contain" />
-              </div>
-            </Link>
-          </div>
+    <div className="min-h-screen bg-gray-100">
+      <div className="flex">
+        {/* Sidebar */}
+        <div className="w-64 bg-black text-white min-h-screen">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-8">
+              <Image src="/logo-claro.png" alt="OX Store" width={40} height={40} className="object-contain" />
+              <h1 className="text-xl font-bold">Admin Panel</h1>
+            </div>
 
-          {/* Navigation */}
-          <nav className="flex flex-1 flex-col px-6 py-4">
-            <ul className="flex flex-1 flex-col gap-y-2">
+            <nav className="space-y-2">
               {navigation.map((item) => {
                 const isActive = pathname === item.href
                 return (
-                  <li key={item.name}>
-                    <Link
-                      href={item.href}
-                      className={`group flex gap-x-3 rounded-md p-2 text-sm leading-6 font-semibold transition-colors ${
-                        isActive ? "bg-white text-black" : "text-gray-300 hover:text-white hover:bg-gray-800"
-                      }`}
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      {item.name}
-                    </Link>
-                  </li>
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                      isActive ? "bg-white text-black" : "text-gray-300 hover:text-white hover:bg-gray-800"
+                    }`}
+                  >
+                    <item.icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
                 )
               })}
-            </ul>
+            </nav>
+          </div>
 
-            {/* Logout */}
-            <div className="mt-auto">
-              <Button
-                onClick={logout}
-                variant="ghost"
-                className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800"
-              >
-                <LogOut className="h-5 w-5 mr-3" />
-                Cerrar Sesión
-              </Button>
-            </div>
-          </nav>
+          <div className="absolute bottom-6 left-6 right-6">
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="w-full text-white border-gray-600 hover:bg-gray-800 bg-transparent"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Cerrar Sesión
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Main content */}
-      <div className="pl-64">
-        <div className="px-8 py-6">{children}</div>
+        {/* Main content */}
+        <div className="flex-1 p-8">{children}</div>
       </div>
     </div>
-  )
-}
-
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AdminProvider>
-      <AdminLayoutContent>{children}</AdminLayoutContent>
-    </AdminProvider>
   )
 }
