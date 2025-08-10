@@ -2,46 +2,36 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, type ChangeEvent } from "react"
 import Image from "next/image"
-import { Edit, Trash2, Plus } from "lucide-react"
+import { Edit, Trash2, Plus, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Switch } from "@/components/ui/switch"
 
 interface Banner {
   id: string
   title: string
-  subtitle: string
   imageUrl: string
   linkUrl: string
-  position: "hero" | "promotional"
   active: boolean
 }
 
-export default function BannersPage() {
-  const [banners, setBanners] = useState<Banner[]>([
-    {
-      id: "1",
-      title: "Nueva Colección Verano",
-      subtitle: "Descubre los últimos estilos",
-      imageUrl: "/placeholder.svg?height=400&width=800&text=Banner+Verano",
-      linkUrl: "/verano",
-      position: "hero",
-      active: true,
-    },
-    {
-      id: "2",
-      title: "Ofertas Especiales",
-      subtitle: "Hasta 50% de descuento",
-      imageUrl: "/placeholder.svg?height=200&width=1200&text=Banner+Ofertas",
-      linkUrl: "/ofertas",
-      position: "promotional",
-      active: true,
-    },
-  ])
+// Mock de datos iniciales
+const initialBanners: Banner[] = [
+  {
+    id: "1",
+    title: "Nueva Colección",
+    imageUrl: "/placeholder.svg?height=400&width=1200&text=Banner+1",
+    linkUrl: "/nuevo",
+    active: true,
+  },
+]
 
+export default function BannersPage() {
+  const [banners, setBanners] = useState<Banner[]>(initialBanners)
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
@@ -59,22 +49,18 @@ export default function BannersPage() {
     setBanners(banners.filter((b) => b.id !== id))
   }
 
-  const toggleBannerStatus = (id: string) => {
-    setBanners(banners.map((b) => (b.id === id ? { ...b, active: !b.active } : b)))
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Banners</h1>
+        <h1 className="text-3xl font-bold">Gestión de Banners</h1>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-blue-950 hover:bg-blue-900" onClick={() => setEditingBanner(null)}>
+            <Button onClick={() => setEditingBanner(null)}>
               <Plus className="h-4 w-4 mr-2" />
               Nuevo Banner
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingBanner ? "Editar Banner" : "Nuevo Banner"}</DialogTitle>
             </DialogHeader>
@@ -83,57 +69,49 @@ export default function BannersPage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-6">
+      <div className="space-y-4">
         {banners.map((banner) => (
-          <div key={banner.id} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold">{banner.title}</h3>
-                <p className="text-gray-600">{banner.subtitle}</p>
-                <div className="flex items-center space-x-4 mt-2">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      banner.position === "hero" ? "bg-blue-100 text-blue-800" : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {banner.position === "hero" ? "Hero Slider" : "Banner Promocional"}
-                  </span>
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${
-                      banner.active ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {banner.active ? "Activo" : "Inactivo"}
-                  </span>
-                </div>
+          <div key={banner.id} className="bg-white rounded-lg shadow p-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="relative h-16 w-32 bg-gray-100 rounded-md overflow-hidden">
+                <Image src={banner.imageUrl || "/placeholder.svg"} alt={banner.title} fill className="object-cover" />
               </div>
-              <div className="flex space-x-2">
-                <Button variant="outline" size="sm" onClick={() => toggleBannerStatus(banner.id)}>
-                  {banner.active ? "Desactivar" : "Activar"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditingBanner(banner)
-                    setIsDialogOpen(true)
-                  }}
+              <div>
+                <h3 className="font-semibold">{banner.title}</h3>
+                <a
+                  href={banner.linkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline"
                 >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeleteBanner(banner.id)}
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                  {banner.linkUrl}
+                </a>
               </div>
             </div>
-
-            <div className="relative h-48 bg-gray-100 rounded-lg overflow-hidden">
-              <Image src={banner.imageUrl || "/placeholder.svg"} alt={banner.title} fill className="object-cover" />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center space-x-2">
+                <Label htmlFor={`active-${banner.id}`}>{banner.active ? "Activo" : "Inactivo"}</Label>
+                <Switch
+                  id={`active-${banner.id}`}
+                  checked={banner.active}
+                  onCheckedChange={(checked) =>
+                    setBanners(banners.map((b) => (b.id === banner.id ? { ...b, active: checked } : b)))
+                  }
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  setEditingBanner(banner)
+                  setIsDialogOpen(true)
+                }}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+              <Button variant="destructive" size="icon" onClick={() => handleDeleteBanner(banner.id)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         ))}
@@ -151,27 +129,41 @@ function BannerForm({
   onSave: (banner: Banner) => void
   onCancel: () => void
 }) {
-  const [formData, setFormData] = useState<Banner>(
-    banner || {
-      id: "",
-      title: "",
-      subtitle: "",
-      imageUrl: "",
-      linkUrl: "",
-      position: "hero",
-      active: true,
-    },
+  const [formData, setFormData] = useState<Omit<Banner, "id">>(
+    banner || { title: "", imageUrl: "", linkUrl: "", active: true },
   )
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    const body = new FormData()
+    body.append("file", file)
+    body.append("type", "banner")
+
+    try {
+      const response = await fetch("/api/upload-image", { method: "POST", body })
+      const { url } = await response.json()
+      setFormData({ ...formData, imageUrl: url })
+    } catch (error) {
+      console.error("Error al subir la imagen:", error)
+      alert("Error al subir la imagen.")
+    } finally {
+      setIsUploading(false)
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSave(formData)
+    onSave({ ...formData, id: banner?.id || "" })
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="title">Título</Label>
+        <Label htmlFor="title">Título del Banner</Label>
         <Input
           id="title"
           value={formData.title}
@@ -179,57 +171,47 @@ function BannerForm({
           required
         />
       </div>
-
-      <div>
-        <Label htmlFor="subtitle">Subtítulo</Label>
-        <Input
-          id="subtitle"
-          value={formData.subtitle}
-          onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="imageUrl">URL de la Imagen</Label>
-        <Input
-          id="imageUrl"
-          value={formData.imageUrl}
-          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-          placeholder="https://ejemplo.com/imagen.jpg"
-          required
-        />
-      </div>
-
       <div>
         <Label htmlFor="linkUrl">URL de Destino</Label>
         <Input
           id="linkUrl"
           value={formData.linkUrl}
           onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
-          placeholder="/categoria"
+          placeholder="/categoria/producto"
           required
         />
       </div>
-
       <div>
-        <Label htmlFor="position">Posición</Label>
-        <select
-          id="position"
-          value={formData.position}
-          onChange={(e) => setFormData({ ...formData, position: e.target.value as "hero" | "promotional" })}
-          className="w-full p-2 border rounded-md"
-        >
-          <option value="hero">Hero Slider</option>
-          <option value="promotional">Banner Promocional</option>
-        </select>
+        <Label htmlFor="image">Imagen del Banner</Label>
+        <div className="flex items-center gap-4">
+          <div className="relative h-20 w-40 bg-gray-100 rounded-md overflow-hidden">
+            {formData.imageUrl && (
+              <Image src={formData.imageUrl || "/placeholder.svg"} alt="Vista previa" fill className="object-cover" />
+            )}
+          </div>
+          <Button type="button" asChild variant="outline">
+            <label htmlFor="image-upload" className="cursor-pointer">
+              <Upload className="h-4 w-4 mr-2" />
+              {isUploading ? "Subiendo..." : "Subir Archivo"}
+            </label>
+          </Button>
+          <input
+            id="image-upload"
+            type="file"
+            className="hidden"
+            onChange={handleFileChange}
+            accept="image/*"
+            disabled={isUploading}
+          />
+        </div>
+        {isUploading && <p className="text-sm text-gray-500 mt-2">La imagen se está procesando...</p>}
       </div>
-
       <div className="flex justify-end space-x-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel}>
+        <Button type="button" variant="ghost" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit" className="bg-blue-950 hover:bg-blue-900">
-          Guardar
+        <Button type="submit" disabled={isUploading}>
+          Guardar Banner
         </Button>
       </div>
     </form>

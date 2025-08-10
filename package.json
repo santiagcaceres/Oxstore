@@ -47,6 +47,7 @@
     "embla-carousel-react": "8.5.1",
     "geist": "^1.3.1",
     "input-otp": "1.4.1",
+    "keen-slider": "latest",
     "lucide-react": "^0.454.0",
     "mercadopago": "latest",
     "next": "14.2.16",
