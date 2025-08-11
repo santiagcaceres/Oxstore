@@ -12,7 +12,10 @@ interface User {
   phone?: string
   address?: string
   city?: string
+  department?: string
   postal_code?: string
+  document_type?: string
+  document_number?: string
 }
 
 interface AuthContextType {
@@ -39,6 +42,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: currentUser.email || "",
           first_name: currentUser.user_metadata?.first_name,
           last_name: currentUser.user_metadata?.last_name,
+          phone: currentUser.user_metadata?.phone,
+          address: currentUser.user_metadata?.address,
+          city: currentUser.user_metadata?.city,
+          department: currentUser.user_metadata?.department,
+          postal_code: currentUser.user_metadata?.postal_code,
+          document_type: currentUser.user_metadata?.document_type,
+          document_number: currentUser.user_metadata?.document_number,
         })
       }
       setLoading(false)
@@ -55,6 +65,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: session.user.email || "",
             first_name: session.user.user_metadata?.first_name,
             last_name: session.user.user_metadata?.last_name,
+            phone: session.user.user_metadata?.phone,
+            address: session.user.user_metadata?.address,
+            city: session.user.user_metadata?.city,
+            department: session.user.user_metadata?.department,
+            postal_code: session.user.user_metadata?.postal_code,
+            document_type: session.user.user_metadata?.document_type,
+            document_number: session.user.user_metadata?.document_number,
           })
         } else {
           setUser(null)
@@ -76,6 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: authUser.email || "",
           first_name: authUser.user_metadata?.first_name,
           last_name: authUser.user_metadata?.last_name,
+          phone: authUser.user_metadata?.phone,
+          address: authUser.user_metadata?.address,
+          city: authUser.user_metadata?.city,
+          department: authUser.user_metadata?.department,
+          postal_code: authUser.user_metadata?.postal_code,
+          document_type: authUser.user_metadata?.document_type,
+          document_number: authUser.user_metadata?.document_number,
         })
       }
     } catch (error) {

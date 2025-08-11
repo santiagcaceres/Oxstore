@@ -12,8 +12,8 @@ import ConditionalLayout from "@/components/conditional-layout"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "OX Store - Tienda Online",
-  description: "La mejor tienda online de Argentina",
+  title: "OX Store - Tienda Online Uruguay",
+  description: "La mejor tienda online de Uruguay. Ropa y accesorios de calidad con envío a todo el país.",
   icons: {
     icon: "/favicon.png",
   },
