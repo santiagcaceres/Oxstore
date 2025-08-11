@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Search, ShoppingCart, Menu, X, User } from "lucide-react"
+import { Search, ShoppingCart, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCart } from "@/context/cart-context"
@@ -44,27 +44,28 @@ export default function Header() {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
-            <div className="relative h-10 w-24 md:h-12 md:w-32">
+            <div className="relative h-10 w-auto md:h-12">
               <Image
-                src={isScrolled ? "/logo-oscuro.png" : "/logo-oscuro.png"}
-                alt="OXSTORE"
-                fill
+                src={isScrolled ? "/logo-oscuro.png" : "/logo-claro.png"}
+                alt="OX Store"
+                width={120}
+                height={48}
                 className="object-contain"
                 priority
               />
             </div>
           </Link>
 
-          {/* Desktop Navigation */}
+          {/* Navegación Desktop */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/nuevo" className="text-black hover:text-gray-600 font-medium">
-              Nuevo
-            </Link>
             <Link href="/hombre" className="text-black hover:text-gray-600 font-medium">
               Hombre
             </Link>
             <Link href="/mujer" className="text-black hover:text-gray-600 font-medium">
               Mujer
+            </Link>
+            <Link href="/vestimenta" className="text-black hover:text-gray-600 font-medium">
+              Vestimenta
             </Link>
             <Link href="/accesorios" className="text-black hover:text-gray-600 font-medium">
               Accesorios
@@ -72,46 +73,50 @@ export default function Header() {
             <Link href="/sale" className="text-black hover:text-gray-600 font-medium">
               Sale
             </Link>
+            <Link href="/nuevo" className="text-black hover:text-gray-600 font-medium">
+              Nuevo
+            </Link>
           </nav>
 
-          {/* Search Bar */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
-            <form onSubmit={handleSearch} className="relative w-full">
-              <Input
-                type="text"
-                placeholder="Buscar productos..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            </form>
-          </div>
-
-          {/* Right Icons */}
+          {/* Buscador y Carrito */}
           <div className="flex items-center space-x-4">
-            <Link href="/perfil">
-              <Button variant="ghost" size="sm" className="text-black hover:text-gray-600">
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
+            {/* Buscador Desktop */}
+            <form onSubmit={handleSearch} className="hidden md:flex items-center">
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Buscar productos..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-64 bg-white border-gray-300 focus:border-black focus:ring-black"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black hover:bg-gray-800"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+              </div>
+            </form>
 
-            <Link href="/carrito" className="relative">
-              <Button variant="ghost" size="sm" className="text-black hover:text-gray-600">
-                <ShoppingCart className="h-5 w-5" />
+            {/* Carrito */}
+            <Link href="/carrito">
+              <Button variant="ghost" size="sm" className="relative">
+                <ShoppingCart className="h-5 w-5 text-black" />
                 {itemCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span className="absolute -top-2 -right-2 bg-black text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {itemCount}
                   </span>
                 )}
               </Button>
             </Link>
 
-            {/* Mobile Menu Button */}
+            {/* Menú Mobile */}
             <Button
               variant="ghost"
               size="sm"
-              className="md:hidden text-black"
+              className="md:hidden"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -119,31 +124,32 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Menú Mobile */}
         {isMobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200">
-            <div className="px-4 py-4 space-y-4">
-              {/* Mobile Search */}
-              <form onSubmit={handleSearch} className="relative">
-                <Input
-                  type="text"
-                  placeholder="Buscar productos..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-white border border-gray-300 rounded-full"
-                />
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <div className="md:hidden border-t border-gray-200 py-4">
+            <div className="space-y-4">
+              {/* Buscador Mobile */}
+              <form onSubmit={handleSearch} className="flex items-center">
+                <div className="relative w-full">
+                  <Input
+                    type="text"
+                    placeholder="Buscar productos..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white border-gray-300 focus:border-black focus:ring-black"
+                  />
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 bg-black hover:bg-gray-800"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
               </form>
 
-              {/* Mobile Navigation */}
+              {/* Navegación Mobile */}
               <nav className="flex flex-col space-y-2">
-                <Link
-                  href="/nuevo"
-                  className="text-black hover:text-gray-600 font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Nuevo
-                </Link>
                 <Link
                   href="/hombre"
                   className="text-black hover:text-gray-600 font-medium py-2"
@@ -159,6 +165,13 @@ export default function Header() {
                   Mujer
                 </Link>
                 <Link
+                  href="/vestimenta"
+                  className="text-black hover:text-gray-600 font-medium py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Vestimenta
+                </Link>
+                <Link
                   href="/accesorios"
                   className="text-black hover:text-gray-600 font-medium py-2"
                   onClick={() => setIsMobileMenuOpen(false)}
@@ -171,6 +184,13 @@ export default function Header() {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Sale
+                </Link>
+                <Link
+                  href="/nuevo"
+                  className="text-black hover:text-gray-600 font-medium py-2"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Nuevo
                 </Link>
               </nav>
             </div>

@@ -1,55 +1,82 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Image from "next/image"
-import Link from "next/link"
-import { useKeenSlider } from "keen-slider/react"
-import "keen-slider/keen-slider.min.css"
+import { getBrandImages } from "@/lib/supabase"
 
-type Brand = {
-  id: number
-  nombre: string
-  imageUrl: string
+interface BrandImage {
+  id: string
+  brand_id: string
+  image_url: string
+  updated_at: string
 }
 
-export default function BrandCarousel({ brands }: { brands: Brand[] }) {
-  const [sliderRef] = useKeenSlider<HTMLDivElement>({
-    loop: true,
-    slides: {
-      perView: 2,
-      spacing: 15,
-    },
-    breakpoints: {
-      "(min-width: 768px)": {
-        slides: { perView: 4, spacing: 20 },
-      },
-      "(min-width: 1024px)": {
-        slides: { perView: 6, spacing: 25 },
-      },
-    },
-  })
+export default function BrandCarousel() {
+  const [brandImages, setBrandImages] = useState<BrandImage[]>([])
+  const [loading, setLoading] = useState(true)
 
-  if (!brands || brands.length === 0) {
+  useEffect(() => {
+    loadBrandImages()
+  }, [])
+
+  const loadBrandImages = async () => {
+    try {
+      const images = await getBrandImages()
+      setBrandImages(images)
+    } catch (error) {
+      console.error("Error loading brand images:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading || brandImages.length === 0) {
     return null
   }
 
   return (
-    <div ref={sliderRef} className="keen-slider">
-      {brands.map((brand) => (
-        <div key={brand.id} className="keen-slider__slide">
-          <Link href={`/marcas/${encodeURIComponent(brand.nombre)}`} className="group block">
-            <div className="aspect-video flex items-center justify-center bg-gray-100 rounded-lg p-4 transition-all duration-300 hover:shadow-md">
-              <div className="relative h-16 w-full">
-                <Image
-                  src={brand.imageUrl || "/placeholder.svg"}
-                  alt={`Logo de ${brand.nombre}`}
-                  fill
-                  className="object-contain grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all"
-                />
+    <section className="py-12 bg-white">
+      <div className="container mx-auto px-4">
+        <h2 className="text-2xl font-bold text-center mb-8 text-black">Nuestras Marcas</h2>
+
+        <div className="relative overflow-hidden">
+          <div className="flex animate-scroll">
+            {/* Primera vuelta */}
+            {brandImages.map((brand, index) => (
+              <div
+                key={`first-${brand.id}-${index}`}
+                className="flex-shrink-0 w-32 h-20 mx-4 bg-white rounded-lg shadow-sm border flex items-center justify-center hover:shadow-md transition-shadow"
+              >
+                <div className="relative w-24 h-16">
+                  <Image
+                    src={brand.image_url || "/placeholder.svg"}
+                    alt="Marca"
+                    fill
+                    className="object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
+                  />
+                </div>
               </div>
-            </div>
-          </Link>
+            ))}
+
+            {/* Segunda vuelta para animación infinita */}
+            {brandImages.map((brand, index) => (
+              <div
+                key={`second-${brand.id}-${index}`}
+                className="flex-shrink-0 w-32 h-20 mx-4 bg-white rounded-lg shadow-sm border flex items-center justify-center hover:shadow-md transition-shadow"
+              >
+                <div className="relative w-24 h-16">
+                  <Image
+                    src={brand.image_url || "/placeholder.svg"}
+                    alt="Marca"
+                    fill
+                    className="object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      ))}
-    </div>
+      </div>
+    </section>
   )
 }

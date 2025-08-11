@@ -1,34 +1,35 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import type React from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 
 interface AdminContextType {
   isAuthenticated: boolean
   login: (email: string, password: string) => boolean
   logout: () => void
-  isLoading: boolean
+  loading: boolean
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined)
 
-export function AdminProvider({ children }: { children: ReactNode }) {
+export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is already logged in
-    const adminAuth = localStorage.getItem("admin-authenticated")
-    if (adminAuth === "true") {
+    // Verificar si hay una sesión guardada
+    const savedAuth = localStorage.getItem("admin_authenticated")
+    if (savedAuth === "true") {
       setIsAuthenticated(true)
     }
-    setIsLoading(false)
+    setLoading(false)
   }, [])
 
-  const login = (email: string, password: string): boolean => {
-    // Simple authentication - in production, this should be more secure
+  const login = (email: string, password: string) => {
+    // Credenciales de prueba
     if (email === "admin@oxstore.com" && password === "admin123") {
       setIsAuthenticated(true)
-      localStorage.setItem("admin-authenticated", "true")
+      localStorage.setItem("admin_authenticated", "true")
       return true
     }
     return false
@@ -36,10 +37,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setIsAuthenticated(false)
-    localStorage.removeItem("admin-authenticated")
+    localStorage.removeItem("admin_authenticated")
   }
 
-  return <AdminContext.Provider value={{ isAuthenticated, login, logout, isLoading }}>{children}</AdminContext.Provider>
+  return <AdminContext.Provider value={{ isAuthenticated, login, logout, loading }}>{children}</AdminContext.Provider>
 }
 
 export function useAdmin() {

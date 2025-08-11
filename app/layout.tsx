@@ -4,14 +4,16 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { CartProvider } from "@/context/cart-context"
 import { AdminProvider } from "@/context/admin-context"
+import { AuthProvider } from "@/context/auth-context"
 import { OrderProvider } from "@/context/order-context"
+import { ThemeProvider } from "@/components/theme-provider"
 import ConditionalLayout from "@/components/conditional-layout"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "OXSTORE - Tienda de Ropa Online",
-  description: "La mejor tienda de ropa online con las últimas tendencias en moda",
+  title: "OX Store - Tienda Online",
+  description: "La mejor tienda online de Argentina",
   icons: {
     icon: "/favicon.png",
   },
@@ -26,13 +28,17 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={inter.className}>
-        <AdminProvider>
-          <CartProvider>
-            <OrderProvider>
-              <ConditionalLayout>{children}</ConditionalLayout>
-            </OrderProvider>
-          </CartProvider>
-        </AdminProvider>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <AuthProvider>
+            <AdminProvider>
+              <CartProvider>
+                <OrderProvider>
+                  <ConditionalLayout>{children}</ConditionalLayout>
+                </OrderProvider>
+              </CartProvider>
+            </AdminProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
