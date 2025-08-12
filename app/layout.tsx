@@ -29,15 +29,15 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <AuthProvider>
-            <AdminProvider>
+          <AdminProvider>
+            <AuthProvider>
               <CartProvider>
                 <OrderProvider>
                   <ConditionalLayout>{children}</ConditionalLayout>
                 </OrderProvider>
               </CartProvider>
-            </AdminProvider>
-          </AuthProvider>
+            </AuthProvider>
+          </AdminProvider>
         </ThemeProvider>
       </body>
     </html>

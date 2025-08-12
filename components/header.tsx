@@ -5,18 +5,82 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Search, ShoppingCart, Menu, X } from "lucide-react"
+import { Search, ShoppingCart, Menu, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCart } from "@/context/cart-context"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+
+interface Brand {
+  id: number
+  descripcion: string
+}
+
+interface Category {
+  name: string
+  href: string
+  subcategories?: { name: string; href: string }[]
+}
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [brands, setBrands] = useState<Brand[]>([])
   const { state } = useCart()
 
   const itemCount = state.items.reduce((total, item) => total + item.quantity, 0)
+
+  const categories: Category[] = [
+    {
+      name: "Hombre",
+      href: "/hombre",
+    },
+    {
+      name: "Mujer",
+      href: "/mujer",
+    },
+    {
+      name: "Vestimenta",
+      href: "/vestimenta",
+      subcategories: [
+        { name: "Remeras", href: "/vestimenta/remeras" },
+        { name: "Buzos", href: "/vestimenta/buzos" },
+        { name: "Pantalones", href: "/vestimenta/pantalones" },
+        { name: "Camperas", href: "/vestimenta/camperas" },
+        { name: "Vestidos", href: "/vestimenta/vestidos" },
+        { name: "Faldas", href: "/vestimenta/faldas" },
+      ],
+    },
+    {
+      name: "Accesorios",
+      href: "/accesorios",
+    },
+    {
+      name: "Sale",
+      href: "/sale",
+    },
+    {
+      name: "Nuevo",
+      href: "/nuevo",
+    },
+  ]
+
+  useEffect(() => {
+    const fetchBrands = async () => {
+      try {
+        const response = await fetch("/api/zureo/brands")
+        if (response.ok) {
+          const data = await response.json()
+          setBrands(data.brands || [])
+        }
+      } catch (error) {
+        console.error("Error fetching brands:", error)
+      }
+    }
+
+    fetchBrands()
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -46,7 +110,7 @@ export default function Header() {
           <Link href="/" className="flex-shrink-0">
             <div className="relative h-10 w-auto md:h-12">
               <Image
-                src={isScrolled ? "/logo-oscuro.png" : "/logo-claro.png"}
+                src="/logo-oscuro.png"
                 alt="OX Store"
                 width={120}
                 height={48}
@@ -57,25 +121,55 @@ export default function Header() {
           </Link>
 
           {/* Navegación Desktop */}
-          <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/hombre" className="text-black hover:text-gray-600 font-medium">
-              Hombre
-            </Link>
-            <Link href="/mujer" className="text-black hover:text-gray-600 font-medium">
-              Mujer
-            </Link>
-            <Link href="/vestimenta" className="text-black hover:text-gray-600 font-medium">
-              Vestimenta
-            </Link>
-            <Link href="/accesorios" className="text-black hover:text-gray-600 font-medium">
-              Accesorios
-            </Link>
-            <Link href="/sale" className="text-black hover:text-gray-600 font-medium">
-              Sale
-            </Link>
-            <Link href="/nuevo" className="text-black hover:text-gray-600 font-medium">
-              Nuevo
-            </Link>
+          <nav className="hidden md:flex items-center space-x-6">
+            {categories.map((category) => (
+              <div key={category.name}>
+                {category.subcategories ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="text-black hover:text-gray-600 font-medium flex items-center">
+                        {category.name}
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem asChild>
+                        <Link href={category.href}>Ver Todo</Link>
+                      </DropdownMenuItem>
+                      {category.subcategories.map((sub) => (
+                        <DropdownMenuItem key={sub.name} asChild>
+                          <Link href={sub.href}>{sub.name}</Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <Link href={category.href} className="text-black hover:text-gray-600 font-medium">
+                    {category.name}
+                  </Link>
+                )}
+              </div>
+            ))}
+
+            {brands.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="text-black hover:text-gray-600 font-medium flex items-center">
+                    Marcas
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-64 overflow-y-auto">
+                  {brands.slice(0, 20).map((brand) => (
+                    <DropdownMenuItem key={brand.id} asChild>
+                      <Link href={`/marcas/${encodeURIComponent(brand.descripcion.toLowerCase())}`}>
+                        {brand.descripcion}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </nav>
 
           {/* Buscador y Carrito */}
@@ -150,48 +244,49 @@ export default function Header() {
 
               {/* Navegación Mobile */}
               <nav className="flex flex-col space-y-2">
-                <Link
-                  href="/hombre"
-                  className="text-black hover:text-gray-600 font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Hombre
-                </Link>
-                <Link
-                  href="/mujer"
-                  className="text-black hover:text-gray-600 font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Mujer
-                </Link>
-                <Link
-                  href="/vestimenta"
-                  className="text-black hover:text-gray-600 font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Vestimenta
-                </Link>
-                <Link
-                  href="/accesorios"
-                  className="text-black hover:text-gray-600 font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Accesorios
-                </Link>
-                <Link
-                  href="/sale"
-                  className="text-black hover:text-gray-600 font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Sale
-                </Link>
-                <Link
-                  href="/nuevo"
-                  className="text-black hover:text-gray-600 font-medium py-2"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Nuevo
-                </Link>
+                {categories.map((category) => (
+                  <div key={category.name}>
+                    <Link
+                      href={category.href}
+                      className="text-black hover:text-gray-600 font-medium py-2 block"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {category.name}
+                    </Link>
+                    {category.subcategories && (
+                      <div className="ml-4 space-y-1">
+                        {category.subcategories.map((sub) => (
+                          <Link
+                            key={sub.name}
+                            href={sub.href}
+                            className="text-gray-600 hover:text-black text-sm py-1 block"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                          >
+                            {sub.name}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {brands.length > 0 && (
+                  <div>
+                    <div className="text-black font-medium py-2">Marcas</div>
+                    <div className="ml-4 space-y-1 max-h-32 overflow-y-auto">
+                      {brands.slice(0, 10).map((brand) => (
+                        <Link
+                          key={brand.id}
+                          href={`/marcas/${encodeURIComponent(brand.descripcion.toLowerCase())}`}
+                          className="text-gray-600 hover:text-black text-sm py-1 block"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          {brand.descripcion}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </nav>
             </div>
           </div>
