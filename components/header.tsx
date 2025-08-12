@@ -12,8 +12,11 @@ import { useCart } from "@/context/cart-context"
 interface ZureoBrand {
   id: string
   nombre: string
+  name: string
   descripcion?: string
+  description?: string
   activo: boolean
+  active: boolean
 }
 
 interface Category {
@@ -26,6 +29,7 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [brands, setBrands] = useState<ZureoBrand[]>([])
+  const [brandsLoading, setBrandsLoading] = useState(true)
   const { state } = useCart()
 
   const itemCount = state.items.reduce((total, item) => total + item.quantity, 0)
@@ -60,13 +64,18 @@ export default function Header() {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
+        setBrandsLoading(true)
         const response = await fetch("/api/zureo/brands")
         if (response.ok) {
           const data = await response.json()
           setBrands(data || [])
+        } else {
+          console.error("Error fetching brands:", response.status)
         }
       } catch (error) {
         console.error("Error fetching brands:", error)
+      } finally {
+        setBrandsLoading(false)
       }
     }
 
@@ -88,6 +97,14 @@ export default function Header() {
       window.location.href = `/buscar?q=${encodeURIComponent(searchQuery.trim())}`
     }
   }
+
+  const activeBrands = brands
+    .filter((brand) => brand.activo || brand.active)
+    .map((brand) => ({
+      ...brand,
+      displayName: brand.nombre || brand.name,
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName))
 
   return (
     <header
@@ -129,44 +146,49 @@ export default function Header() {
               </Link>
             ))}
 
-            {brands.length > 0 && (
-              <div className="relative group h-full flex items-center">
-                <button
-                  className={`font-medium flex items-center py-2 transition-colors relative ${
-                    isScrolled ? "text-white hover:text-gray-300" : "text-black hover:text-gray-600"
+            <div className="relative group h-full flex items-center">
+              <button
+                className={`font-medium flex items-center py-2 transition-colors relative ${
+                  isScrolled ? "text-white hover:text-gray-300" : "text-black hover:text-gray-600"
+                }`}
+              >
+                Marcas
+                <ChevronDown className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180" />
+                <span
+                  className={`absolute -bottom-1 left-0 w-0 h-0.5 transition-all group-hover:w-full ${
+                    isScrolled ? "bg-white" : "bg-black"
                   }`}
-                >
-                  Marcas
-                  <ChevronDown className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180" />
-                  <span
-                    className={`absolute -bottom-1 left-0 w-0 h-0.5 transition-all group-hover:w-full ${
-                      isScrolled ? "bg-white" : "bg-black"
-                    }`}
-                  ></span>
-                </button>
+                ></span>
+              </button>
 
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-                  <div className="max-h-96 overflow-y-auto py-3">
-                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">
-                      Todas las Marcas ({brands.length})
-                    </div>
-                    {brands
-                      .filter((brand) => brand.activo)
-                      .sort((a, b) => a.nombre.localeCompare(b.nombre))
-                      .map((brand) => (
-                        <Link
-                          key={brand.id}
-                          href={`/marcas/${encodeURIComponent(brand.nombre.toLowerCase())}`}
-                          className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-gray-50 last:border-b-0"
-                        >
-                          <div className="font-medium">{brand.nombre}</div>
-                          {brand.descripcion && <div className="text-xs text-gray-500 mt-1">{brand.descripcion}</div>}
-                        </Link>
-                      ))}
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                <div className="max-h-96 overflow-y-auto py-3">
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">
+                    {brandsLoading ? "Cargando marcas..." : `Todas las Marcas (${activeBrands.length})`}
                   </div>
+                  {brandsLoading ? (
+                    <div className="px-4 py-8 text-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black mx-auto"></div>
+                    </div>
+                  ) : activeBrands.length > 0 ? (
+                    activeBrands.map((brand) => (
+                      <Link
+                        key={brand.id}
+                        href={`/marcas/${encodeURIComponent(brand.displayName.toLowerCase())}`}
+                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-gray-50 last:border-b-0"
+                      >
+                        <div className="font-medium">{brand.displayName}</div>
+                        {(brand.descripcion || brand.description) && (
+                          <div className="text-xs text-gray-500 mt-1">{brand.descripcion || brand.description}</div>
+                        )}
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="px-4 py-8 text-center text-gray-500 text-sm">No hay marcas disponibles</div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
           </nav>
 
           {/* Controles derechos */}
@@ -268,34 +290,30 @@ export default function Header() {
                   </Link>
                 ))}
 
-                {brands.length > 0 && (
+                {activeBrands.length > 0 && (
                   <div className={`border-t pt-4 mt-4 ${isScrolled ? "border-gray-700" : "border-gray-200"}`}>
                     <div
                       className={`font-semibold py-2 px-4 text-sm uppercase tracking-wide ${
                         isScrolled ? "text-white" : "text-black"
                       }`}
                     >
-                      Marcas ({brands.filter((b) => b.activo).length})
+                      Marcas ({activeBrands.length})
                     </div>
                     <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {brands
-                        .filter((brand) => brand.activo)
-                        .sort((a, b) => a.nombre.localeCompare(b.nombre))
-                        .slice(0, 20)
-                        .map((brand) => (
-                          <Link
-                            key={brand.id}
-                            href={`/marcas/${encodeURIComponent(brand.nombre.toLowerCase())}`}
-                            className={`block text-sm py-2 px-6 rounded-lg transition-colors ${
-                              isScrolled
-                                ? "text-gray-300 hover:text-white hover:bg-gray-800"
-                                : "text-gray-600 hover:text-black hover:bg-gray-50"
-                            }`}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                          >
-                            {brand.nombre}
-                          </Link>
-                        ))}
+                      {activeBrands.slice(0, 20).map((brand) => (
+                        <Link
+                          key={brand.id}
+                          href={`/marcas/${encodeURIComponent(brand.displayName.toLowerCase())}`}
+                          className={`block text-sm py-2 px-6 rounded-lg transition-colors ${
+                            isScrolled
+                              ? "text-gray-300 hover:text-white hover:bg-gray-800"
+                              : "text-gray-600 hover:text-black hover:bg-gray-50"
+                          }`}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          {brand.displayName}
+                        </Link>
+                      ))}
                     </div>
                   </div>
                 )}

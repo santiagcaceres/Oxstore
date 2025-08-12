@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Upload, Search, ImageIcon, Trash2, ExternalLink } from "lucide-react"
+import { Upload, Search, ImageIcon, Trash2, ExternalLink, AlertCircle } from "lucide-react"
 import Image from "next/image"
 
 interface Brand {
@@ -23,6 +23,7 @@ export default function MarcasPage() {
   const [filteredBrands, setFilteredBrands] = useState<Brand[]>([])
   const [brandImages, setBrandImages] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [uploadingBrand, setUploadingBrand] = useState<string | null>(null)
 
@@ -38,11 +39,23 @@ export default function MarcasPage() {
   const loadBrands = async () => {
     try {
       setLoading(true)
+      setError(null)
       const response = await fetch("/api/zureo/brands")
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`)
+      }
+
       const data = await response.json()
-      setBrands(data)
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      setBrands(data || [])
     } catch (error) {
       console.error("Error loading brands:", error)
+      setError(error instanceof Error ? error.message : "Error desconocido al cargar marcas")
     } finally {
       setLoading(false)
     }
@@ -51,8 +64,10 @@ export default function MarcasPage() {
   const loadBrandImages = async () => {
     try {
       const response = await fetch("/api/brand-images")
-      const data = await response.json()
-      setBrandImages(data)
+      if (response.ok) {
+        const data = await response.json()
+        setBrandImages(data)
+      }
     } catch (error) {
       console.error("Error loading brand images:", error)
     }
@@ -137,6 +152,30 @@ export default function MarcasPage() {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Gestión de Marcas</h1>
+        </div>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 text-red-700">
+              <AlertCircle className="h-5 w-5" />
+              <div>
+                <h3 className="font-semibold">Error al cargar marcas</h3>
+                <p className="text-sm mt-1">{error}</p>
+                <Button variant="outline" size="sm" className="mt-3 bg-transparent" onClick={loadBrands}>
+                  Reintentar
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }

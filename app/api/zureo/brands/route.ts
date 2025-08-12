@@ -5,12 +5,13 @@ export async function GET() {
   try {
     const brands = await getBrandsFromZureo()
 
-    // Transformar datos para incluir información adicional
     const transformedBrands = brands.map((brand: any) => ({
-      id: brand.id || brand.name,
-      name: brand.name,
-      description: brand.description || "",
-      active: brand.active !== false,
+      id: brand.id || brand.nombre || brand.name,
+      name: brand.nombre || brand.name,
+      nombre: brand.nombre || brand.name, // Para compatibilidad con el header
+      description: brand.descripcion || brand.description || "",
+      active: brand.activo !== false && brand.active !== false,
+      activo: brand.activo !== false && brand.active !== false, // Para compatibilidad con el header
       productCount: brand.productCount || 0,
     }))
 
