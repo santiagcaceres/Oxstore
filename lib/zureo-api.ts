@@ -175,6 +175,24 @@ export async function getProductImages(id: string, varId?: string): Promise<any[
   }
 }
 
+export async function getZureoProducts(
+  params: { emp?: number; qty?: number; from?: number; date?: string; includeInactive?: boolean } = {},
+): Promise<{ success: boolean; data: ZureoProduct[] }> {
+  try {
+    const products = await getProductsFromZureo(params)
+    return {
+      success: true,
+      data: products,
+    }
+  } catch (error) {
+    console.error("Error in getZureoProducts:", error)
+    return {
+      success: false,
+      data: [],
+    }
+  }
+}
+
 // --- Funciones para Empresas ---
 export async function getCompaniesFromZureo(): Promise<any> {
   const result = await zureoFetch("/sdk/v1/company/all")

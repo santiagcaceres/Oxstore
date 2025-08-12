@@ -61,52 +61,15 @@ export default function ZureoApiPanel() {
     }))
 
     try {
-      let url = `/api/zureo${endpoint}`
-
-      if (endpoint === "/products-with-stock" || endpoint === "/products-with-brand-and-stock") {
-        url = `/api/zureo/products`
-      }
-
+      const url = `/api/zureo${endpoint}`
       const queryString = new URLSearchParams(params).toString()
-      if (queryString) {
-        url += `?${queryString}`
-      }
+      const finalUrl = queryString ? `${url}?${queryString}` : url
 
-      const response = await fetch(url)
+      const response = await fetch(finalUrl)
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.error || `HTTP ${response.status}`)
-      }
-
-      let filteredData = data
-
-      if (endpoint === "/products-with-stock" && data.success && Array.isArray(data.data)) {
-        const productsWithStock = data.data.filter((product: any) => product.stock > 0)
-        const productObjects = createProductObjects(productsWithStock)
-
-        filteredData = {
-          ...data,
-          data: productObjects,
-          message: `Productos con stock > 0: ${productsWithStock.length} de ${data.data.length} productos`,
-          totalProducts: data.data.length,
-          productsWithStock: productsWithStock.length,
-        }
-      }
-
-      if (endpoint === "/products-with-brand-and-stock" && data.success && Array.isArray(data.data)) {
-        const productsWithBrandAndStock = data.data.filter(
-          (product: any) => product.stock > 0 && product.marca && product.marca.id > 0 && product.marca.nombre !== null,
-        )
-        const productObjects = createProductObjects(productsWithBrandAndStock)
-
-        filteredData = {
-          ...data,
-          data: productObjects,
-          message: `Productos con marca y stock > 0: ${productsWithBrandAndStock.length} de ${data.data.length} productos`,
-          totalProducts: data.data.length,
-          productsWithBrandAndStock: productsWithBrandAndStock.length,
-        }
       }
 
       setResults((prev) => ({
@@ -114,7 +77,7 @@ export default function ZureoApiPanel() {
         [key]: {
           endpoint,
           status: "success",
-          data: filteredData,
+          data,
           timestamp: new Date().toLocaleTimeString(),
         },
       }))

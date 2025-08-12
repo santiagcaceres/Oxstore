@@ -12,8 +12,18 @@ export async function GET() {
       })
     }
 
-    const productsWithStock = response.data
-      .filter((product: any) => product.stock > 0)
+    const productsWithBrandAndStock = response.data
+      .filter((product: any) => {
+        const hasStock = product.stock > 0
+        const hasBrand =
+          product.marca &&
+          product.marca.id > 0 &&
+          product.marca.nombre !== null &&
+          product.marca.nombre !== undefined &&
+          product.marca.nombre.trim() !== ""
+
+        return hasStock && hasBrand
+      })
       .map((product: any) => ({
         id: product.id,
         codigo: product.codigo,
@@ -21,8 +31,8 @@ export async function GET() {
         stock: product.stock,
         precio: product.precio,
         marca: {
-          id: product.marca?.id || 0,
-          nombre: product.marca?.nombre || null,
+          id: product.marca.id,
+          nombre: product.marca.nombre,
         },
         tipo: product.tipo || { id: 0, nombre: "Sin tipo" },
         variedades: product.variedades || [],
@@ -36,14 +46,14 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      data: productsWithStock,
-      message: `Productos con stock > 0: ${productsWithStock.length} de ${response.data.length} productos`,
+      data: productsWithBrandAndStock,
+      message: `Productos con marca y stock > 0: ${productsWithBrandAndStock.length} de ${response.data.length} productos`,
       totalProducts: response.data.length,
-      productsWithStock: productsWithStock.length,
-      totalStockValue: productsWithStock.reduce((sum: number, p: any) => sum + p.stock * p.precio, 0),
+      productsWithBrandAndStock: productsWithBrandAndStock.length,
+      totalStockValue: productsWithBrandAndStock.reduce((sum: number, p: any) => sum + p.stock * p.precio, 0),
     })
   } catch (error) {
-    console.error("Error filtering products with stock:", error)
+    console.error("Error filtering products with brand and stock:", error)
     return NextResponse.json(
       {
         success: false,
