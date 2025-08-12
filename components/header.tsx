@@ -9,7 +9,6 @@ import { Search, ShoppingCart, Menu, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCart } from "@/context/cart-context"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 interface Brand {
   id: number
@@ -19,7 +18,6 @@ interface Brand {
 interface Category {
   name: string
   href: string
-  subcategories?: { name: string; href: string }[]
 }
 
 export default function Header() {
@@ -39,18 +37,6 @@ export default function Header() {
     {
       name: "Mujer",
       href: "/mujer",
-    },
-    {
-      name: "Vestimenta",
-      href: "/vestimenta",
-      subcategories: [
-        { name: "Remeras", href: "/vestimenta/remeras" },
-        { name: "Buzos", href: "/vestimenta/buzos" },
-        { name: "Pantalones", href: "/vestimenta/pantalones" },
-        { name: "Camperas", href: "/vestimenta/camperas" },
-        { name: "Vestidos", href: "/vestimenta/vestidos" },
-        { name: "Faldas", href: "/vestimenta/faldas" },
-      ],
     },
     {
       name: "Accesorios",
@@ -123,52 +109,33 @@ export default function Header() {
           {/* Navegación Desktop */}
           <nav className="hidden md:flex items-center space-x-6">
             {categories.map((category) => (
-              <div key={category.name}>
-                {category.subcategories ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="text-black hover:text-gray-600 font-medium flex items-center">
-                        {category.name}
-                        <ChevronDown className="ml-1 h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuItem asChild>
-                        <Link href={category.href}>Ver Todo</Link>
-                      </DropdownMenuItem>
-                      {category.subcategories.map((sub) => (
-                        <DropdownMenuItem key={sub.name} asChild>
-                          <Link href={sub.href}>{sub.name}</Link>
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <Link href={category.href} className="text-black hover:text-gray-600 font-medium">
-                    {category.name}
-                  </Link>
-                )}
-              </div>
+              <Link key={category.name} href={category.href} className="text-black hover:text-gray-600 font-medium">
+                {category.name}
+              </Link>
             ))}
 
             {brands.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="text-black hover:text-gray-600 font-medium flex items-center">
-                    Marcas
-                    <ChevronDown className="ml-1 h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="max-h-64 overflow-y-auto">
-                  {brands.slice(0, 20).map((brand) => (
-                    <DropdownMenuItem key={brand.id} asChild>
-                      <Link href={`/marcas/${encodeURIComponent(brand.descripcion.toLowerCase())}`}>
+              <div className="relative group">
+                <button className="text-black hover:text-gray-600 font-medium flex items-center py-2">
+                  Marcas
+                  <ChevronDown className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180" />
+                </button>
+
+                {/* Dropdown con hover */}
+                <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <div className="max-h-80 overflow-y-auto py-2">
+                    {brands.map((brand) => (
+                      <Link
+                        key={brand.id}
+                        href={`/marcas/${encodeURIComponent(brand.descripcion.toLowerCase())}`}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-black transition-colors"
+                      >
                         {brand.descripcion}
                       </Link>
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    ))}
+                  </div>
+                </div>
+              </div>
             )}
           </nav>
 
@@ -245,29 +212,14 @@ export default function Header() {
               {/* Navegación Mobile */}
               <nav className="flex flex-col space-y-2">
                 {categories.map((category) => (
-                  <div key={category.name}>
-                    <Link
-                      href={category.href}
-                      className="text-black hover:text-gray-600 font-medium py-2 block"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      {category.name}
-                    </Link>
-                    {category.subcategories && (
-                      <div className="ml-4 space-y-1">
-                        {category.subcategories.map((sub) => (
-                          <Link
-                            key={sub.name}
-                            href={sub.href}
-                            className="text-gray-600 hover:text-black text-sm py-1 block"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                          >
-                            {sub.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <Link
+                    key={category.name}
+                    href={category.href}
+                    className="text-black hover:text-gray-600 font-medium py-2 block"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {category.name}
+                  </Link>
                 ))}
 
                 {brands.length > 0 && (

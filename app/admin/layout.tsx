@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { useAdmin } from "@/context/admin-context"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
@@ -25,19 +24,26 @@ import { Button } from "@/components/ui/button"
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, logout, loading } = useAdmin()
   const router = useRouter()
+  const pathname = usePathname()
+
+  const isLoginPage = pathname === "/admin/login"
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!loading && !isAuthenticated && !isLoginPage) {
       router.push("/admin/login")
     }
-  }, [isAuthenticated, loading, router])
+  }, [isAuthenticated, loading, router, isLoginPage])
 
-  if (loading) {
+  if (loading && !isLoginPage) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
       </div>
     )
+  }
+
+  if (isLoginPage) {
+    return <>{children}</>
   }
 
   if (!isAuthenticated) {
