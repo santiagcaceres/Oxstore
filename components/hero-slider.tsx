@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 const slides = [
@@ -31,6 +30,18 @@ const slides = [
     link: "/marcas",
   },
 ]
+
+const ChevronLeft = () => (
+  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+  </svg>
+)
+
+const ChevronRight = () => (
+  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+  </svg>
+)
 
 export default function HeroSlider() {
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -87,7 +98,7 @@ export default function HeroSlider() {
         className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
         aria-label="Slide anterior"
       >
-        <ChevronLeft className="h-6 w-6" />
+        <ChevronLeft />
       </button>
 
       <button
@@ -95,7 +106,7 @@ export default function HeroSlider() {
         className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-75 transition-all"
         aria-label="Siguiente slide"
       >
-        <ChevronRight className="h-6 w-6" />
+        <ChevronRight />
       </button>
 
       {/* Dots indicator */}
