@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, CheckCircle, Loader2, Play } from "lucide-react"
+import { AlertCircle, CheckCircle, Loader2, Play, Database } from "lucide-react"
 
 interface ApiResult {
   endpoint: string
@@ -82,11 +82,18 @@ export default function ZureoApiPanel() {
 
   const endpoints = [
     {
-      category: "Autenticación",
-      items: [{ name: "Test Token", endpoint: "/test-token", description: "Verificar token de autenticación" }],
+      category: "🔐 Autenticación",
+      items: [
+        {
+          name: "Test Token",
+          endpoint: "/test-token",
+          description: "Verificar token de autenticación",
+          critical: true,
+        },
+      ],
     },
     {
-      category: "Productos",
+      category: "📦 Productos",
       items: [
         { name: "Todos los Productos", endpoint: "/products", description: "Obtener todos los productos" },
         {
@@ -107,26 +114,33 @@ export default function ZureoApiPanel() {
       ],
     },
     {
-      category: "Marcas",
-      items: [{ name: "Todas las Marcas", endpoint: "/brands", description: "Obtener todas las marcas" }],
+      category: "🏷️ Marcas",
+      items: [
+        {
+          name: "Todas las Marcas",
+          endpoint: "/brands",
+          description: "Obtener todas las marcas",
+          critical: true,
+        },
+      ],
     },
     {
-      category: "Empresas",
+      category: "🏢 Empresas",
       items: [
         { name: "Todas las Empresas", endpoint: "/companies", description: "Obtener todas las empresas" },
         { name: "Empresa por ID", endpoint: "/companies/1", description: "Obtener empresa específica" },
       ],
     },
     {
-      category: "Tipos de Producto",
+      category: "📋 Tipos de Producto",
       items: [{ name: "Tipos de Producto", endpoint: "/product-types", description: "Obtener tipos de producto" }],
     },
     {
-      category: "Precios",
+      category: "💰 Precios",
       items: [{ name: "Lista de Precios", endpoint: "/prices", description: "Obtener lista de precios" }],
     },
     {
-      category: "Pagos y Envíos",
+      category: "💳 Pagos y Envíos",
       items: [
         { name: "Métodos de Pago", endpoint: "/payment-methods", description: "Métodos de pago disponibles" },
         { name: "Métodos de Envío", endpoint: "/shipping-methods", description: "Métodos de envío disponibles" },
@@ -134,7 +148,7 @@ export default function ZureoApiPanel() {
       ],
     },
     {
-      category: "Stock",
+      category: "📊 Stock",
       items: [
         {
           name: "Stock por Sucursal",
@@ -185,8 +199,31 @@ export default function ZureoApiPanel() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Panel de API Zureo</h1>
-        <p className="text-muted-foreground">Prueba todos los endpoints de la API de Zureo</p>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Database className="h-8 w-8" />
+          Panel de API Zureo
+        </h1>
+        <p className="text-muted-foreground">
+          Prueba todos los endpoints de la API de Zureo y verifica errores específicos
+        </p>
+
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 className="font-semibold text-blue-900 mb-2">Credenciales Configuradas:</h3>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <strong>Usuario:</strong> patricia_saura@hotmail.com
+            </div>
+            <div>
+              <strong>Dominio:</strong> 020128150011
+            </div>
+            <div>
+              <strong>Company ID:</strong> 1
+            </div>
+            <div>
+              <strong>Contraseña:</strong> ••••••
+            </div>
+          </div>
+        </div>
       </div>
 
       <Tabs defaultValue="endpoints" className="w-full">
@@ -205,17 +242,28 @@ export default function ZureoApiPanel() {
               <CardContent>
                 <div className="grid gap-3">
                   {category.items.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between p-3 border rounded">
+                    <div
+                      key={item.name}
+                      className={`flex items-center justify-between p-3 border rounded ${(item as any).critical ? "border-orange-300 bg-orange-50" : ""}`}
+                    >
                       <div>
-                        <h4 className="font-medium">{item.name}</h4>
+                        <h4 className="font-medium flex items-center gap-2">
+                          {item.name}
+                          {(item as any).critical && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-300">
+                              Crítico
+                            </Badge>
+                          )}
+                        </h4>
                         <p className="text-sm text-muted-foreground">{item.description}</p>
                         <code className="text-xs bg-gray-100 px-2 py-1 rounded">{item.endpoint}</code>
                       </div>
                       <Button
-                        onClick={() => executeEndpoint(item.endpoint, item.params)}
+                        onClick={() => executeEndpoint(item.endpoint, (item as any).params)}
                         size="sm"
                         disabled={
-                          results[`${item.endpoint}-${JSON.stringify(item.params || {})}`]?.status === "loading"
+                          results[`${item.endpoint}-${JSON.stringify((item as any).params || {})}`]?.status ===
+                          "loading"
                         }
                       >
                         <Play className="h-4 w-4 mr-1" />
@@ -240,7 +288,7 @@ export default function ZureoApiPanel() {
                 <Label htmlFor="endpoint">Endpoint</Label>
                 <Input
                   id="endpoint"
-                  placeholder="/sdk/v1/product/all"
+                  placeholder="/test-token"
                   value={customEndpoint}
                   onChange={(e) => setCustomEndpoint(e.target.value)}
                 />
