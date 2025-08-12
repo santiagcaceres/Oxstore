@@ -14,8 +14,43 @@ interface ApiResult {
   timestamp?: string
 }
 
+interface ProductObject {
+  id: number
+  codigo: string
+  nombre: string
+  stock: number
+  precio: number
+  marca: {
+    id: number
+    nombre: string | null
+  }
+  tipo: {
+    id: number
+    nombre: string
+  }
+  variedades: Array<{
+    id: number
+    nombre: string
+    stock: number
+    precio: number
+  }>
+}
+
 export default function ZureoApiPanel() {
   const [results, setResults] = useState<Record<string, ApiResult>>({})
+
+  const createProductObjects = (products: any[]): ProductObject[] => {
+    return products.map((product) => ({
+      id: product.id,
+      codigo: product.codigo,
+      nombre: product.nombre,
+      stock: product.stock,
+      precio: product.precio,
+      marca: product.marca,
+      tipo: product.tipo,
+      variedades: product.variedades || [],
+    }))
+  }
 
   const executeEndpoint = async (endpoint: string, params: any = {}) => {
     const key = `${endpoint}-${JSON.stringify(params)}`
@@ -28,7 +63,7 @@ export default function ZureoApiPanel() {
     try {
       let url = `/api/zureo${endpoint}`
 
-      if (endpoint === "/products-with-stock") {
+      if (endpoint === "/products-with-stock" || endpoint === "/products-with-brand-and-stock") {
         url = `/api/zureo/products`
       }
 
@@ -45,11 +80,32 @@ export default function ZureoApiPanel() {
       }
 
       let filteredData = data
+
       if (endpoint === "/products-with-stock" && data.success && Array.isArray(data.data)) {
+        const productsWithStock = data.data.filter((product: any) => product.stock > 0)
+        const productObjects = createProductObjects(productsWithStock)
+
         filteredData = {
           ...data,
-          data: data.data.filter((product: any) => product.stock > 0),
-          message: `Productos filtrados con stock > 0: ${data.data.filter((product: any) => product.stock > 0).length} de ${data.data.length} productos`,
+          data: productObjects,
+          message: `Productos con stock > 0: ${productsWithStock.length} de ${data.data.length} productos`,
+          totalProducts: data.data.length,
+          productsWithStock: productsWithStock.length,
+        }
+      }
+
+      if (endpoint === "/products-with-brand-and-stock" && data.success && Array.isArray(data.data)) {
+        const productsWithBrandAndStock = data.data.filter(
+          (product: any) => product.stock > 0 && product.marca && product.marca.id > 0 && product.marca.nombre !== null,
+        )
+        const productObjects = createProductObjects(productsWithBrandAndStock)
+
+        filteredData = {
+          ...data,
+          data: productObjects,
+          message: `Productos con marca y stock > 0: ${productsWithBrandAndStock.length} de ${data.data.length} productos`,
+          totalProducts: data.data.length,
+          productsWithBrandAndStock: productsWithBrandAndStock.length,
         }
       }
 
@@ -90,7 +146,6 @@ export default function ZureoApiPanel() {
     {
       category: "📦 Productos",
       items: [
-        { name: "Todos los Productos", endpoint: "/products", description: "Obtener todos los productos" },
         {
           name: "Productos Activos",
           endpoint: "/products",
@@ -100,7 +155,14 @@ export default function ZureoApiPanel() {
         {
           name: "Productos con Stock",
           endpoint: "/products-with-stock",
-          description: "Productos con stock > 0 (filtrado local)",
+          description: "Productos con stock > 0 (objetos estructurados)",
+          critical: true,
+        },
+        {
+          name: "Productos con Marca y Stock",
+          endpoint: "/products-with-brand-and-stock",
+          description: "Productos que tienen marca Y stock > 0 (objetos estructurados)",
+          critical: true,
         },
         {
           name: "Buscar Productos",
@@ -188,6 +250,11 @@ export default function ZureoApiPanel() {
         )}
         {result.data && (
           <div className="bg-gray-50 rounded p-3">
+            {result.data.message && (
+              <div className="mb-3 p-2 bg-blue-100 border border-blue-200 rounded">
+                <p className="text-blue-800 text-sm font-medium">{result.data.message}</p>
+              </div>
+            )}
             <pre className="text-xs overflow-auto max-h-96">{JSON.stringify(result.data, null, 2)}</pre>
           </div>
         )}
