@@ -1,13 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AlertCircle, CheckCircle, Loader2, Play, Database } from "lucide-react"
 
 interface ApiResult {
@@ -20,8 +16,6 @@ interface ApiResult {
 
 export default function ZureoApiPanel() {
   const [results, setResults] = useState<Record<string, ApiResult>>({})
-  const [customEndpoint, setCustomEndpoint] = useState("")
-  const [customParams, setCustomParams] = useState("")
 
   const executeEndpoint = async (endpoint: string, params: any = {}) => {
     const key = `${endpoint}-${JSON.stringify(params)}`
@@ -32,8 +26,16 @@ export default function ZureoApiPanel() {
     }))
 
     try {
+      let url = `/api/zureo${endpoint}`
+
+      if (endpoint === "/products-with-stock") {
+        url = `/api/zureo/products`
+      }
+
       const queryString = new URLSearchParams(params).toString()
-      const url = `/api/zureo${endpoint}${queryString ? `?${queryString}` : ""}`
+      if (queryString) {
+        url += `?${queryString}`
+      }
 
       const response = await fetch(url)
       const data = await response.json()
@@ -42,12 +44,21 @@ export default function ZureoApiPanel() {
         throw new Error(data.error || `HTTP ${response.status}`)
       }
 
+      let filteredData = data
+      if (endpoint === "/products-with-stock" && data.success && Array.isArray(data.data)) {
+        filteredData = {
+          ...data,
+          data: data.data.filter((product: any) => product.stock > 0),
+          message: `Productos filtrados con stock > 0: ${data.data.filter((product: any) => product.stock > 0).length} de ${data.data.length} productos`,
+        }
+      }
+
       setResults((prev) => ({
         ...prev,
         [key]: {
           endpoint,
           status: "success",
-          data,
+          data: filteredData,
           timestamp: new Date().toLocaleTimeString(),
         },
       }))
@@ -62,22 +73,6 @@ export default function ZureoApiPanel() {
         },
       }))
     }
-  }
-
-  const executeCustomEndpoint = async () => {
-    if (!customEndpoint) return
-
-    let params = {}
-    try {
-      if (customParams.trim()) {
-        params = JSON.parse(customParams)
-      }
-    } catch (e) {
-      alert("Parámetros JSON inválidos")
-      return
-    }
-
-    await executeEndpoint(customEndpoint, params)
   }
 
   const endpoints = [
@@ -102,7 +97,11 @@ export default function ZureoApiPanel() {
           params: { includeInactive: false },
           description: "Solo productos activos",
         },
-        { name: "Productos con Stock", endpoint: "/products-with-stock", description: "Productos con stock > 0" },
+        {
+          name: "Productos con Stock",
+          endpoint: "/products-with-stock",
+          description: "Productos con stock > 0 (filtrado local)",
+        },
         {
           name: "Buscar Productos",
           endpoint: "/products/search",
@@ -226,105 +225,54 @@ export default function ZureoApiPanel() {
         </div>
       </div>
 
-      <Tabs defaultValue="endpoints" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
-          <TabsTrigger value="custom">Endpoint Personalizado</TabsTrigger>
-          <TabsTrigger value="results">Resultados</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="endpoints" className="space-y-6">
-          {endpoints.map((category) => (
-            <Card key={category.category}>
-              <CardHeader>
-                <CardTitle>{category.category}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-3">
-                  {category.items.map((item) => (
-                    <div
-                      key={item.name}
-                      className={`flex items-center justify-between p-3 border rounded ${(item as any).critical ? "border-orange-300 bg-orange-50" : ""}`}
-                    >
-                      <div>
-                        <h4 className="font-medium flex items-center gap-2">
-                          {item.name}
-                          {(item as any).critical && (
-                            <Badge variant="outline" className="text-orange-600 border-orange-300">
-                              Crítico
-                            </Badge>
-                          )}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">{item.endpoint}</code>
-                      </div>
-                      <Button
-                        onClick={() => executeEndpoint(item.endpoint, (item as any).params)}
-                        size="sm"
-                        disabled={
-                          results[`${item.endpoint}-${JSON.stringify((item as any).params || {})}`]?.status ===
-                          "loading"
-                        }
-                      >
-                        <Play className="h-4 w-4 mr-1" />
-                        Ejecutar
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        <TabsContent value="custom" className="space-y-4">
-          <Card>
+      <div className="space-y-6">
+        {endpoints.map((category) => (
+          <Card key={category.category}>
             <CardHeader>
-              <CardTitle>Endpoint Personalizado</CardTitle>
-              <CardDescription>Ejecuta cualquier endpoint de la API de Zureo</CardDescription>
+              <CardTitle>{category.category}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="endpoint">Endpoint</Label>
-                <Input
-                  id="endpoint"
-                  placeholder="/test-token"
-                  value={customEndpoint}
-                  onChange={(e) => setCustomEndpoint(e.target.value)}
-                />
+            <CardContent>
+              <div className="grid gap-3">
+                {category.items.map((item) => {
+                  const resultKey = `${item.endpoint}-${JSON.stringify((item as any).params || {})}`
+                  const result = results[resultKey]
+
+                  return (
+                    <div key={item.name} className="space-y-3">
+                      <div
+                        className={`flex items-center justify-between p-3 border rounded ${(item as any).critical ? "border-orange-300 bg-orange-50" : ""}`}
+                      >
+                        <div>
+                          <h4 className="font-medium flex items-center gap-2">
+                            {item.name}
+                            {(item as any).critical && (
+                              <Badge variant="outline" className="text-orange-600 border-orange-300">
+                                Crítico
+                              </Badge>
+                            )}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">{item.description}</p>
+                          <code className="text-xs bg-gray-100 px-2 py-1 rounded">{item.endpoint}</code>
+                        </div>
+                        <Button
+                          onClick={() => executeEndpoint(item.endpoint, (item as any).params)}
+                          size="sm"
+                          disabled={result?.status === "loading"}
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Ejecutar
+                        </Button>
+                      </div>
+
+                      {result && <ResultCard result={result} resultKey={resultKey} />}
+                    </div>
+                  )
+                })}
               </div>
-              <div>
-                <Label htmlFor="params">Parámetros (JSON)</Label>
-                <Textarea
-                  id="params"
-                  placeholder='{"emp": 1, "qty": 100}'
-                  value={customParams}
-                  onChange={(e) => setCustomParams(e.target.value)}
-                  rows={4}
-                />
-              </div>
-              <Button onClick={executeCustomEndpoint} disabled={!customEndpoint}>
-                <Play className="h-4 w-4 mr-2" />
-                Ejecutar Endpoint Personalizado
-              </Button>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="results" className="space-y-4">
-          {Object.keys(results).length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <p className="text-muted-foreground">
-                  No hay resultados aún. Ejecuta algunos endpoints para ver los resultados aquí.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            Object.entries(results).map(([key, result]) => <ResultCard key={key} result={result} resultKey={key} />)
-          )}
-        </TabsContent>
-      </Tabs>
+        ))}
+      </div>
     </div>
   )
 }
