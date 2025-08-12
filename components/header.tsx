@@ -8,13 +8,24 @@ import { Search, ShoppingCart, Menu, X, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCart } from "@/context/cart-context"
-import type { Brand, Category } from "@/types"
+
+interface ZureoBrand {
+  id: string
+  nombre: string
+  descripcion?: string
+  activo: boolean
+}
+
+interface Category {
+  name: string
+  href: string
+}
 
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [brands, setBrands] = useState<Brand[]>([])
+  const [brands, setBrands] = useState<ZureoBrand[]>([])
   const { state } = useCart()
 
   const itemCount = state.items.reduce((total, item) => total + item.quantity, 0)
@@ -52,7 +63,7 @@ export default function Header() {
         const response = await fetch("/api/zureo/brands")
         if (response.ok) {
           const data = await response.json()
-          setBrands(data.brands || [])
+          setBrands(data || [])
         }
       } catch (error) {
         console.error("Error fetching brands:", error)
@@ -134,20 +145,24 @@ export default function Header() {
                   ></span>
                 </button>
 
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-                  <div className="max-h-80 overflow-y-auto py-3">
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
+                  <div className="max-h-96 overflow-y-auto py-3">
                     <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">
-                      Todas las Marcas
+                      Todas las Marcas ({brands.length})
                     </div>
-                    {brands.map((brand) => (
-                      <Link
-                        key={brand.id}
-                        href={`/marcas/${encodeURIComponent(brand.descripcion.toLowerCase())}`}
-                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-gray-50 last:border-b-0"
-                      >
-                        {brand.descripcion}
-                      </Link>
-                    ))}
+                    {brands
+                      .filter((brand) => brand.activo)
+                      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                      .map((brand) => (
+                        <Link
+                          key={brand.id}
+                          href={`/marcas/${encodeURIComponent(brand.nombre.toLowerCase())}`}
+                          className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-gray-50 last:border-b-0"
+                        >
+                          <div className="font-medium">{brand.nombre}</div>
+                          {brand.descripcion && <div className="text-xs text-gray-500 mt-1">{brand.descripcion}</div>}
+                        </Link>
+                      ))}
                   </div>
                 </div>
               </div>
@@ -260,23 +275,27 @@ export default function Header() {
                         isScrolled ? "text-white" : "text-black"
                       }`}
                     >
-                      Marcas
+                      Marcas ({brands.filter((b) => b.activo).length})
                     </div>
-                    <div className="space-y-1 max-h-40 overflow-y-auto">
-                      {brands.slice(0, 15).map((brand) => (
-                        <Link
-                          key={brand.id}
-                          href={`/marcas/${encodeURIComponent(brand.descripcion.toLowerCase())}`}
-                          className={`block text-sm py-2 px-6 rounded-lg transition-colors ${
-                            isScrolled
-                              ? "text-gray-300 hover:text-white hover:bg-gray-800"
-                              : "text-gray-600 hover:text-black hover:bg-gray-50"
-                          }`}
-                          onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                          {brand.descripcion}
-                        </Link>
-                      ))}
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {brands
+                        .filter((brand) => brand.activo)
+                        .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                        .slice(0, 20)
+                        .map((brand) => (
+                          <Link
+                            key={brand.id}
+                            href={`/marcas/${encodeURIComponent(brand.nombre.toLowerCase())}`}
+                            className={`block text-sm py-2 px-6 rounded-lg transition-colors ${
+                              isScrolled
+                                ? "text-gray-300 hover:text-white hover:bg-gray-800"
+                                : "text-gray-600 hover:text-black hover:bg-gray-50"
+                            }`}
+                            onClick={() => setIsMobileMenuOpen(false)}
+                          >
+                            {brand.nombre}
+                          </Link>
+                        ))}
                     </div>
                   </div>
                 )}
