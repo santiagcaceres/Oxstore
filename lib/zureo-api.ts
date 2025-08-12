@@ -32,7 +32,7 @@ async function getZureoToken(): Promise<string> {
         "Content-Type": "application/json",
         Authorization: `Basic ${encodedCredentials}`,
       },
-      body: "{}",
+      body: JSON.stringify({}),
     })
 
     if (!response.ok) {

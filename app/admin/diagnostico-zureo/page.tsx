@@ -67,20 +67,42 @@ export default function DiagnosticoZureoPage() {
         </Button>
       </div>
 
-      {/* Variables de Entorno */}
       <Card>
         <CardHeader>
-          <CardTitle>Variables de Entorno</CardTitle>
-          <CardDescription>Configuración requerida para conectar con Zureo</CardDescription>
+          <CardTitle>Configuración de Credenciales</CardTitle>
+          <CardDescription>Credenciales requeridas para conectar con Zureo API</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            {["ZUREO_API_USER", "ZUREO_API_PASSWORD", "ZUREO_DOMAIN", "ZUREO_COMPANY_ID"].map((varName) => (
-              <div key={varName} className="flex items-center justify-between">
-                <span className="font-mono text-sm">{varName}</span>
-                <Badge variant="secondary">Configurada</Badge>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-semibold text-blue-800 mb-2">Proceso de Autenticación Zureo</h4>
+                <div className="text-sm text-blue-700 space-y-1">
+                  <div>1. POST a https://api.zureo.com/sdk/v1/security/login</div>
+                  <div>2. Authorization: Basic {btoa("patricia_saura@hotmail.com:ps1106:020128150011")}</div>
+                  <div>3. Usar token Bearer recibido para endpoints de productos/marcas</div>
+                </div>
               </div>
-            ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm">ZUREO_API_USER</span>
+                <Badge variant="secondary">patricia_saura@hotmail.com</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm">ZUREO_API_PASSWORD</span>
+                <Badge variant="secondary">ps1106</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm">ZUREO_DOMAIN</span>
+                <Badge variant="secondary">020128150011</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm">ZUREO_COMPANY_ID</span>
+                <Badge variant="secondary">1</Badge>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -143,29 +165,40 @@ export default function DiagnosticoZureoPage() {
         </Card>
       )}
 
-      {/* Guía de Solución */}
       <Card>
         <CardHeader>
-          <CardTitle>Guía de Solución</CardTitle>
+          <CardTitle>Guía de Configuración</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4 text-sm">
             <div>
-              <h4 className="font-semibold">Si el diagnóstico falla:</h4>
-              <ul className="list-disc list-inside mt-2 space-y-1 text-muted-foreground">
-                <li>Verifica que las credenciales de Zureo sean correctas</li>
-                <li>Confirma que el dominio de Zureo esté bien configurado</li>
-                <li>Revisa que la API de Zureo esté disponible</li>
-                <li>Verifica la conectividad de red</li>
-              </ul>
+              <h4 className="font-semibold">Configurar Variables de Entorno en Vercel:</h4>
+              <div className="mt-2 p-3 bg-gray-50 rounded font-mono text-xs space-y-1">
+                <div>ZUREO_API_USER=patricia_saura@hotmail.com</div>
+                <div>ZUREO_API_PASSWORD=ps1106</div>
+                <div>ZUREO_DOMAIN=020128150011</div>
+                <div>ZUREO_COMPANY_ID=1</div>
+              </div>
             </div>
 
             <div>
-              <h4 className="font-semibold">Configuración en Vercel:</h4>
-              <ul className="list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+              <h4 className="font-semibold">Pasos para configurar:</h4>
+              <ol className="list-decimal list-inside mt-2 space-y-1 text-muted-foreground">
                 <li>Ve a tu proyecto en Vercel → Settings → Environment Variables</li>
-                <li>Asegúrate de que todas las variables estén configuradas</li>
-                <li>Redeploy después de cambiar variables</li>
+                <li>Agrega cada variable con su valor correspondiente</li>
+                <li>Asegúrate de que estén disponibles en todos los entornos</li>
+                <li>Redeploy el proyecto después de agregar las variables</li>
+                <li>Ejecuta este diagnóstico para verificar la conexión</li>
+              </ol>
+            </div>
+
+            <div>
+              <h4 className="font-semibold">Si el diagnóstico sigue fallando:</h4>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-muted-foreground">
+                <li>Verifica que las credenciales sean exactamente las proporcionadas</li>
+                <li>Confirma que la API de Zureo esté disponible</li>
+                <li>Revisa los logs de Vercel para errores específicos</li>
+                <li>Contacta soporte de Zureo si persisten los problemas</li>
               </ul>
             </div>
           </div>
