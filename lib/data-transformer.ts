@@ -27,6 +27,8 @@ export interface ProductVariant {
   option3?: string
 }
 
+export type TransformedProduct = Product
+
 export function transformZureoProduct(zureoProduct: ZureoProduct): Product {
   if (!zureoProduct) {
     throw new Error("Producto Zureo no válido")

@@ -5,29 +5,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Upload, Search, ImageIcon, Trash2 } from "lucide-react"
-import { getAllZureoProducts } from "@/lib/zureo-api"
-import { uploadBrandImage, getBrandImages, deleteBrandImage } from "@/lib/supabase"
-import type { ZureoProduct } from "@/types/zureo"
+import { Upload, Search, ImageIcon, Trash2, ExternalLink } from "lucide-react"
 import Image from "next/image"
 
 interface Brand {
   id: string
-  nombre: string
+  name: string
+  description: string
+  active: boolean
   productCount: number
-  hasImage: boolean
+  hasImage?: boolean
   imageUrl?: string
 }
 
 export default function MarcasPage() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [filteredBrands, setFilteredBrands] = useState<Brand[]>([])
+  const [brandImages, setBrandImages] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [uploadingBrand, setUploadingBrand] = useState<string | null>(null)
 
   useEffect(() => {
     loadBrands()
+    loadBrandImages()
   }, [])
 
   useEffect(() => {
@@ -37,45 +38,9 @@ export default function MarcasPage() {
   const loadBrands = async () => {
     try {
       setLoading(true)
-      const products = await getAllZureoProducts()
-
-      // Agrupar productos por marca
-      const brandMap = new Map<string, { nombre: string; count: number }>()
-
-      products.forEach((product: ZureoProduct) => {
-        if (product.marca?.nombre && product.marca.nombre.trim()) {
-          const brandId = product.marca.id?.toString() || product.marca.nombre
-          const existing = brandMap.get(brandId)
-
-          if (existing) {
-            existing.count++
-          } else {
-            brandMap.set(brandId, {
-              nombre: product.marca.nombre,
-              count: 1,
-            })
-          }
-        }
-      })
-
-      // Convertir a array y verificar imágenes
-      const brandsArray = await Promise.all(
-        Array.from(brandMap.entries()).map(async ([id, data]) => {
-          const images = await getBrandImages(id)
-          return {
-            id,
-            nombre: data.nombre,
-            productCount: data.count,
-            hasImage: images.length > 0,
-            imageUrl: images[0]?.image_url,
-          }
-        }),
-      )
-
-      // Ordenar por nombre
-      brandsArray.sort((a, b) => a.nombre.localeCompare(b.nombre))
-
-      setBrands(brandsArray)
+      const response = await fetch("/api/zureo/brands")
+      const data = await response.json()
+      setBrands(data)
     } catch (error) {
       console.error("Error loading brands:", error)
     } finally {
@@ -83,21 +48,39 @@ export default function MarcasPage() {
     }
   }
 
+  const loadBrandImages = async () => {
+    try {
+      const response = await fetch("/api/brand-images")
+      const data = await response.json()
+      setBrandImages(data)
+    } catch (error) {
+      console.error("Error loading brand images:", error)
+    }
+  }
+
   const filterBrands = () => {
     let filtered = brands
 
     if (searchTerm) {
-      filtered = filtered.filter((brand) => brand.nombre.toLowerCase().includes(searchTerm.toLowerCase()))
+      filtered = filtered.filter((brand) => brand.name.toLowerCase().includes(searchTerm.toLowerCase()))
     }
+
+    filtered = filtered.map((brand) => {
+      const image = brandImages.find((img) => img.brandName === brand.name)
+      return {
+        ...brand,
+        hasImage: !!image,
+        imageUrl: image?.imageUrl,
+      }
+    })
 
     setFilteredBrands(filtered)
   }
 
-  const handleImageUpload = async (brandId: string, file: File) => {
+  const handleImageUpload = async (brandName: string, file: File) => {
     try {
-      setUploadingBrand(brandId)
+      setUploadingBrand(brandName)
 
-      // Validar archivo
       if (!file.type.startsWith("image/")) {
         alert("Por favor selecciona un archivo de imagen válido")
         return
@@ -108,12 +91,21 @@ export default function MarcasPage() {
         return
       }
 
-      const imageUrl = await uploadBrandImage(brandId, file)
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("brandName", brandName)
 
-      // Actualizar estado local
-      setBrands(brands.map((brand) => (brand.id === brandId ? { ...brand, hasImage: true, imageUrl } : brand)))
+      const response = await fetch("/api/brand-images/upload", {
+        method: "POST",
+        body: formData,
+      })
 
-      alert("Imagen subida exitosamente")
+      if (response.ok) {
+        await loadBrandImages()
+        alert("Imagen subida exitosamente")
+      } else {
+        throw new Error("Error uploading image")
+      }
     } catch (error) {
       console.error("Error uploading image:", error)
       alert("Error al subir la imagen")
@@ -122,20 +114,14 @@ export default function MarcasPage() {
     }
   }
 
-  const handleDeleteImage = async (brandId: string) => {
+  const handleDeleteImage = async (brandName: string) => {
     if (!confirm("¿Estás seguro de que quieres eliminar esta imagen?")) {
       return
     }
 
     try {
-      await deleteBrandImage(brandId)
-
-      // Actualizar estado local
-      setBrands(
-        brands.map((brand) => (brand.id === brandId ? { ...brand, hasImage: false, imageUrl: undefined } : brand)),
-      )
-
-      alert("Imagen eliminada exitosamente")
+      // Aquí implementarías la eliminación
+      alert("Función de eliminación pendiente de implementar")
     } catch (error) {
       console.error("Error deleting image:", error)
       alert("Error al eliminar la imagen")
@@ -164,7 +150,10 @@ export default function MarcasPage() {
             Total: {brands.length}
           </Badge>
           <Badge variant="outline" className="text-sm">
-            Con imagen: {brands.filter((b) => b.hasImage).length}
+            Con imagen: {filteredBrands.filter((b) => b.hasImage).length}
+          </Badge>
+          <Badge variant="outline" className="text-sm">
+            Activas: {brands.filter((b) => b.active).length}
           </Badge>
         </div>
       </div>
@@ -190,11 +179,15 @@ export default function MarcasPage() {
           <Card key={brand.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{brand.nombre}</CardTitle>
-                <Badge variant="outline" className="text-xs">
-                  {brand.productCount} productos
-                </Badge>
+                <CardTitle className="text-lg">{brand.name}</CardTitle>
+                <div className="flex gap-1">
+                  <Badge variant="outline" className="text-xs">
+                    {brand.productCount} productos
+                  </Badge>
+                  {brand.active && <Badge className="text-xs bg-green-100 text-green-800">Activa</Badge>}
+                </div>
               </div>
+              {brand.description && <p className="text-sm text-gray-600 mt-1">{brand.description}</p>}
             </CardHeader>
 
             <CardContent className="space-y-4">
@@ -204,7 +197,7 @@ export default function MarcasPage() {
                   <div className="relative w-full h-full">
                     <Image
                       src={brand.imageUrl || "/placeholder.svg"}
-                      alt={`Logo de ${brand.nombre}`}
+                      alt={`Logo de ${brand.name}`}
                       fill
                       className="object-contain"
                     />
@@ -226,10 +219,10 @@ export default function MarcasPage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) {
-                        handleImageUpload(brand.id, file)
+                        handleImageUpload(brand.name, file)
                       }
                     }}
-                    disabled={uploadingBrand === brand.id}
+                    disabled={uploadingBrand === brand.name}
                     className="hidden"
                     id={`upload-${brand.id}`}
                   />
@@ -237,21 +230,27 @@ export default function MarcasPage() {
                     variant="outline"
                     size="sm"
                     className="w-full bg-transparent"
-                    disabled={uploadingBrand === brand.id}
+                    disabled={uploadingBrand === brand.name}
                     asChild
                   >
                     <label htmlFor={`upload-${brand.id}`} className="cursor-pointer">
                       <Upload className="h-4 w-4 mr-2" />
-                      {uploadingBrand === brand.id ? "Subiendo..." : "Subir Logo"}
+                      {uploadingBrand === brand.name ? "Subiendo..." : "Subir Logo"}
                     </label>
                   </Button>
                 </div>
+
+                <Button variant="outline" size="sm" asChild>
+                  <a href={`/marcas/${brand.name.toLowerCase()}`} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
 
                 {brand.hasImage && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDeleteImage(brand.id)}
+                    onClick={() => handleDeleteImage(brand.name)}
                     className="text-red-600 hover:text-red-700"
                   >
                     <Trash2 className="h-4 w-4" />

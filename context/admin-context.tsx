@@ -17,10 +17,14 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Verificar si hay una sesión guardada
-    const savedAuth = localStorage.getItem("admin_authenticated")
-    if (savedAuth === "true") {
-      setIsAuthenticated(true)
+    try {
+      const savedAuth = localStorage.getItem("admin_authenticated")
+      if (savedAuth === "true") {
+        setIsAuthenticated(true)
+      }
+    } catch (error) {
+      console.error("Error accessing localStorage:", error)
+      // Si hay error con localStorage, continuar sin autenticación
     }
     setLoading(false)
   }, [])
@@ -29,7 +33,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     // Credenciales de prueba
     if (email === "admin@oxstore.com" && password === "admin123") {
       setIsAuthenticated(true)
-      localStorage.setItem("admin_authenticated", "true")
+      try {
+        localStorage.setItem("admin_authenticated", "true")
+      } catch (error) {
+        console.error("Error saving to localStorage:", error)
+        // Continuar aunque no se pueda guardar en localStorage
+      }
       return true
     }
     return false
@@ -37,7 +46,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setIsAuthenticated(false)
-    localStorage.removeItem("admin_authenticated")
+    try {
+      localStorage.removeItem("admin_authenticated")
+    } catch (error) {
+      console.error("Error removing from localStorage:", error)
+      // Continuar aunque no se pueda limpiar localStorage
+    }
   }
 
   return <AdminContext.Provider value={{ isAuthenticated, login, logout, loading }}>{children}</AdminContext.Provider>

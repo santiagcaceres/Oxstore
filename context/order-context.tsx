@@ -128,3 +128,5 @@ export function useOrder() {
   }
   return context
 }
+
+export type { Order }

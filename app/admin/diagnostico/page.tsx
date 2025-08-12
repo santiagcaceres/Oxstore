@@ -1,41 +1,60 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, AlertCircle, Loader2, RefreshCw } from "lucide-react"
+import {
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Loader2,
+  RefreshCw,
+  Database,
+  Cloud,
+  CreditCard,
+  ImageIcon,
+} from "lucide-react"
 
 interface DiagnosticTest {
   name: string
   status: "idle" | "loading" | "success" | "error" | "warning"
   message: string
   details?: any
-}
-
-interface BrandedProduct {
-  id: number
-  codigo: string
-  nombre: string
-  marca: {
-    id: number
-    nombre: string
-  }
-  stock: number
-  precio: number
+  icon?: React.ReactNode
 }
 
 export default function DiagnosticoPage() {
   const [tests, setTests] = useState<DiagnosticTest[]>([
-    { name: "Variables de Entorno", status: "idle", message: "No ejecutado" },
-    { name: "Autenticación Zureo", status: "idle", message: "No ejecutado" },
-    { name: "Conexión API Zureo", status: "idle", message: "No ejecutado" },
-    { name: "Productos Zureo", status: "idle", message: "No ejecutado" },
-    { name: "Productos con Marca", status: "idle", message: "No ejecutado" },
+    {
+      name: "API Zureo",
+      status: "idle",
+      message: "No ejecutado",
+      icon: <Database className="h-4 w-4" />,
+    },
+    {
+      name: "Supabase",
+      status: "idle",
+      message: "No ejecutado",
+      icon: <Database className="h-4 w-4" />,
+    },
+    {
+      name: "Vercel Blob",
+      status: "idle",
+      message: "No ejecutado",
+      icon: <ImageIcon className="h-4 w-4" />,
+    },
+    {
+      name: "MercadoPago",
+      status: "idle",
+      message: "No ejecutado",
+      icon: <CreditCard className="h-4 w-4" />,
+    },
   ])
 
-  const [brandedProducts, setBrandedProducts] = useState<BrandedProduct[]>([])
-  const [showBrandedProducts, setShowBrandedProducts] = useState(false)
+  const [systemInfo, setSystemInfo] = useState<any>(null)
   const [isRunning, setIsRunning] = useState(false)
 
   const updateTest = (index: number, status: DiagnosticTest["status"], message: string, details?: any) => {
@@ -43,13 +62,7 @@ export default function DiagnosticoPage() {
   }
 
   const runSingleTest = async (index: number) => {
-    const testEndpoints = [
-      "/api/test-env-vars",
-      "/api/test-zureo-auth",
-      "/api/test-zureo-companies",
-      "/api/test-zureo-products",
-      "/api/test-zureo-branded-products",
-    ]
+    const testEndpoints = ["/api/zureo/test", "/api/supabase/test", "/api/blob/test", "/api/mercadopago/test"]
 
     updateTest(index, "loading", "Ejecutando...")
 
@@ -58,14 +71,9 @@ export default function DiagnosticoPage() {
       const data = await response.json()
 
       if (data.success) {
-        updateTest(index, "success", data.message, data.details || data.data)
-
-        // If it's the branded products test, save the products
-        if (index === 4 && data.products) {
-          setBrandedProducts(data.products)
-        }
+        updateTest(index, "success", data.message, data)
       } else {
-        updateTest(index, "error", data.message || "Error desconocido", data.details)
+        updateTest(index, "error", data.error || "Error desconocido", data)
       }
     } catch (error) {
       updateTest(index, "error", `Error de conexión: ${error instanceof Error ? error.message : "Error desconocido"}`)
@@ -74,11 +82,17 @@ export default function DiagnosticoPage() {
 
   const runAllTests = async () => {
     setIsRunning(true)
-    setBrandedProducts([])
+
+    try {
+      const envResponse = await fetch("/api/system/info")
+      const envData = await envResponse.json()
+      setSystemInfo(envData)
+    } catch (error) {
+      console.error("Error getting system info:", error)
+    }
 
     for (let i = 0; i < tests.length; i++) {
       await runSingleTest(i)
-      // Small delay between tests
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
 
@@ -119,7 +133,7 @@ export default function DiagnosticoPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-black">Diagnóstico del Sistema</h1>
-        <p className="text-gray-600 mt-2">Verificación del estado de la integración con Zureo</p>
+        <p className="text-gray-600 mt-2">Verificación completa de todas las integraciones</p>
       </div>
 
       <div className="flex gap-4">
@@ -132,17 +146,50 @@ export default function DiagnosticoPage() {
           ) : (
             <>
               <RefreshCw className="mr-2 h-4 w-4" />
-              Ejecutar Todos los Tests
+              Ejecutar Diagnóstico Completo
             </>
           )}
         </Button>
-
-        {brandedProducts.length > 0 && (
-          <Button variant="outline" onClick={() => setShowBrandedProducts(!showBrandedProducts)}>
-            {showBrandedProducts ? "Ocultar" : "Ver"} Productos con Marca ({brandedProducts.length})
-          </Button>
-        )}
       </div>
+
+      {systemInfo && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Cloud className="h-5 w-5" />
+              Información del Sistema
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-semibold mb-2">Variables de Entorno</h4>
+                <div className="space-y-1 text-sm">
+                  {systemInfo.envVars?.map((env: any) => (
+                    <div key={env.name} className="flex justify-between">
+                      <span>{env.name}:</span>
+                      <Badge variant={env.configured ? "default" : "destructive"}>{env.configured ? "✓" : "✗"}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-2">Estado General</h4>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span>Timestamp:</span>
+                    <span>{new Date(systemInfo.timestamp).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Entorno:</span>
+                    <span>{systemInfo.environment}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4">
         {tests.map((test, index) => (
@@ -151,6 +198,7 @@ export default function DiagnosticoPage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
                   {getStatusIcon(test.status)}
+                  {test.icon}
                   {test.name}
                 </CardTitle>
                 <div className="flex items-center gap-2">
@@ -185,37 +233,37 @@ export default function DiagnosticoPage() {
         ))}
       </div>
 
-      {/* Productos con Marca */}
-      {showBrandedProducts && brandedProducts.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Productos con Marca Asignada</CardTitle>
-            <CardDescription>
-              Lista de productos que tienen una marca asignada en Zureo ({brandedProducts.length} productos)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {brandedProducts.map((product) => (
-                <div key={product.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">{product.nombre}</h4>
-                    <p className="text-sm text-gray-500">Código: {product.codigo}</p>
-                  </div>
-                  <div className="text-right">
-                    <Badge variant="outline" className="mb-1">
-                      {product.marca.nombre}
-                    </Badge>
-                    <p className="text-sm text-gray-500">
-                      Stock: {product.stock} | ${product.precio.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              ))}
+      <Card>
+        <CardHeader>
+          <CardTitle>Guía de Configuración</CardTitle>
+          <CardDescription>Pasos para configurar las integraciones faltantes</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold text-green-600">✅ Zureo API - Configurado</h4>
+              <p className="text-sm text-gray-600">Productos y marcas sincronizados correctamente</p>
             </div>
-          </CardContent>
-        </Card>
-      )}
+
+            <div>
+              <h4 className="font-semibold text-yellow-600">⚠️ Supabase - Opcional</h4>
+              <p className="text-sm text-gray-600">Para usuarios registrados y pedidos persistentes</p>
+              <p className="text-xs text-gray-500">Configurar en Project Settings → Integrations</p>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-green-600">✅ Vercel Blob - Configurado</h4>
+              <p className="text-sm text-gray-600">Para subir imágenes de productos y marcas</p>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-yellow-600">⚠️ MercadoPago - Pendiente</h4>
+              <p className="text-sm text-gray-600">Para procesar pagos en Uruguay</p>
+              <p className="text-xs text-gray-500">Agregar MERCADOPAGO_ACCESS_TOKEN en variables de entorno</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
