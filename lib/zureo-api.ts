@@ -269,3 +269,5 @@ export async function uploadProductImage(productId: string, imageFile: File): Pr
     throw error
   }
 }
+
+export { getZureoToken }
