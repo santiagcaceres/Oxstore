@@ -166,3 +166,47 @@ export async function searchProducts(query: string): Promise<EnhancedProduct[]> 
     return []
   }
 }
+
+export async function getCompleteProducts(): Promise<EnhancedProduct[]> {
+  try {
+    const productsWithStock = await getProductsWithBrandAndStock()
+
+    // Filtrar solo productos que tienen imagen (productos completos)
+    const completeProducts = productsWithStock.filter((product) => product.images && product.images.length > 0)
+
+    return completeProducts
+  } catch (error) {
+    console.error("Error getting complete products:", error)
+    return []
+  }
+}
+
+export async function createOrUpdateProduct(
+  productCode: string,
+  data: {
+    custom_description?: string
+    custom_title?: string
+    seo_title?: string
+    seo_description?: string
+    tags?: string[]
+    is_featured?: boolean
+  },
+) {
+  try {
+    const result = await upsertLocalProduct({
+      product_code: productCode,
+      ...data,
+    })
+
+    return {
+      success: true,
+      data: result,
+    }
+  } catch (error) {
+    console.error("Error creating/updating product:", error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    }
+  }
+}
