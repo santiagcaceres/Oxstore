@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/lib/supabase/client"
 
 interface Banner {
@@ -19,6 +20,8 @@ interface Banner {
   description: string
   image_url: string
   link_url: string
+  banner_type: "hero" | "category" | "promotional" | "product"
+  banner_size: "large" | "medium" | "small" | "square"
   display_order: number
   is_active: boolean
   created_at: string
@@ -34,6 +37,8 @@ export default function BannersPage() {
     title: "",
     description: "",
     link_url: "",
+    banner_type: "hero" as const,
+    banner_size: "large" as const,
     is_active: true,
     display_order: 1,
   })
@@ -102,6 +107,8 @@ export default function BannersPage() {
         title: "",
         description: "",
         link_url: "",
+        banner_type: "hero",
+        banner_size: "large",
         is_active: true,
         display_order: 1,
       })
@@ -172,6 +179,26 @@ export default function BannersPage() {
     }
   }
 
+  const getBannerTypeLabel = (type: string) => {
+    const types = {
+      hero: "Principal (Carousel)",
+      category: "Categoría (Cuadrado)",
+      promotional: "Promocional (Rectangular)",
+      product: "Producto (Rectangular)",
+    }
+    return types[type as keyof typeof types] || type
+  }
+
+  const getBannerSizeLabel = (size: string) => {
+    const sizes = {
+      large: "Grande (16:9)",
+      medium: "Mediano (4:3)",
+      small: "Pequeño (3:2)",
+      square: "Cuadrado (1:1)",
+    }
+    return sizes[size as keyof typeof sizes] || size
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -194,27 +221,32 @@ export default function BannersPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-800">
             <Info className="h-5 w-5" />
-            Información sobre Banners
+            Tipos de Banners Disponibles
           </CardTitle>
         </CardHeader>
-        <CardContent className="text-blue-700 space-y-2">
-          <p>
-            <strong>Los banners se muestran en toda la página principal:</strong>
+        <CardContent className="text-blue-700 space-y-3">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <p className="font-semibold">🎯 Principal (Hero):</p>
+              <p className="text-sm">Carousel principal, múltiples slides</p>
+            </div>
+            <div>
+              <p className="font-semibold">📦 Categoría:</p>
+              <p className="text-sm">Banners cuadrados para categorías</p>
+            </div>
+            <div>
+              <p className="font-semibold">🎉 Promocional:</p>
+              <p className="text-sm">Banners rectangulares para ofertas</p>
+            </div>
+            <div>
+              <p className="font-semibold">👕 Producto:</p>
+              <p className="text-sm">Banners para productos específicos</p>
+            </div>
+          </div>
+          <p className="text-sm">
+            <strong>Resoluciones recomendadas:</strong> Grande: 1920x1080, Mediano: 1200x900, Pequeño: 900x600,
+            Cuadrado: 800x800
           </p>
-          <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>
-              <strong>Formatos aceptados:</strong> JPG, PNG, WebP
-            </li>
-            <li>
-              <strong>Tamaño máximo:</strong> 15MB por imagen
-            </li>
-            <li>
-              <strong>Resolución recomendada:</strong> 1920x600 píxeles (ancho completo)
-            </li>
-            <li>
-              <strong>Los banners ocupan todo el ancho de la página</strong>
-            </li>
-          </ul>
         </CardContent>
       </Card>
 
@@ -223,7 +255,7 @@ export default function BannersPage() {
           <CardHeader>
             <CardTitle>Crear Nuevo Banner</CardTitle>
             <CardDescription>
-              Los banners se mostrarán en toda la página principal ocupando todo el ancho disponible.
+              Configura el tipo y tamaño del banner según donde quieras que aparezca en la página.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -259,6 +291,43 @@ export default function BannersPage() {
                   placeholder="Descripción del banner"
                   rows={3}
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="banner_type">Tipo de Banner</Label>
+                  <Select
+                    value={formData.banner_type}
+                    onValueChange={(value: any) => setFormData({ ...formData, banner_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hero">🎯 Principal (Carousel)</SelectItem>
+                      <SelectItem value="category">📦 Categoría (Cuadrado)</SelectItem>
+                      <SelectItem value="promotional">🎉 Promocional (Rectangular)</SelectItem>
+                      <SelectItem value="product">👕 Producto (Rectangular)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="banner_size">Tamaño</Label>
+                  <Select
+                    value={formData.banner_size}
+                    onValueChange={(value: any) => setFormData({ ...formData, banner_size: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="large">Grande (16:9)</SelectItem>
+                      <SelectItem value="medium">Mediano (4:3)</SelectItem>
+                      <SelectItem value="small">Pequeño (3:2)</SelectItem>
+                      <SelectItem value="square">Cuadrado (1:1)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -299,7 +368,11 @@ export default function BannersPage() {
           <Card key={banner.id} className="border-2 border-dashed border-gray-200">
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="font-semibold text-lg">{banner.title}</h4>
+                <div className="flex items-center gap-3">
+                  <h4 className="font-semibold text-lg">{banner.title}</h4>
+                  <Badge variant="outline">{getBannerTypeLabel(banner.banner_type)}</Badge>
+                  <Badge variant="secondary">{getBannerSizeLabel(banner.banner_size)}</Badge>
+                </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => moveBanner(index, "up")} disabled={index === 0}>
                     <ArrowUp className="h-4 w-4" />

@@ -283,7 +283,17 @@ export async function deleteProductImage(imageId: string) {
 }
 
 // Funciones para gestión de banners
-export async function uploadBannerImage(file: File, title?: string) {
+export async function uploadBannerImage(
+  file: File,
+  bannerData: {
+    title?: string
+    description?: string
+    link_url?: string
+    banner_type?: "hero" | "category" | "promotional" | "product"
+    banner_size?: "large" | "medium" | "small" | "square"
+    display_order?: number
+  },
+) {
   if (!supabase) {
     throw new Error("Supabase no está configurado")
   }
@@ -297,17 +307,56 @@ export async function uploadBannerImage(file: File, title?: string) {
 
   const { data: urlData } = supabase.storage.from("images").getPublicUrl(fileName)
 
-  const { error: dbError } = await supabase.from("banners").insert({
-    image_url: urlData.publicUrl,
-    file_path: fileName,
-    title: title || "Banner",
-    is_active: true,
-    created_at: new Date().toISOString(),
-  })
+  const { data, error: dbError } = await supabase
+    .from("banners")
+    .insert({
+      image_url: urlData.publicUrl,
+      file_path: fileName,
+      title: bannerData.title || "Banner",
+      description: bannerData.description || "",
+      link_url: bannerData.link_url || "",
+      banner_type: bannerData.banner_type || "hero",
+      banner_size: bannerData.banner_size || "large",
+      display_order: bannerData.display_order || 0,
+      is_active: true,
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single()
 
   if (dbError) throw dbError
 
-  return urlData.publicUrl
+  return data
+}
+
+export async function getBannersByType(bannerType?: string) {
+  if (!supabase) return []
+
+  let query = supabase.from("banners").select("*").eq("is_active", true)
+
+  if (bannerType) {
+    query = query.eq("banner_type", bannerType)
+  }
+
+  const { data, error } = await query.order("display_order", { ascending: true })
+
+  if (error) {
+    console.error("Error fetching banners:", error)
+    return []
+  }
+
+  return data || []
+}
+
+export async function updateBannerOrder(bannerId: string, newOrder: number) {
+  if (!supabase) {
+    throw new Error("Supabase no está configurado")
+  }
+
+  const { data, error } = await supabase.from("banners").update({ display_order: newOrder }).eq("id", bannerId)
+
+  if (error) throw error
+  return data
 }
 
 export async function getBanners() {
