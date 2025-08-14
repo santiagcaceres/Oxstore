@@ -2,8 +2,12 @@ import { Suspense } from "react"
 import { getProductsFromZureo, getBrandsFromZureo } from "@/lib/zureo-api"
 import { transformZureoProduct } from "@/lib/data-transformer"
 import ProductGrid from "@/components/product-grid"
-import { ProductGridSkeleton } from "@/components/product-grid-skeleton"
 import { FilterBar } from "@/components/filter-bar"
+import NoProductsFound from "@/components/no-products-found"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import CategoryLoadingScreen from "@/components/category-loading-screen"
+import ErrorPage from "@/components/error-page"
 
 export const revalidate = 3600 // Revalidate every hour
 
@@ -14,9 +18,12 @@ async function MenProducts({ searchParams }: { searchParams: any }) {
 
     if (!productsData || !Array.isArray(productsData)) {
       return (
-        <div className="text-center py-12">
-          <p className="text-xl text-gray-600">Error al cargar productos.</p>
-        </div>
+        <ErrorPage
+          title="Error al cargar productos de hombre"
+          description="No pudimos conectar con nuestro sistema de productos. Por favor, intenta nuevamente en unos momentos."
+          showRetryButton={true}
+          showHomeButton={true}
+        />
       )
     }
 
@@ -74,38 +81,43 @@ async function MenProducts({ searchParams }: { searchParams: any }) {
 
     return (
       <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link href="/">
+            <Button variant="outline" className="mb-4 bg-transparent">
+              ← Volver al Inicio
+            </Button>
+          </Link>
+        </div>
         <h1 className="text-4xl font-bold mb-8 text-center">Colección Hombre</h1>
         <FilterBar brands={brands} />
         {sortedProducts.length > 0 ? (
           <ProductGrid products={sortedProducts} />
         ) : (
-          <div className="text-center py-12">
-            <p className="text-xl text-gray-600">No se encontraron productos para hombre.</p>
-            <p className="text-md text-gray-500 mt-2">Intenta ajustar tus filtros o buscar otros productos.</p>
-          </div>
+          <NoProductsFound
+            title="No hay productos para hombre"
+            description="No se encontraron productos masculinos que coincidan con tus filtros. Intenta ajustar los criterios de búsqueda o explora otras categorías."
+            showSearchButton={true}
+            showHomeButton={true}
+          />
         )}
       </div>
     )
   } catch (error) {
     console.error("Error en página de hombre:", error)
     return (
-      <div className="text-center py-12">
-        <p className="text-xl text-gray-600">Error al cargar la página.</p>
-      </div>
+      <ErrorPage
+        title="Error al cargar la colección de hombre"
+        description="Ocurrió un problema al cargar los productos. Nuestro equipo ha sido notificado y estamos trabajando para solucionarlo."
+        showRetryButton={true}
+        showHomeButton={true}
+      />
     )
   }
 }
 
 export default function MenPage({ searchParams }: { searchParams: any }) {
   return (
-    <Suspense
-      fallback={
-        <div className="container mx-auto px-4 py-8">
-          <div className="h-10 w-64 bg-gray-200 rounded mb-8 mx-auto" />
-          <ProductGridSkeleton />
-        </div>
-      }
-    >
+    <Suspense fallback={<CategoryLoadingScreen category="Hombre" />}>
       <MenProducts searchParams={searchParams} />
     </Suspense>
   )

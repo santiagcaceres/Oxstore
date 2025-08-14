@@ -4,7 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Search, ShoppingCart, Menu, X, ChevronDown } from "lucide-react"
+import { Search, ShoppingCart, Menu, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useCart } from "@/context/cart-context"
@@ -34,11 +34,26 @@ export default function Header() {
 
   const itemCount = state.items.reduce((total, item) => total + item.quantity, 0)
 
+  const allowedBrands = [
+    "MISTRAL",
+    "UNIFORM",
+    "LEVIS",
+    "KETZIA",
+    "INDIAN",
+    "KABOA",
+    "EMPATHIA",
+    "ROTUNDA",
+    "LEMON",
+    "GATTO PARDO",
+    "MINOT",
+    "MANDAL",
+    "SYMPHORI",
+    "NEUFO",
+    "BROOKSFIELD",
+    "PEGUIN",
+  ]
+
   const categories: Category[] = [
-    {
-      name: "Home",
-      href: "/",
-    },
     {
       name: "Hombre",
       href: "/hombre",
@@ -99,12 +114,19 @@ export default function Header() {
   }
 
   const activeBrands = brands
-    .filter((brand) => brand.activo || brand.active)
+    .filter((brand) => {
+      const brandName = (brand.nombre || brand.name || "").toUpperCase()
+      return (brand.activo || brand.active) && allowedBrands.includes(brandName)
+    })
     .map((brand) => ({
       ...brand,
-      displayName: brand.nombre || brand.name,
+      displayName: (brand.nombre || brand.name || "").toUpperCase(),
     }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName))
+    .filter(
+      (brand, index, self) =>
+        index === self.findIndex((b) => b.displayName.toUpperCase() === brand.displayName.toUpperCase()),
+    )
 
   return (
     <header
@@ -133,56 +155,54 @@ export default function Header() {
               <Link
                 key={category.name}
                 href={category.href}
-                className={`font-medium transition-colors relative group flex items-center h-full ${
+                className={`font-medium transition-all duration-300 relative group py-2 ${
                   isScrolled ? "text-white hover:text-gray-300" : "text-black hover:text-gray-600"
                 }`}
               >
                 {category.name}
                 <span
-                  className={`absolute -bottom-1 left-0 w-0 h-0.5 transition-all group-hover:w-full ${
+                  className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-0.5 transition-all duration-300 group-hover:w-full ${
                     isScrolled ? "bg-white" : "bg-black"
                   }`}
                 ></span>
               </Link>
             ))}
 
-            <div className="relative group h-full flex items-center">
+            <div className="relative group">
               <button
-                className={`font-medium flex items-center py-2 transition-colors relative ${
+                className={`font-medium flex items-center py-2 transition-all duration-300 relative ${
                   isScrolled ? "text-white hover:text-gray-300" : "text-black hover:text-gray-600"
                 }`}
               >
                 Marcas
-                <ChevronDown className="ml-1 h-4 w-4 transition-transform group-hover:rotate-180" />
                 <span
-                  className={`absolute -bottom-1 left-0 w-0 h-0.5 transition-all group-hover:w-full ${
+                  className={`absolute bottom-0 left-1/2 transform -translate-x-1/2 w-0 h-0.5 transition-all duration-300 group-hover:w-full ${
                     isScrolled ? "bg-white" : "bg-black"
                   }`}
                 ></span>
               </button>
 
-              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
-                <div className="max-h-96 overflow-y-auto py-3">
+              <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 w-96 bg-white border border-gray-200 rounded-lg shadow-2xl opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-300 ease-out z-50">
+                <div className="py-3">
                   <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-100">
-                    {brandsLoading ? "Cargando marcas..." : `Todas las Marcas (${activeBrands.length})`}
+                    {brandsLoading ? "Cargando marcas..." : `Marcas Disponibles (${activeBrands.length})`}
                   </div>
                   {brandsLoading ? (
                     <div className="px-4 py-8 text-center">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-black mx-auto"></div>
                     </div>
                   ) : activeBrands.length > 0 ? (
-                    activeBrands.map((brand) => (
-                      <Link
-                        key={brand.id}
-                        href={`/marcas/${encodeURIComponent(brand.displayName.toLowerCase())}`}
-                        className="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-colors border-b border-gray-50 last:border-b-0"
-                      >
-                        <div className="font-medium">{brand.displayName}</div>
-                        {(brand.descripcion || brand.description) && (
-                          <div className="text-xs text-gray-500 mt-1">{brand.descripcion || brand.description}</div>
-                        )}
-                      </Link>
-                    ))
+                    <div className="grid grid-cols-2 gap-1 p-2">
+                      {activeBrands.map((brand) => (
+                        <Link
+                          key={brand.id}
+                          href={`/marcas/${encodeURIComponent(brand.displayName.toLowerCase())}`}
+                          className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-black transition-all duration-200 rounded-md hover:translate-x-1"
+                        >
+                          <div className="font-medium truncate">{brand.displayName}</div>
+                        </Link>
+                      ))}
+                    </div>
                   ) : (
                     <div className="px-4 py-8 text-center text-gray-500 text-sm">No hay marcas disponibles</div>
                   )}
@@ -299,8 +319,8 @@ export default function Header() {
                     >
                       Marcas ({activeBrands.length})
                     </div>
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {activeBrands.slice(0, 20).map((brand) => (
+                    <div className="space-y-1">
+                      {activeBrands.map((brand) => (
                         <Link
                           key={brand.id}
                           href={`/marcas/${encodeURIComponent(brand.displayName.toLowerCase())}`}

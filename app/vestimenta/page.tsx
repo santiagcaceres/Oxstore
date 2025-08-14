@@ -53,9 +53,17 @@ export default function VestimentaPage() {
   return (
     <div className="pt-16 min-h-screen bg-white">
       <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Link href="/">
+            <Button variant="outline" className="mb-4 bg-transparent">
+              ← Volver al Inicio
+            </Button>
+          </Link>
+        </div>
+
         {/* Breadcrumb */}
         <nav className="mb-6 text-sm text-gray-600">
-          <Link href="/" className="hover:text-blue-950">
+          <Link href="/" className="hover:text-gray-900">
             Inicio
           </Link>
           <span className="mx-2">/</span>
@@ -91,7 +99,7 @@ export default function VestimentaPage() {
                 </div>
                 <div className="p-6">
                   <p className="text-gray-600 mb-4">{category.description}</p>
-                  <Button className="w-full bg-blue-950 hover:bg-blue-900 group-hover:bg-blue-800 transition-colors">
+                  <Button className="w-full bg-black hover:bg-gray-800 group-hover:bg-gray-700 transition-colors">
                     Ver {category.name}
                   </Button>
                 </div>
@@ -101,7 +109,7 @@ export default function VestimentaPage() {
         </div>
 
         {/* Featured Section */}
-        <div className="mt-16 bg-gradient-to-r from-blue-950 to-blue-800 rounded-2xl p-8 text-white text-center">
+        <div className="mt-16 bg-gradient-to-r from-black to-gray-800 rounded-2xl p-8 text-white text-center">
           <h2 className="text-3xl font-bold mb-4">¿No encuentras lo que buscas?</h2>
           <p className="text-xl mb-6 opacity-90">
             Explora todas nuestras categorías o contacta con nuestro equipo para ayudarte a encontrar la prenda
@@ -111,7 +119,7 @@ export default function VestimentaPage() {
             <Link href="/hombre">
               <Button
                 variant="outline"
-                className="bg-transparent border-white text-white hover:bg-white hover:text-blue-950"
+                className="bg-transparent border-white text-white hover:bg-white hover:text-black"
               >
                 Ver Colección Hombre
               </Button>
@@ -119,7 +127,7 @@ export default function VestimentaPage() {
             <Link href="/mujer">
               <Button
                 variant="outline"
-                className="bg-transparent border-white text-white hover:bg-white hover:text-blue-950"
+                className="bg-transparent border-white text-white hover:bg-white hover:text-black"
               >
                 Ver Colección Mujer
               </Button>

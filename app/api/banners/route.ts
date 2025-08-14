@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Simulamos una base de datos en memoria para los banners
 const banners: any[] = [
   {
     id: "1",
@@ -11,6 +10,17 @@ const banners: any[] = [
     position: "hero",
     active: true,
     order: 1,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    title: "Ofertas Especiales",
+    description: "Hasta 50% de descuento en marcas seleccionadas",
+    imageUrl: "/placeholder.svg?height=600&width=1920",
+    link: "/sale",
+    position: "secondary",
+    active: true,
+    order: 2,
     createdAt: new Date().toISOString(),
   },
 ]
@@ -28,9 +38,19 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json()
 
+    if (!data.title?.trim() || !data.imageUrl) {
+      return NextResponse.json({ error: "Título e imagen son requeridos" }, { status: 400 })
+    }
+
     const newBanner = {
       id: Date.now().toString(),
-      ...data,
+      title: data.title.trim(),
+      description: data.description?.trim() || "",
+      imageUrl: data.imageUrl,
+      link: data.link || "/",
+      position: data.position || "hero",
+      active: data.active !== undefined ? data.active : true,
+      order: data.order || banners.length + 1,
       createdAt: new Date().toISOString(),
     }
 

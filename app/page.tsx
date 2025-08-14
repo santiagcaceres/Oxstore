@@ -138,25 +138,6 @@ export default function HomePage() {
           )}
         </div>
       </section>
-
-      <section className="py-12 bg-black">
-        <div className="container mx-auto px-4">
-          <div className="text-center">
-            <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">¿Necesitas ayuda?</h3>
-            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Nuestro equipo está disponible para ayudarte con cualquier consulta sobre productos, tallas o envíos
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-black px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
-                Contactar por WhatsApp
-              </button>
-              <button className="border border-white text-white px-6 py-3 rounded-lg font-semibold hover:bg-white hover:text-black transition-colors">
-                Ver FAQ
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   )
 }

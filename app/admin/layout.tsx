@@ -1,4 +1,8 @@
+"use client"
+
 import type React from "react"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
   LayoutDashboard,
@@ -11,12 +15,37 @@ import {
   Settings,
   LogOut,
 } from "lucide-react"
+import { useAdmin } from "@/context/admin-context"
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const { isAuthenticated, loading, logout } = useAdmin()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      router.push("/admin/login")
+    }
+  }, [isAuthenticated, loading, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p>Verificando autenticación...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="flex">
@@ -106,10 +135,15 @@ export default function AdminLayout({
           <header className="bg-white shadow-sm border-b px-6 py-4">
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-semibold text-gray-900">Panel de Administración</h1>
-              <Link href="/" className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
-                <LogOut className="h-4 w-4" />
-                <span>Volver a la tienda</span>
-              </Link>
+              <div className="flex items-center space-x-4">
+                <Link href="/" className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
+                  <span>Volver a la tienda</span>
+                </Link>
+                <button onClick={logout} className="flex items-center space-x-2 text-red-600 hover:text-red-800">
+                  <LogOut className="h-4 w-4" />
+                  <span>Cerrar Sesión</span>
+                </button>
+              </div>
             </div>
           </header>
 
