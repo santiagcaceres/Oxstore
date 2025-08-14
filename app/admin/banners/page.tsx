@@ -1,18 +1,15 @@
 "use client"
-
-import type React from "react"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Trash2, ImageIcon, Eye, EyeOff, ArrowUp, ArrowDown, Info } from "lucide-react"
+import { ImageIcon, Eye, EyeOff, ArrowUp, ArrowDown, Info, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { supabase } from "@/lib/supabase/client"
+import SuccessNotification from "@/components/success-notification"
 
 interface Banner {
   id: string
@@ -20,7 +17,7 @@ interface Banner {
   description: string
   image_url: string
   link_url: string
-  banner_type: "hero" | "category" | "promotional" | "product"
+  banner_type: "hero" | "category" | "promotional" | "product" | "popup"
   banner_size: "large" | "medium" | "small" | "square"
   display_order: number
   is_active: boolean
@@ -30,17 +27,17 @@ interface Banner {
 export default function BannersPage() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [showForm, setShowForm] = useState(false)
+  const [uploading, setUploading] = useState<string | null>(null)
+  const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
+  const [notification, setNotification] = useState<{ message: string; visible: boolean }>({
+    message: "",
+    visible: false,
+  })
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     link_url: "",
-    banner_type: "hero" as const,
-    banner_size: "large" as const,
-    is_active: true,
-    display_order: 1,
   })
 
   useEffect(() => {
@@ -77,47 +74,57 @@ export default function BannersPage() {
     return { url: urlData.publicUrl, filePath: fileName }
   }
 
-  const handleCreateBanner = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const form = e.currentTarget
-    const fileInput = form.querySelector('input[type="file"]') as HTMLInputElement
-    const file = fileInput?.files?.[0]
-
-    if (!file) {
-      alert("Por favor selecciona una imagen")
-      return
-    }
-
-    setUploading(true)
+  const handleImageUpdate = async (banner: Banner, file: File) => {
+    setUploading(banner.id)
 
     try {
+      // Eliminar imagen anterior si existe
+      if (banner.file_path) {
+        await supabase.storage.from("images").remove([banner.file_path])
+      }
+
       const { url: imageUrl, filePath } = await handleFileUpload(file)
 
-      const { error } = await supabase.from("banners").insert({
-        ...formData,
-        image_url: imageUrl,
-        file_path: filePath,
-      })
+      const { error } = await supabase
+        .from("banners")
+        .update({
+          image_url: imageUrl,
+          file_path: filePath,
+        })
+        .eq("id", banner.id)
 
       if (error) throw error
 
       await loadBanners()
-      setShowForm(false)
-      setFormData({
-        title: "",
-        description: "",
-        link_url: "",
-        banner_type: "hero",
-        banner_size: "large",
-        is_active: true,
-        display_order: 1,
-      })
-      alert("Banner creado exitosamente")
+      showNotification("Imagen actualizada correctamente")
     } catch (error) {
-      console.error("Error creating banner:", error)
-      alert("Error al crear el banner")
+      console.error("Error updating image:", error)
+      showNotification("Error al actualizar la imagen")
     } finally {
-      setUploading(false)
+      setUploading(null)
+    }
+  }
+
+  const handleBannerUpdate = async (banner: Banner) => {
+    try {
+      const { error } = await supabase
+        .from("banners")
+        .update({
+          title: formData.title,
+          description: formData.description,
+          link_url: formData.link_url,
+        })
+        .eq("id", banner.id)
+
+      if (error) throw error
+
+      await loadBanners()
+      setEditingBanner(null)
+      setFormData({ title: "", description: "", link_url: "" })
+      showNotification("Banner actualizado correctamente")
+    } catch (error) {
+      console.error("Error updating banner:", error)
+      showNotification("Error al actualizar el banner")
     }
   }
 
@@ -126,10 +133,8 @@ export default function BannersPage() {
     const targetIndex = direction === "up" ? index - 1 : index + 1
 
     if (targetIndex >= 0 && targetIndex < banners.length) {
-      // Intercambiar banners
       ;[newBanners[index], newBanners[targetIndex]] = [newBanners[targetIndex], newBanners[index]]
 
-      // Actualizar el orden
       newBanners.forEach((banner, i) => {
         banner.display_order = i + 1
       })
@@ -140,6 +145,7 @@ export default function BannersPage() {
         for (const banner of newBanners) {
           await supabase.from("banners").update({ display_order: banner.display_order }).eq("id", banner.id)
         }
+        showNotification("Orden actualizado correctamente")
       } catch (error) {
         console.error("Error reordering banners:", error)
         loadBanners()
@@ -154,29 +160,33 @@ export default function BannersPage() {
       if (error) throw error
 
       setBanners(banners.map((b) => (b.id === banner.id ? { ...b, is_active: !b.is_active } : b)))
+
+      showNotification(`Banner ${!banner.is_active ? "activado" : "desactivado"} correctamente`)
     } catch (error) {
       console.error("Error updating banner:", error)
     }
   }
 
-  const handleDeleteBanner = async (banner: Banner) => {
-    if (!confirm("¿Estás seguro de que quieres eliminar este banner?")) return
+  const startEditing = (banner: Banner) => {
+    setEditingBanner(banner)
+    setFormData({
+      title: banner.title,
+      description: banner.description,
+      link_url: banner.link_url,
+    })
+  }
 
-    try {
-      if (banner.file_path) {
-        await supabase.storage.from("images").remove([banner.file_path])
-      }
+  const cancelEditing = () => {
+    setEditingBanner(null)
+    setFormData({ title: "", description: "", link_url: "" })
+  }
 
-      const { error } = await supabase.from("banners").delete().eq("id", banner.id)
+  const showNotification = (message: string) => {
+    setNotification({ message, visible: true })
+  }
 
-      if (error) throw error
-
-      setBanners(banners.filter((b) => b.id !== banner.id))
-      alert("Banner eliminado exitosamente")
-    } catch (error) {
-      console.error("Error deleting banner:", error)
-      alert("Error al eliminar el banner.")
-    }
+  const hideNotification = () => {
+    setNotification({ message: "", visible: false })
   }
 
   const getBannerTypeLabel = (type: string) => {
@@ -185,6 +195,7 @@ export default function BannersPage() {
       category: "Categoría (Cuadrado)",
       promotional: "Promocional (Rectangular)",
       product: "Producto (Rectangular)",
+      popup: "Popup (Modal)",
     }
     return types[type as keyof typeof types] || type
   }
@@ -214,154 +225,37 @@ export default function BannersPage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Gestión de Banners</h1>
-        <Button onClick={() => setShowForm(!showForm)}>{showForm ? "Cancelar" : "Crear Banner"}</Button>
       </div>
 
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-800">
             <Info className="h-5 w-5" />
-            Tipos de Banners Disponibles
+            Sistema de Banners Predefinidos
           </CardTitle>
         </CardHeader>
         <CardContent className="text-blue-700 space-y-3">
+          <p className="font-semibold">Los banners están predefinidos según el diseño de la página. Solo puedes:</p>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <p className="font-semibold">🎯 Principal (Hero):</p>
-              <p className="text-sm">Carousel principal, múltiples slides</p>
+              <p className="font-semibold">✏️ Editar contenido:</p>
+              <p className="text-sm">Título, descripción y enlace</p>
             </div>
             <div>
-              <p className="font-semibold">📦 Categoría:</p>
-              <p className="text-sm">Banners cuadrados para categorías</p>
+              <p className="font-semibold">🖼️ Cambiar imagen:</p>
+              <p className="text-sm">Subir nueva imagen desde tu ordenador</p>
             </div>
             <div>
-              <p className="font-semibold">🎉 Promocional:</p>
-              <p className="text-sm">Banners rectangulares para ofertas</p>
+              <p className="font-semibold">👁️ Mostrar/Ocultar:</p>
+              <p className="text-sm">Activar o desactivar banners</p>
             </div>
             <div>
-              <p className="font-semibold">👕 Producto:</p>
-              <p className="text-sm">Banners para productos específicos</p>
+              <p className="font-semibold">📊 Reordenar:</p>
+              <p className="text-sm">Cambiar el orden de visualización</p>
             </div>
           </div>
-          <p className="text-sm">
-            <strong>Resoluciones recomendadas:</strong> Grande: 1920x1080, Mediano: 1200x900, Pequeño: 900x600,
-            Cuadrado: 800x800
-          </p>
         </CardContent>
       </Card>
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Crear Nuevo Banner</CardTitle>
-            <CardDescription>
-              Configura el tipo y tamaño del banner según donde quieras que aparezca en la página.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateBanner} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="title">Título *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                    placeholder="Título del banner"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="link_url">Enlace</Label>
-                  <Input
-                    id="link_url"
-                    value={formData.link_url}
-                    onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
-                    placeholder="/categoria o URL externa"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Descripción del banner"
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="banner_type">Tipo de Banner</Label>
-                  <Select
-                    value={formData.banner_type}
-                    onValueChange={(value: any) => setFormData({ ...formData, banner_type: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hero">🎯 Principal (Carousel)</SelectItem>
-                      <SelectItem value="category">📦 Categoría (Cuadrado)</SelectItem>
-                      <SelectItem value="promotional">🎉 Promocional (Rectangular)</SelectItem>
-                      <SelectItem value="product">👕 Producto (Rectangular)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="banner_size">Tamaño</Label>
-                  <Select
-                    value={formData.banner_size}
-                    onValueChange={(value: any) => setFormData({ ...formData, banner_size: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="large">Grande (16:9)</SelectItem>
-                      <SelectItem value="medium">Mediano (4:3)</SelectItem>
-                      <SelectItem value="small">Pequeño (3:2)</SelectItem>
-                      <SelectItem value="square">Cuadrado (1:1)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="display_order">Orden de visualización</Label>
-                  <Input
-                    id="display_order"
-                    type="number"
-                    value={formData.display_order}
-                    onChange={(e) => setFormData({ ...formData, display_order: Number.parseInt(e.target.value) })}
-                    min="1"
-                  />
-                </div>
-                <div className="flex items-center space-x-2 pt-6">
-                  <Switch
-                    checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-                  />
-                  <Label>Activo</Label>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="image">Imagen del Banner *</Label>
-                <Input id="image" type="file" accept="image/*" required className="file:mr-4 file:py-2 file:px-4" />
-              </div>
-
-              <Button type="submit" disabled={uploading} className="w-full">
-                {uploading ? "Subiendo..." : "Crear Banner"}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="space-y-4">
         {banners.map((banner, index) => (
@@ -393,36 +287,93 @@ export default function BannersPage() {
                   >
                     {banner.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteBanner(banner)}>
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Eliminar
-                  </Button>
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <div>
-                    {banner.description && <p className="text-sm text-gray-600 mt-1">{banner.description}</p>}
-                    <div className="flex gap-2 mt-2">
-                      <Badge variant={banner.is_active ? "default" : "secondary"}>
-                        {banner.is_active ? "Activo" : "Inactivo"}
-                      </Badge>
-                      <Badge variant="outline">Orden: {banner.display_order}</Badge>
+              {editingBanner?.id === banner.id ? (
+                <div className="space-y-4 border-t pt-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="title">Título</Label>
+                      <Input
+                        id="title"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        placeholder="Título del banner"
+                      />
                     </div>
-                    {banner.link_url && <p className="text-xs text-gray-500 mt-2">Enlace: {banner.link_url}</p>}
-                    <p className="text-xs text-gray-400">Creado: {new Date(banner.created_at).toLocaleDateString()}</p>
+                    <div>
+                      <Label htmlFor="link_url">Enlace</Label>
+                      <Input
+                        id="link_url"
+                        value={formData.link_url}
+                        onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
+                        placeholder="/categoria o URL externa"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="description">Descripción</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Descripción del banner"
+                      rows={3}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => handleBannerUpdate(banner)}>Guardar Cambios</Button>
+                    <Button variant="outline" onClick={cancelEditing}>
+                      Cancelar
+                    </Button>
                   </div>
                 </div>
-                <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
-                  <Image
-                    src={banner.image_url || "/placeholder.svg"}
-                    alt={banner.title}
-                    fill
-                    className="object-cover"
-                  />
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div>
+                      {banner.description && <p className="text-sm text-gray-600 mt-1">{banner.description}</p>}
+                      <div className="flex gap-2 mt-2">
+                        <Badge variant={banner.is_active ? "default" : "secondary"}>
+                          {banner.is_active ? "Activo" : "Inactivo"}
+                        </Badge>
+                        <Badge variant="outline">Orden: {banner.display_order}</Badge>
+                      </div>
+                      {banner.link_url && <p className="text-xs text-gray-500 mt-2">Enlace: {banner.link_url}</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => startEditing(banner)}>
+                        Editar Contenido
+                      </Button>
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) handleImageUpdate(banner, file)
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploading === banner.id}
+                        />
+                        <Button variant="outline" size="sm" disabled={uploading === banner.id}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          {uploading === banner.id ? "Subiendo..." : "Cambiar Imagen"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
+                    <Image
+                      src={banner.image_url || "/placeholder.svg"}
+                      alt={banner.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -431,10 +382,12 @@ export default function BannersPage() {
       {banners.length === 0 && (
         <div className="text-center py-12">
           <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <p className="text-gray-500">No hay banners creados</p>
-          <p className="text-sm text-gray-400 mt-2">Crea tu primer banner usando el botón de arriba</p>
+          <p className="text-gray-500">No hay banners disponibles</p>
+          <p className="text-sm text-gray-400 mt-2">Ejecuta el script SQL para crear los banners predefinidos</p>
         </div>
       )}
+
+      <SuccessNotification message={notification.message} isVisible={notification.visible} onClose={hideNotification} />
     </div>
   )
 }

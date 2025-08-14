@@ -8,6 +8,7 @@ import { AuthProvider } from "@/context/auth-context"
 import { OrderProvider } from "@/context/order-context"
 import { ThemeProvider } from "@/components/theme-provider"
 import ConditionalLayout from "@/components/conditional-layout"
+import PopupBanner from "@/components/popup-banner"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -34,6 +35,7 @@ export default function RootLayout({
               <CartProvider>
                 <OrderProvider>
                   <ConditionalLayout>{children}</ConditionalLayout>
+                  <PopupBanner />
                 </OrderProvider>
               </CartProvider>
             </AuthProvider>
