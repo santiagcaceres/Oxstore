@@ -11,17 +11,17 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { supabase } from "@/lib/supabase/client"
 
 interface Banner {
   id: string
   title: string
   description: string
-  imageUrl: string
-  link: string
-  position: "hero" | "secondary" | "footer"
-  active: boolean
-  order: number
-  createdAt: string
+  image_url: string
+  link_url: string
+  display_order: number
+  is_active: boolean
+  created_at: string
 }
 
 export default function BannersPage() {
@@ -33,10 +33,9 @@ export default function BannersPage() {
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    link: "",
-    position: "hero" as const,
-    active: true,
-    order: 1,
+    link_url: "",
+    is_active: true,
+    display_order: 1,
   })
 
   useEffect(() => {
@@ -45,9 +44,12 @@ export default function BannersPage() {
 
   const loadBanners = async () => {
     try {
-      const response = await fetch("/api/banners")
-      const data = await response.json()
-      setBanners(data)
+      if (!supabase) return
+
+      const { data, error } = await supabase.from("banners").select("*").order("display_order", { ascending: true })
+
+      if (error) throw error
+      setBanners(data || [])
     } catch (error) {
       console.error("Error loading banners:", error)
     } finally {
@@ -56,21 +58,18 @@ export default function BannersPage() {
   }
 
   const handleFileUpload = async (file: File) => {
-    const formData = new FormData()
-    formData.append("file", file)
-    formData.append("type", "banners")
+    if (!supabase) throw new Error("Supabase no está configurado")
 
-    const response = await fetch("/api/upload", {
-      method: "POST",
-      body: formData,
-    })
+    const fileExt = file.name.split(".").pop()
+    const fileName = `banner-${Date.now()}.${fileExt}`
 
-    if (!response.ok) {
-      throw new Error("Error uploading file")
-    }
+    const { data: uploadData, error: uploadError } = await supabase.storage.from("images").upload(fileName, file)
 
-    const data = await response.json()
-    return data.url
+    if (uploadError) throw uploadError
+
+    const { data: urlData } = supabase.storage.from("images").getPublicUrl(fileName)
+
+    return { url: urlData.publicUrl, filePath: fileName }
   }
 
   const handleCreateBanner = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -87,30 +86,26 @@ export default function BannersPage() {
     setUploading(true)
 
     try {
-      const imageUrl = await handleFileUpload(file)
+      const { url: imageUrl, filePath } = await handleFileUpload(file)
 
-      const response = await fetch("/api/banners", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          imageUrl,
-        }),
+      const { error } = await supabase.from("banners").insert({
+        ...formData,
+        image_url: imageUrl,
+        file_path: filePath,
       })
 
-      if (response.ok) {
-        await loadBanners()
-        setShowForm(false)
-        setFormData({
-          title: "",
-          description: "",
-          link: "",
-          position: "hero",
-          active: true,
-          order: 1,
-        })
-        alert("Banner creado exitosamente")
-      }
+      if (error) throw error
+
+      await loadBanners()
+      setShowForm(false)
+      setFormData({
+        title: "",
+        description: "",
+        link_url: "",
+        is_active: true,
+        display_order: 1,
+      })
+      alert("Banner creado exitosamente")
     } catch (error) {
       console.error("Error creating banner:", error)
       alert("Error al crear el banner")
@@ -129,21 +124,17 @@ export default function BannersPage() {
 
       // Actualizar el orden
       newBanners.forEach((banner, i) => {
-        banner.order = i + 1
+        banner.display_order = i + 1
       })
 
       setBanners(newBanners)
 
-      // Actualizar en el servidor
       try {
-        await fetch("/api/banners/reorder", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ banners: newBanners }),
-        })
+        for (const banner of newBanners) {
+          await supabase.from("banners").update({ display_order: banner.display_order }).eq("id", banner.id)
+        }
       } catch (error) {
         console.error("Error reordering banners:", error)
-        // Revertir cambios si falla
         loadBanners()
       }
     }
@@ -151,37 +142,30 @@ export default function BannersPage() {
 
   const toggleBannerStatus = async (banner: Banner) => {
     try {
-      const response = await fetch(`/api/banners/${banner.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ active: !banner.active }),
-      })
+      const { error } = await supabase.from("banners").update({ is_active: !banner.is_active }).eq("id", banner.id)
 
-      if (response.ok) {
-        setBanners(banners.map((b) => (b.id === banner.id ? { ...b, active: !b.active } : b)))
-      }
+      if (error) throw error
+
+      setBanners(banners.map((b) => (b.id === banner.id ? { ...b, is_active: !b.is_active } : b)))
     } catch (error) {
       console.error("Error updating banner:", error)
     }
   }
 
   const handleDeleteBanner = async (banner: Banner) => {
-    if (banners.length <= 1) {
-      alert("Debe haber al menos un banner. No se puede eliminar.")
-      return
-    }
-
     if (!confirm("¿Estás seguro de que quieres eliminar este banner?")) return
 
     try {
-      const response = await fetch(`/api/banners/${banner.id}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        setBanners(banners.filter((b) => b.id !== banner.id))
-        alert("Banner eliminado exitosamente")
+      if (banner.file_path) {
+        await supabase.storage.from("images").remove([banner.file_path])
       }
+
+      const { error } = await supabase.from("banners").delete().eq("id", banner.id)
+
+      if (error) throw error
+
+      setBanners(banners.filter((b) => b.id !== banner.id))
+      alert("Banner eliminado exitosamente")
     } catch (error) {
       console.error("Error deleting banner:", error)
       alert("Error al eliminar el banner.")
@@ -210,12 +194,12 @@ export default function BannersPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-blue-800">
             <Info className="h-5 w-5" />
-            Información sobre Imágenes del Banner
+            Información sobre Banners
           </CardTitle>
         </CardHeader>
         <CardContent className="text-blue-700 space-y-2">
           <p>
-            <strong>Subida de archivos locales:</strong>
+            <strong>Los banners se muestran en toda la página principal:</strong>
           </p>
           <ul className="list-disc list-inside space-y-1 ml-4">
             <li>
@@ -225,10 +209,10 @@ export default function BannersPage() {
               <strong>Tamaño máximo:</strong> 15MB por imagen
             </li>
             <li>
-              <strong>Resolución recomendada:</strong> 1920x1080 píxeles (formato panorámico)
+              <strong>Resolución recomendada:</strong> 1920x600 píxeles (ancho completo)
             </li>
             <li>
-              <strong>Uso:</strong> Estas imágenes se mostrarán como fondo del banner principal
+              <strong>Los banners ocupan todo el ancho de la página</strong>
             </li>
           </ul>
         </CardContent>
@@ -239,8 +223,7 @@ export default function BannersPage() {
           <CardHeader>
             <CardTitle>Crear Nuevo Banner</CardTitle>
             <CardDescription>
-              Gestiona los banners que aparecen en diferentes secciones de la tienda. Puedes agregar, editar y reordenar
-              banners.
+              Los banners se mostrarán en toda la página principal ocupando todo el ancho disponible.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -257,13 +240,12 @@ export default function BannersPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="link">Enlace *</Label>
+                  <Label htmlFor="link_url">Enlace</Label>
                   <Input
-                    id="link"
-                    value={formData.link}
-                    onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                    id="link_url"
+                    value={formData.link_url}
+                    onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
                     placeholder="/categoria o URL externa"
-                    required
                   />
                 </div>
               </div>
@@ -279,41 +261,28 @@ export default function BannersPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="position">Posición</Label>
-                  <select
-                    id="position"
-                    value={formData.position}
-                    onChange={(e) => setFormData({ ...formData, position: e.target.value as any })}
-                    className="w-full p-2 border rounded-md"
-                  >
-                    <option value="hero">Hero Principal</option>
-                    <option value="secondary">Secundario</option>
-                    <option value="footer">Footer</option>
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="order">Orden</Label>
+                  <Label htmlFor="display_order">Orden de visualización</Label>
                   <Input
-                    id="order"
+                    id="display_order"
                     type="number"
-                    value={formData.order}
-                    onChange={(e) => setFormData({ ...formData, order: Number.parseInt(e.target.value) })}
+                    value={formData.display_order}
+                    onChange={(e) => setFormData({ ...formData, display_order: Number.parseInt(e.target.value) })}
                     min="1"
                   />
                 </div>
                 <div className="flex items-center space-x-2 pt-6">
                   <Switch
-                    checked={formData.active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, active: checked })}
+                    checked={formData.is_active}
+                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                   />
                   <Label>Activo</Label>
                 </div>
               </div>
 
               <div>
-                <Label htmlFor="image">Imagen del Banner</Label>
+                <Label htmlFor="image">Imagen del Banner *</Label>
                 <Input id="image" type="file" accept="image/*" required className="file:mr-4 file:py-2 file:px-4" />
               </div>
 
@@ -330,7 +299,7 @@ export default function BannersPage() {
           <Card key={banner.id} className="border-2 border-dashed border-gray-200">
             <CardContent className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="font-semibold text-lg">Banner {index + 1}</h4>
+                <h4 className="font-semibold text-lg">{banner.title}</h4>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => moveBanner(index, "up")} disabled={index === 0}>
                     <ArrowUp className="h-4 w-4" />
@@ -347,9 +316,9 @@ export default function BannersPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => toggleBannerStatus(banner)}
-                    className={banner.active ? "text-orange-600" : "text-green-600"}
+                    className={banner.is_active ? "text-orange-600" : "text-green-600"}
                   >
-                    {banner.active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {banner.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                   <Button variant="destructive" size="sm" onClick={() => handleDeleteBanner(banner)}>
                     <Trash2 className="w-4 h-4 mr-2" />
@@ -361,21 +330,24 @@ export default function BannersPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-semibold text-lg">{banner.title}</h3>
                     {banner.description && <p className="text-sm text-gray-600 mt-1">{banner.description}</p>}
                     <div className="flex gap-2 mt-2">
-                      <Badge variant={banner.active ? "default" : "secondary"}>
-                        {banner.active ? "Activo" : "Inactivo"}
+                      <Badge variant={banner.is_active ? "default" : "secondary"}>
+                        {banner.is_active ? "Activo" : "Inactivo"}
                       </Badge>
-                      <Badge variant="outline">{banner.position}</Badge>
-                      <Badge variant="outline">Orden: {banner.order}</Badge>
+                      <Badge variant="outline">Orden: {banner.display_order}</Badge>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">Enlace: {banner.link}</p>
-                    <p className="text-xs text-gray-400">Creado: {new Date(banner.createdAt).toLocaleDateString()}</p>
+                    {banner.link_url && <p className="text-xs text-gray-500 mt-2">Enlace: {banner.link_url}</p>}
+                    <p className="text-xs text-gray-400">Creado: {new Date(banner.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
                 <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
-                  <Image src={banner.imageUrl || "/placeholder.svg"} alt={banner.title} fill className="object-cover" />
+                  <Image
+                    src={banner.image_url || "/placeholder.svg"}
+                    alt={banner.title}
+                    fill
+                    className="object-cover"
+                  />
                 </div>
               </div>
             </CardContent>
