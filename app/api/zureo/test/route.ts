@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { getProductsFromZureo, getBrandsFromZureo, getZureoToken } from "@/lib/zureo-api"
 
 export async function GET() {
   try {
@@ -13,51 +14,29 @@ export async function GET() {
       })
     }
 
-    // Crear credenciales de autenticación
-    const credentials = Buffer.from(`${process.env.ZUREO_API_USER}:${process.env.ZUREO_API_PASSWORD}`).toString(
-      "base64",
-    )
+    try {
+      // Test authentication
+      const token = await getZureoToken()
 
-    // Probar conexión con productos
-    const productResponse = await fetch(
-      `https://${process.env.ZUREO_DOMAIN}/api/productos?empresa=${process.env.ZUREO_COMPANY_ID}&limit=1`,
-      {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          "Content-Type": "application/json",
-        },
-      },
-    )
+      // Test products endpoint
+      const products = await getProductsFromZureo({ qty: 1 })
 
-    if (!productResponse.ok) {
+      // Test brands endpoint
+      const brands = await getBrandsFromZureo()
+
+      return NextResponse.json({
+        success: true,
+        message: "Conexión exitosa con Zureo API",
+        productCount: products?.length || 0,
+        brandCount: brands?.length || 0,
+        timestamp: new Date().toISOString(),
+      })
+    } catch (apiError) {
       return NextResponse.json({
         success: false,
-        error: `Error HTTP ${productResponse.status}: ${productResponse.statusText}`,
+        error: `Error de API Zureo: ${apiError instanceof Error ? apiError.message : "Error desconocido"}`,
       })
     }
-
-    const productData = await productResponse.json()
-
-    // Probar conexión con marcas
-    const brandResponse = await fetch(
-      `https://${process.env.ZUREO_DOMAIN}/api/marcas?empresa=${process.env.ZUREO_COMPANY_ID}`,
-      {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          "Content-Type": "application/json",
-        },
-      },
-    )
-
-    const brandData = brandResponse.ok ? await brandResponse.json() : { data: [] }
-
-    return NextResponse.json({
-      success: true,
-      message: "Conexión exitosa con Zureo API",
-      productCount: productData.data?.length || 0,
-      brandCount: brandData.data?.length || 0,
-      timestamp: new Date().toISOString(),
-    })
   } catch (error) {
     console.error("Error testing Zureo API:", error)
     return NextResponse.json({

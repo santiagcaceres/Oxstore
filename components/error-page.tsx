@@ -11,6 +11,9 @@ interface ErrorPageProps {
   onRetry?: () => void
 }
 
+// Named export for compatibility
+export { ErrorPage }
+
 export default function ErrorPage({
   title = "Error al cargar la página",
   description = "No pudimos cargar el contenido solicitado. Por favor, intenta nuevamente.",

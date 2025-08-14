@@ -46,3 +46,6 @@ export default function CategoryLoadingScreen({ category }: { category: string }
     </div>
   )
 }
+
+// Named export for compatibility
+export { CategoryLoadingScreen }
