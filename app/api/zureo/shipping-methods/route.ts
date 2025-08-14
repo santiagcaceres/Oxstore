@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server"
 import { getShippingMethodsFromZureo } from "@/lib/zureo-api"
 
+export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
+
 export async function GET(request: Request) {
   try {
-    const url = new URL(request.url)
-    const emp = Number.parseInt(url.searchParams.get("emp") || "1")
+    const { searchParams } = new URL(request.url)
+    const emp = Number.parseInt(searchParams.get("emp") || "1")
 
     const shippingMethods = await getShippingMethodsFromZureo(emp)
     return NextResponse.json({ success: true, data: shippingMethods })

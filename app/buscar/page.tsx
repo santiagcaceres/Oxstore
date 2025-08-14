@@ -5,7 +5,8 @@ import ProductGrid from "@/components/product-grid"
 import { ProductGridSkeleton } from "@/components/product-grid-skeleton"
 import { FilterBar } from "@/components/filter-bar"
 
-export const revalidate = 3600 // Revalidate every hour
+export const dynamic = "force-dynamic"
+export const revalidate = 0
 
 async function SearchResults({ searchParams }: { searchParams: any }) {
   try {
