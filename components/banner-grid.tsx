@@ -23,9 +23,9 @@ export default function BannerGrid({ banners, type }: BannerGridProps) {
   const getGridClasses = () => {
     switch (type) {
       case "category":
-        return "grid grid-cols-2 md:grid-cols-4 gap-4"
+        return "grid grid-cols-2 md:grid-cols-4 gap-3 px-4"
       case "promotional":
-        return "grid grid-cols-1 md:grid-cols-2 gap-6"
+        return "grid grid-cols-1 md:grid-cols-3 gap-6"
       case "product":
         return "grid grid-cols-1 md:grid-cols-2 gap-6"
       default:
@@ -36,11 +36,11 @@ export default function BannerGrid({ banners, type }: BannerGridProps) {
   const getItemClasses = (banner: Banner) => {
     switch (banner.banner_size) {
       case "square":
-        return "aspect-square"
+        return type === "category" ? "aspect-[4/5.5]" : "aspect-square"
       case "small":
         return "aspect-[3/2]"
       case "medium":
-        return "aspect-[4/3]"
+        return type === "promotional" ? "aspect-[3/2]" : "aspect-[4/3]"
       case "large":
         return "aspect-[16/9]"
       default:

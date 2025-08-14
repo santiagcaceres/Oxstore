@@ -18,6 +18,25 @@ interface Brand {
   imageUrl?: string
 }
 
+const ALLOWED_BRANDS = [
+  "MISTRAL",
+  "UNIFORM",
+  "LEVIS",
+  "KETZIA",
+  "INDIAN",
+  "KABOA",
+  "EMPATHIA",
+  "ROTUNDA",
+  "LEMON",
+  "GATTO PARDO",
+  "MINOT",
+  "MANDAL",
+  "SYMPHORI",
+  "NEUFO",
+  "BROOKSFIELD",
+  "PEGUIN",
+]
+
 export default function MarcasPage() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [filteredBrands, setFilteredBrands] = useState<Brand[]>([])
@@ -52,7 +71,9 @@ export default function MarcasPage() {
         throw new Error(data.error)
       }
 
-      setBrands(data || [])
+      const allowedBrands = (data || []).filter((brand: Brand) => ALLOWED_BRANDS.includes(brand.name.toUpperCase()))
+
+      setBrands(allowedBrands)
     } catch (error) {
       console.error("Error loading brands:", error)
       setError(error instanceof Error ? error.message : "Error desconocido al cargar marcas")
@@ -196,6 +217,21 @@ export default function MarcasPage() {
           </Badge>
         </div>
       </div>
+
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3 text-blue-700">
+            <AlertCircle className="h-5 w-5" />
+            <div>
+              <h3 className="font-semibold">Marcas Activas</h3>
+              <p className="text-sm mt-1">
+                Solo se muestran las marcas activas configuradas para la tienda ({ALLOWED_BRANDS.length} marcas
+                permitidas)
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Buscador */}
       <Card>
