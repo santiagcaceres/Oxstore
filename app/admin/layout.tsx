@@ -4,17 +4,7 @@ import type React from "react"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import {
-  LayoutDashboard,
-  Package,
-  Upload,
-  Tag,
-  ImageIcon,
-  ShoppingBag,
-  Stethoscope,
-  Settings,
-  LogOut,
-} from "lucide-react"
+import { LayoutDashboard, Package, ImageIcon, LogOut } from "lucide-react"
 import { useAdmin } from "@/context/admin-context"
 
 export default function AdminLayout({
@@ -71,6 +61,7 @@ export default function AdminLayout({
                 <span>Productos</span>
               </Link>
 
+              {/* 
               <Link
                 href="/admin/productos-stock"
                 className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors ml-4"
@@ -96,14 +87,6 @@ export default function AdminLayout({
               </Link>
 
               <Link
-                href="/admin/banners"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                <ImageIcon className="h-5 w-5" />
-                <span>Banners</span>
-              </Link>
-
-              <Link
                 href="/admin/pedidos"
                 className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
               >
@@ -125,6 +108,15 @@ export default function AdminLayout({
               >
                 <Stethoscope className="h-5 w-5" />
                 <span>Diagnóstico</span>
+              </Link>
+              */}
+
+              <Link
+                href="/admin/banners"
+                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                <ImageIcon className="h-5 w-5" />
+                <span>Banners</span>
               </Link>
             </nav>
           </div>
