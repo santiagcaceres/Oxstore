@@ -96,6 +96,9 @@ export default function AdminLoginPage() {
                 <strong>Usuarios autorizados:</strong> mariela@oxstore.com, alison@oxstore.com, lorenzo@oxstore.com,
                 patricia@oxstore.com
               </p>
+              <p className="text-xs text-blue-600 mt-1">
+                <strong>Contraseña:</strong> admin123 (para todos los usuarios)
+              </p>
             </div>
           </CardContent>
         </Card>

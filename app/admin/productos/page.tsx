@@ -1,13 +1,43 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Eye, Edit, AlertCircle } from "lucide-react"
+import { Search, Eye, Edit, AlertCircle, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+
+const MOCK_PRODUCTS = [
+  {
+    codigo: "LEV001",
+    nombre: "Jean 724 High Rise Straight",
+    marca: "LEVIS",
+    precio: 4081.96,
+    stock: 5,
+    categoria: "Pantalones",
+    descripcion: "Jean de tiro alto con corte recto, ideal para uso diario",
+  },
+  {
+    codigo: "GAT001",
+    nombre: "Blusa agujeros",
+    marca: "GATTO PARDO",
+    precio: 1795.08,
+    stock: 3,
+    categoria: "Blusas",
+    descripcion: "Blusa moderna con detalles de agujeros decorativos",
+  },
+  {
+    codigo: "LEV002",
+    nombre: "511 slim",
+    marca: "LEVIS",
+    precio: 3270.49,
+    stock: 8,
+    categoria: "Pantalones",
+    descripcion: "Jean corte slim fit, cómodo y moderno",
+  },
+]
 
 interface ZureoProduct {
   codigo: string
@@ -22,30 +52,16 @@ interface ZureoProduct {
 export default function ProductosPage() {
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const [products, setProducts] = useState<ZureoProduct[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [products] = useState<ZureoProduct[]>(MOCK_PRODUCTS)
+  const [error] = useState<string | null>(null)
 
   const loadProducts = async () => {
     setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch("/api/products/zureo")
-      if (!response.ok) {
-        throw new Error("Error al cargar productos")
-      }
-      const data = await response.json()
-      setProducts(data.products || [])
-    } catch (err) {
-      setError("Error al conectar con la API de Zureo")
-      console.error("[v0] Error loading products:", err)
-    } finally {
+    // Simulate loading
+    setTimeout(() => {
       setLoading(false)
-    }
+    }, 1000)
   }
-
-  useEffect(() => {
-    loadProducts()
-  }, [])
 
   const filteredProducts = products.filter(
     (product) =>
@@ -66,6 +82,7 @@ export default function ProductosPage() {
             {products.length} productos cargados
           </Badge>
           <Button onClick={loadProducts} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             {loading ? "Cargando..." : "Actualizar"}
           </Button>
         </div>
@@ -77,6 +94,14 @@ export default function ProductosPage() {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
+
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Mostrando datos de demostración. Los productos reales se cargarán cuando se resuelvan los problemas de
+          conectividad con Zureo.
+        </AlertDescription>
+      </Alert>
 
       {/* Search */}
       <Card>

@@ -14,10 +14,10 @@ interface AdminContextType {
 const AdminContext = createContext<AdminContextType | undefined>(undefined)
 
 const ADMIN_CREDENTIALS = [
-  { email: "mariela@oxstore.com", password: "marielaox2025" },
-  { email: "patricia@oxstore.com", password: "patriciaox2025" },
-  { email: "alison@oxstore.com", password: "alisonox2025" },
-  { email: "lorenzo@oxstore.com", password: "lorenzoox2025" },
+  { email: "mariela@oxstore.com", password: "admin123" },
+  { email: "patricia@oxstore.com", password: "admin123" },
+  { email: "alison@oxstore.com", password: "admin123" },
+  { email: "lorenzo@oxstore.com", password: "admin123" },
 ]
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
