@@ -2,12 +2,10 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
-import type { User } from "@supabase/supabase-js"
 
 interface AdminContextType {
   isAuthenticated: boolean
-  user: User | null
+  user: { email: string } | null
   login: (email: string, password: string) => Promise<boolean>
   logout: () => Promise<void>
   loading: boolean
@@ -15,118 +13,50 @@ interface AdminContextType {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined)
 
+const ADMIN_CREDENTIALS = [
+  { email: "mariela@oxstore.com", password: "marielaox2025" },
+  { email: "patricia@oxstore.com", password: "patriciaox2025" },
+  { email: "alison@oxstore.com", password: "alisonox2025" },
+  { email: "lorenzo@oxstore.com", password: "lorenzoox2025" },
+]
+
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<{ email: string } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!supabase) {
-      console.error("Supabase client not configured")
-      setLoading(false)
-      return
-    }
-
-    const checkSession = async () => {
+    const savedSession = localStorage.getItem("admin_session")
+    if (savedSession) {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        if (session?.user) {
-          // Verificar si el usuario es admin
-          const { data: adminUser } = await supabase
-            .from("admin_users")
-            .select("*")
-            .eq("email", session.user.email)
-            .single()
-
-          if (adminUser) {
-            setIsAuthenticated(true)
-            setUser(session.user)
-          }
-        }
+        const session = JSON.parse(savedSession)
+        setIsAuthenticated(true)
+        setUser(session.user)
       } catch (error) {
-        console.error("Error checking session:", error)
-      } finally {
-        setLoading(false)
+        localStorage.removeItem("admin_session")
       }
     }
-
-    checkSession()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        // Verificar si el usuario es admin
-        const { data: adminUser } = await supabase
-          .from("admin_users")
-          .select("*")
-          .eq("email", session.user.email)
-          .single()
-
-        if (adminUser) {
-          setIsAuthenticated(true)
-          setUser(session.user)
-        } else {
-          setIsAuthenticated(false)
-          setUser(null)
-        }
-      } else {
-        setIsAuthenticated(false)
-        setUser(null)
-      }
-      setLoading(false)
-    })
-
-    return () => subscription.unsubscribe()
+    setLoading(false)
   }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    if (!supabase) {
-      console.error("Supabase client not configured")
-      return false
+    const validCredential = ADMIN_CREDENTIALS.find((cred) => cred.email === email && cred.password === password)
+
+    if (validCredential) {
+      const session = { user: { email } }
+      localStorage.setItem("admin_session", JSON.stringify(session))
+      setIsAuthenticated(true)
+      setUser({ email })
+      return true
     }
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) {
-        console.error("Login error:", error)
-        return false
-      }
-
-      if (data.user) {
-        // Verificar si el usuario es admin
-        const { data: adminUser } = await supabase.from("admin_users").select("*").eq("email", data.user.email).single()
-
-        if (adminUser) {
-          setIsAuthenticated(true)
-          setUser(data.user)
-          return true
-        }
-      }
-
-      return false
-    } catch (error) {
-      console.error("Login error:", error)
-      return false
-    }
+    return false
   }
 
   const logout = async (): Promise<void> => {
-    if (!supabase) return
-
-    try {
-      await supabase.auth.signOut()
-      setIsAuthenticated(false)
-      setUser(null)
-    } catch (error) {
-      console.error("Logout error:", error)
-    }
+    localStorage.removeItem("admin_session")
+    setIsAuthenticated(false)
+    setUser(null)
   }
 
   return (

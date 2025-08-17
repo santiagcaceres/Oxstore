@@ -29,7 +29,7 @@ export default function AdminLoginPage() {
       if (success) {
         router.push("/admin")
       } else {
-        setError("Credenciales incorrectas o no tienes permisos de administrador")
+        setError("Credenciales incorrectas")
       }
     } catch (err) {
       setError("Error al iniciar sesión")
@@ -93,8 +93,8 @@ export default function AdminLoginPage() {
 
             <div className="mt-4 p-3 bg-blue-50 rounded-md">
               <p className="text-xs text-blue-600">
-                <strong>Nota:</strong> Debes crear una cuenta en Supabase Auth y ser agregado como usuario admin para
-                acceder.
+                <strong>Usuarios autorizados:</strong> mariela@oxstore.com, alison@oxstore.com, lorenzo@oxstore.com,
+                patricia@oxstore.com
               </p>
             </div>
           </CardContent>
