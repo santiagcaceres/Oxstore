@@ -11,18 +11,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Search, Package, Edit, Star } from "lucide-react"
-import { getCompleteProducts, getProductsWithStock, createOrUpdateProduct } from "@/lib/product-manager"
-import type { EnhancedProduct } from "@/lib/product-manager"
+import { getCompleteProducts, getProductsWithStock, updateProductLocalData } from "@/lib/product-service"
+import type { EnrichedProduct } from "@/lib/product-service"
 import Image from "next/image"
 
 export default function ProductosPage() {
-  const [completeProducts, setCompleteProducts] = useState<EnhancedProduct[]>([])
-  const [stockProducts, setStockProducts] = useState<EnhancedProduct[]>([])
-  const [filteredComplete, setFilteredComplete] = useState<EnhancedProduct[]>([])
-  const [filteredStock, setFilteredStock] = useState<EnhancedProduct[]>([])
+  const [completeProducts, setCompleteProducts] = useState<EnrichedProduct[]>([])
+  const [stockProducts, setStockProducts] = useState<EnrichedProduct[]>([])
+  const [filteredComplete, setFilteredComplete] = useState<EnrichedProduct[]>([])
+  const [filteredStock, setFilteredStock] = useState<EnrichedProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [editingProduct, setEditingProduct] = useState<EnhancedProduct | null>(null)
+  const [editingProduct, setEditingProduct] = useState<EnrichedProduct | null>(null)
   const [saving, setSaving] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -31,6 +31,7 @@ export default function ProductosPage() {
     seo_title: "",
     seo_description: "",
     is_featured: false,
+    is_active: true,
   })
 
   useEffect(() => {
@@ -58,16 +59,16 @@ export default function ProductosPage() {
   const filterProducts = () => {
     const searchLower = searchTerm.toLowerCase()
 
-    const filterFn = (product: EnhancedProduct) =>
+    const filterFn = (product: EnrichedProduct) =>
       product.nombre.toLowerCase().includes(searchLower) ||
       product.codigo.toLowerCase().includes(searchLower) ||
-      product.marca?.nombre?.toLowerCase().includes(searchLower)
+      product.marca?.toLowerCase().includes(searchLower)
 
     setFilteredComplete(completeProducts.filter(filterFn))
     setFilteredStock(stockProducts.filter(filterFn))
   }
 
-  const handleEditProduct = (product: EnhancedProduct) => {
+  const handleEditProduct = (product: EnrichedProduct) => {
     setEditingProduct(product)
     setFormData({
       custom_title: product.custom_title || "",
@@ -75,6 +76,7 @@ export default function ProductosPage() {
       seo_title: product.seo_title || "",
       seo_description: product.seo_description || "",
       is_featured: product.is_featured || false,
+      is_active: product.is_active !== false,
     })
   }
 
@@ -83,12 +85,9 @@ export default function ProductosPage() {
 
     setSaving(true)
     try {
-      const result = await createOrUpdateProduct(editingProduct.codigo, formData)
-
-      if (result.success) {
-        await loadProducts() // Reload products
-        setEditingProduct(null)
-      }
+      await updateProductLocalData(editingProduct.codigo, formData)
+      await loadProducts() // Reload products
+      setEditingProduct(null)
     } catch (error) {
       console.error("Error saving product:", error)
     } finally {
@@ -118,8 +117,8 @@ export default function ProductosPage() {
     )
   }
 
-  const ProductCard = ({ product }: { product: EnhancedProduct }) => (
-    <Card key={product.id} className="hover:shadow-md transition-shadow">
+  const ProductCard = ({ product }: { product: EnrichedProduct }) => (
+    <Card key={product.codigo} className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex-1">
@@ -162,13 +161,15 @@ export default function ProductosPage() {
 
           <div className="flex justify-between items-center">
             <span className="text-sm text-gray-600">Marca:</span>
-            <span className="font-medium">{product.marca?.nombre}</span>
+            <span className="font-medium">{product.marca}</span>
           </div>
 
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-600">Stock:</span>
-            <span className="font-medium">{product.stock}</span>
-          </div>
+          {product.stock !== undefined && (
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Stock:</span>
+              <span className="font-medium">{product.stock}</span>
+            </div>
+          )}
         </div>
 
         {/* Custom Description */}
@@ -220,7 +221,7 @@ export default function ProductosPage() {
         <TabsContent value="complete" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredComplete.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.codigo} product={product} />
             ))}
           </div>
 
@@ -238,7 +239,7 @@ export default function ProductosPage() {
         <TabsContent value="stock" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredStock.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.codigo} product={product} />
             ))}
           </div>
 
@@ -311,6 +312,15 @@ export default function ProductosPage() {
                 onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_featured: checked }))}
               />
               <Label htmlFor="is_featured">Producto Destacado</Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="is_active"
+                checked={formData.is_active}
+                onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, is_active: checked }))}
+              />
+              <Label htmlFor="is_active">Producto Activo</Label>
             </div>
 
             <div className="flex justify-end space-x-2 pt-4">

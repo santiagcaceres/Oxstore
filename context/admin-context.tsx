@@ -2,11 +2,14 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
+import { createClient } from "@/lib/supabase/client"
+import type { User } from "@supabase/supabase-js"
 
 interface AdminContextType {
   isAuthenticated: boolean
-  login: (email: string, password: string) => boolean
-  logout: () => void
+  user: User | null
+  login: (email: string, password: string) => Promise<boolean>
+  logout: () => Promise<void>
   loading: boolean
 }
 
@@ -14,47 +17,109 @@ const AdminContext = createContext<AdminContextType | undefined>(undefined)
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const supabase = createClient()
 
   useEffect(() => {
-    try {
-      const savedAuth = localStorage.getItem("admin_authenticated")
-      if (savedAuth === "true") {
-        setIsAuthenticated(true)
-      }
-    } catch (error) {
-      console.error("Error accessing localStorage:", error)
-      // Si hay error con localStorage, continuar sin autenticación
-    }
-    setLoading(false)
-  }, [])
-
-  const login = (email: string, password: string) => {
-    // Credenciales de prueba
-    if (email === "admin@oxstore.com" && password === "admin123") {
-      setIsAuthenticated(true)
+    const checkSession = async () => {
       try {
-        localStorage.setItem("admin_authenticated", "true")
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        if (session?.user) {
+          // Verificar si el usuario es admin
+          const { data: adminUser } = await supabase
+            .from("admin_users")
+            .select("*")
+            .eq("email", session.user.email)
+            .single()
+
+          if (adminUser) {
+            setIsAuthenticated(true)
+            setUser(session.user)
+          }
+        }
       } catch (error) {
-        console.error("Error saving to localStorage:", error)
-        // Continuar aunque no se pueda guardar en localStorage
+        console.error("Error checking session:", error)
+      } finally {
+        setLoading(false)
       }
-      return true
     }
-    return false
-  }
 
-  const logout = () => {
-    setIsAuthenticated(false)
+    checkSession()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Verificar si el usuario es admin
+        const { data: adminUser } = await supabase
+          .from("admin_users")
+          .select("*")
+          .eq("email", session.user.email)
+          .single()
+
+        if (adminUser) {
+          setIsAuthenticated(true)
+          setUser(session.user)
+        } else {
+          setIsAuthenticated(false)
+          setUser(null)
+        }
+      } else {
+        setIsAuthenticated(false)
+        setUser(null)
+      }
+      setLoading(false)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase])
+
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      localStorage.removeItem("admin_authenticated")
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        console.error("Login error:", error)
+        return false
+      }
+
+      if (data.user) {
+        // Verificar si el usuario es admin
+        const { data: adminUser } = await supabase.from("admin_users").select("*").eq("email", data.user.email).single()
+
+        if (adminUser) {
+          setIsAuthenticated(true)
+          setUser(data.user)
+          return true
+        }
+      }
+
+      return false
     } catch (error) {
-      console.error("Error removing from localStorage:", error)
-      // Continuar aunque no se pueda limpiar localStorage
+      console.error("Login error:", error)
+      return false
     }
   }
 
-  return <AdminContext.Provider value={{ isAuthenticated, login, logout, loading }}>{children}</AdminContext.Provider>
+  const logout = async (): Promise<void> => {
+    try {
+      await supabase.auth.signOut()
+      setIsAuthenticated(false)
+      setUser(null)
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
+  }
+
+  return (
+    <AdminContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>{children}</AdminContext.Provider>
+  )
 }
 
 export function useAdmin() {

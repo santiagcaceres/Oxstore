@@ -25,11 +25,11 @@ export default function AdminLoginPage() {
     setIsLoading(true)
 
     try {
-      const success = login(email, password)
+      const success = await login(email, password)
       if (success) {
         router.push("/admin")
       } else {
-        setError("Credenciales incorrectas")
+        setError("Credenciales incorrectas o no tienes permisos de administrador")
       }
     } catch (err) {
       setError("Error al iniciar sesión")
@@ -91,13 +91,10 @@ export default function AdminLoginPage() {
               </Button>
             </form>
 
-            <div className="mt-4 p-3 bg-gray-50 rounded-md">
-              <p className="text-xs text-gray-600">
-                <strong>Credenciales de prueba:</strong>
-                <br />
-                Email: admin@oxstore.com
-                <br />
-                Contraseña: admin123
+            <div className="mt-4 p-3 bg-blue-50 rounded-md">
+              <p className="text-xs text-blue-600">
+                <strong>Nota:</strong> Debes crear una cuenta en Supabase Auth y ser agregado como usuario admin para
+                acceder.
               </p>
             </div>
           </CardContent>
