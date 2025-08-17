@@ -1,7 +1,6 @@
-import { getProductsFromZureo, getStockBySucursal } from "./zureo-api"
 import { createClient } from "@supabase/supabase-js"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 export interface EnrichedProduct {
   // Datos de Zureo
@@ -28,35 +27,55 @@ export interface EnrichedProduct {
   }>
 }
 
+async function fetchZureoProducts() {
+  try {
+    const response = await fetch("/api/products/zureo")
+    const result = await response.json()
+    return result.success ? result.data : []
+  } catch (error) {
+    console.error("Error fetching products from API:", error)
+    return []
+  }
+}
+
+async function fetchStockData() {
+  try {
+    const response = await fetch("/api/products/stock")
+    const result = await response.json()
+    return result.success ? result.data : []
+  } catch (error) {
+    console.error("Error fetching stock from API:", error)
+    return []
+  }
+}
+
 export async function getEnrichedProducts(): Promise<EnrichedProduct[]> {
   try {
-    // Obtener productos de Zureo
-    const zureoProducts = await getProductsFromZureo()
+    const zureoProducts = await fetchZureoProducts()
 
     // Obtener datos locales de Supabase
     const { data: localProducts } = await supabase.from("products").select("*")
-
     const { data: productImages } = await supabase.from("product_images").select("*")
 
     // Combinar datos
-    const enrichedProducts: EnrichedProduct[] = zureoProducts.map((product) => {
+    const enrichedProducts: EnrichedProduct[] = zureoProducts.map((product: any) => {
       const localData = localProducts?.find((p) => p.product_code === product.codigo)
       const images = productImages?.filter((img) => img.product_code === product.codigo) || []
 
       return {
         codigo: product.codigo,
-        nombre: product.nombre,
+        nombre: product.nombre || product.descripcion,
         marca: product.marca,
         precio: product.precio,
-        categoria: product.categoria,
+        categoria: product.categoria || product.rubro,
         descripcion: product.descripcion,
-        activo: product.activo,
+        activo: !product.baja,
         custom_title: localData?.custom_title,
         custom_description: localData?.custom_description,
         seo_title: localData?.seo_title,
         seo_description: localData?.seo_description,
         is_featured: localData?.is_featured || false,
-        is_active: localData?.is_active !== false, // Por defecto activo
+        is_active: localData?.is_active !== false,
         images: images.map((img) => ({
           id: img.id,
           image_url: img.image_url,
@@ -75,12 +94,12 @@ export async function getEnrichedProducts(): Promise<EnrichedProduct[]> {
 export async function getProductsWithStock(): Promise<EnrichedProduct[]> {
   try {
     const products = await getEnrichedProducts()
-    const stockData = await getStockBySucursal()
+    const stockData = await fetchStockData()
 
     return products
       .map((product) => ({
         ...product,
-        stock: stockData.find((s) => s.codigo === product.codigo)?.stock || 0,
+        stock: stockData.find((s: any) => s.codigo === product.codigo)?.stock || 0,
       }))
       .filter((product) => product.stock > 0)
   } catch (error) {
