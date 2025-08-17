@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { supabase } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
 
 interface AdminContextType {
@@ -19,9 +19,14 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const supabase = createClient()
 
   useEffect(() => {
+    if (!supabase) {
+      console.error("Supabase client not configured")
+      setLoading(false)
+      return
+    }
+
     const checkSession = async () => {
       try {
         const {
@@ -75,9 +80,14 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => subscription.unsubscribe()
-  }, [supabase])
+  }, [])
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    if (!supabase) {
+      console.error("Supabase client not configured")
+      return false
+    }
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -108,6 +118,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async (): Promise<void> => {
+    if (!supabase) return
+
     try {
       await supabase.auth.signOut()
       setIsAuthenticated(false)

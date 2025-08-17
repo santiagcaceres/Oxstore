@@ -11,6 +11,13 @@ if (supabaseUrl && supabaseAnonKey) {
 
 export { supabase }
 
+export function createSupabaseClient() {
+  if (!supabase) {
+    throw new Error("Supabase no está configurado. Verifica las variables de entorno.")
+  }
+  return supabase
+}
+
 // Función para verificar si Supabase está configurado
 export const isSupabaseConfigured = () => {
   return supabase !== null

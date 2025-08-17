@@ -37,6 +37,12 @@ CREATE TRIGGER update_products_updated_at
 -- Habilitar RLS (Row Level Security)
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 
+-- Eliminar políticas existentes antes de crearlas para evitar errores de duplicación
+DROP POLICY IF EXISTS "Allow public read access" ON products;
+DROP POLICY IF EXISTS "Allow authenticated users to insert" ON products;
+DROP POLICY IF EXISTS "Allow authenticated users to update" ON products;
+DROP POLICY IF EXISTS "Allow authenticated users to delete" ON products;
+
 -- Crear políticas de acceso
 CREATE POLICY "Allow public read access" ON products FOR SELECT USING (true);
 CREATE POLICY "Allow authenticated users to insert" ON products FOR INSERT WITH CHECK (true);

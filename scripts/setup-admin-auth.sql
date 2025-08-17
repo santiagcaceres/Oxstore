@@ -11,7 +11,8 @@ INSERT INTO admin_users (email)
 VALUES 
   ('mariela@oxstore.com'),
   ('alison@oxstore.com'),
-  ('lorenzo@oxstore.com')
+  ('lorenzo@oxstore.com'),
+  ('patricia@oxstore.com')
 ON CONFLICT (email) DO NOTHING;
 
 -- Crear política RLS para admin_users
