@@ -17,7 +17,7 @@ export async function GET() {
 
     return NextResponse.json(transformedBrands)
   } catch (error) {
-    console.warn("Error fetching brands from Zureo:", error)
-    return NextResponse.json([]) // Return empty array instead of error
+    console.error("Error fetching brands from Zureo:", error)
+    return NextResponse.json({ error: "Error fetching brands from Zureo API" }, { status: 500 })
   }
 }

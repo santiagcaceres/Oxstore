@@ -6,7 +6,7 @@ export async function GET() {
     const products = await getProductsFromZureo({ qty: 1000, includeInactive: true })
     return NextResponse.json(products)
   } catch (error) {
-    console.warn("Error fetching Zureo products:", error)
-    return NextResponse.json([]) // Return empty array instead of error
+    console.error("Error fetching Zureo products:", error)
+    return NextResponse.json({ error: "Error al obtener productos de Zureo" }, { status: 500 })
   }
 }

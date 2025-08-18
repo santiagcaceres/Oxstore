@@ -85,12 +85,10 @@ export default function Header() {
           const data = await response.json()
           setBrands(data || [])
         } else {
-          console.warn("Error fetching brands:", response.status)
-          setBrands([]) // Set empty array instead of failing
+          console.error("Error fetching brands:", response.status)
         }
       } catch (error) {
-        console.warn("Error fetching brands:", error)
-        setBrands([]) // Set empty array instead of failing
+        console.error("Error fetching brands:", error)
       } finally {
         setBrandsLoading(false)
       }

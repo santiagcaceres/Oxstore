@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { getProductsFromZureo, getBrandsFromZureo } from "@/lib/zureo-api"
 import { transformZureoProduct } from "@/lib/data-transformer"
 import ProductGrid from "@/components/product-grid"
 import { ProductGridSkeleton } from "@/components/product-grid-skeleton"
@@ -10,22 +11,8 @@ export const revalidate = 0
 async function SearchResults({ searchParams }: { searchParams: any }) {
   try {
     const query = searchParams?.q as string | undefined
-
-    const [productsResponse, brandsResponse] = await Promise.all([
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/zureo/products`, { cache: "no-store" }),
-      fetch(`${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/api/zureo/brands`, { cache: "no-store" }),
-    ])
-
-    if (!productsResponse.ok || !brandsResponse.ok) {
-      return (
-        <div className="text-center py-12">
-          <p className="text-xl text-gray-600">Error al cargar productos.</p>
-        </div>
-      )
-    }
-
-    const productsData = await productsResponse.json()
-    const brandsData = await brandsResponse.json()
+    const productsData = await getProductsFromZureo({ qty: 1000 })
+    const brandsData = await getBrandsFromZureo()
 
     if (!productsData || !Array.isArray(productsData)) {
       return (
@@ -47,7 +34,7 @@ async function SearchResults({ searchParams }: { searchParams: any }) {
       .filter(Boolean)
 
     const activeProducts = allProducts.filter((p) => p && p.isActive)
-    const brands = brandsData?.map((b: any) => b.nombre || b.name).filter(Boolean) || []
+    const brands = brandsData?.map((b: any) => b.nombre).filter(Boolean) || []
 
     const filteredProducts = activeProducts.filter((product) => {
       if (!product) return false

@@ -5,6 +5,8 @@ import ProductSlider from "@/components/product-slider"
 import BannerCarousel from "@/components/banner-carousel"
 import BannerGrid from "@/components/banner-grid"
 import BrandsMarquee from "@/components/brands-marquee"
+import { getAllZureoProducts } from "@/lib/zureo-api"
+import { transformZureoProduct } from "@/lib/data-transformer"
 import { getBannersByType } from "@/lib/supabase"
 
 interface Product {
@@ -63,29 +65,18 @@ export default function HomePage() {
 
   const loadProducts = async () => {
     try {
-      const response = await fetch("/api/zureo/products")
-      if (!response.ok) {
-        console.warn("Failed to fetch products:", response.status)
-        setFeaturedProducts([])
-        setNewProducts([])
-        setSaleProducts([])
-        setLoading(false)
-        return
-      }
-
-      const zureoProducts = await response.json()
+      const zureoProducts = await getAllZureoProducts()
 
       // Solo productos con marca, imagen y precio
       const completeProducts = zureoProducts
         .filter((product: any) => product.marca?.nombre && product.precio > 0 && !product.baja)
-        .map((product: any) => ({
-          id: product.codigo || product.id,
-          title: product.nombre || "Producto sin nombre",
-          price: product.precio || 0,
-          images: product.imagen ? [product.imagen] : ["/placeholder.svg?height=400&width=400&text=Sin+Imagen"],
-          handle: (product.nombre || "").toLowerCase().replace(/\s+/g, "-"),
-          brand: product.marca?.nombre || "Sin marca",
-        }))
+        .map((product: any) => {
+          const transformed = transformZureoProduct(product)
+          return {
+            ...transformed,
+            brand: product.marca.nombre,
+          }
+        })
         .filter((product: Product) => product.images.length > 0)
 
       // Productos destacados (primeros 8)
@@ -96,10 +87,7 @@ export default function HomePage() {
 
       setSaleProducts(completeProducts.slice(-8).reverse())
     } catch (error) {
-      console.warn("Error loading products:", error)
-      setFeaturedProducts([])
-      setNewProducts([])
-      setSaleProducts([])
+      console.error("Error loading products:", error)
     } finally {
       setLoading(false)
     }

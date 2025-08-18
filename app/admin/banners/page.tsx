@@ -1,9 +1,9 @@
 "use client"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { ImageIcon, Eye, EyeOff, ArrowUp, ArrowDown, Upload } from "lucide-react"
+import { ImageIcon, Eye, EyeOff, ArrowUp, ArrowDown, Info, Upload } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -210,28 +210,6 @@ export default function BannersPage() {
     return sizes[size as keyof typeof sizes] || size
   }
 
-  const getRecommendedSize = (type: string) => {
-    const sizes = {
-      hero: "1200x675px (16:9)",
-      category: "400x500px (4:5)",
-      promotional: "800x400px (2:1)",
-      product: "600x400px (3:2)",
-      popup: "500x600px (5:6)",
-    }
-    return sizes[type as keyof typeof sizes] || "Tamaño personalizado"
-  }
-
-  const getAspectRatio = (type: string) => {
-    const ratios = {
-      hero: "aspect-[16/9]",
-      category: "aspect-[4/5]",
-      promotional: "aspect-[2/1]",
-      product: "aspect-[3/2]",
-      popup: "aspect-[5/6]",
-    }
-    return ratios[type as keyof typeof ratios] || "aspect-video"
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -249,6 +227,36 @@ export default function BannersPage() {
         <h1 className="text-3xl font-bold text-gray-900">Gestión de Banners</h1>
       </div>
 
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <Info className="h-5 w-5" />
+            Sistema de Banners Predefinidos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-blue-700 space-y-3">
+          <p className="font-semibold">Los banners están predefinidos según el diseño de la página. Solo puedes:</p>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <p className="font-semibold">✏️ Editar contenido:</p>
+              <p className="text-sm">Título, descripción y enlace</p>
+            </div>
+            <div>
+              <p className="font-semibold">🖼️ Cambiar imagen:</p>
+              <p className="text-sm">Subir nueva imagen desde tu ordenador</p>
+            </div>
+            <div>
+              <p className="font-semibold">👁️ Mostrar/Ocultar:</p>
+              <p className="text-sm">Activar o desactivar banners</p>
+            </div>
+            <div>
+              <p className="font-semibold">📊 Reordenar:</p>
+              <p className="text-sm">Cambiar el orden de visualización</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="space-y-4">
         {banners.map((banner, index) => (
           <Card key={banner.id} className="border-2 border-dashed border-gray-200">
@@ -257,9 +265,7 @@ export default function BannersPage() {
                 <div className="flex items-center gap-3">
                   <h4 className="font-semibold text-lg">{banner.title}</h4>
                   <Badge variant="outline">{getBannerTypeLabel(banner.banner_type)}</Badge>
-                  <Badge variant="secondary" className="text-xs">
-                    {getRecommendedSize(banner.banner_type)}
-                  </Badge>
+                  <Badge variant="secondary">{getBannerSizeLabel(banner.banner_size)}</Badge>
                 </div>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => moveBanner(index, "up")} disabled={index === 0}>
@@ -358,9 +364,7 @@ export default function BannersPage() {
                       </div>
                     </div>
                   </div>
-                  <div
-                    className={`relative bg-gray-100 rounded-lg overflow-hidden ${getAspectRatio(banner.banner_type)}`}
-                  >
+                  <div className="relative h-32 bg-gray-100 rounded-lg overflow-hidden">
                     <Image
                       src={banner.image_url || "/placeholder.svg"}
                       alt={banner.title}

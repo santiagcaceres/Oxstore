@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { getBrandsFromZureo } from "@/lib/zureo-api"
 
 interface Brand {
   id: number
@@ -36,18 +37,11 @@ export default function BrandsMarquee() {
 
   const loadBrands = async () => {
     try {
-      const response = await fetch("/api/zureo/brands")
-      if (!response.ok) {
-        console.warn("Failed to fetch brands:", response.status)
-        setBrands([]) // Set empty array instead of failing
-        return
-      }
-      const allBrands = await response.json()
+      const allBrands = await getBrandsFromZureo()
       const filteredBrands = allBrands.filter((brand: Brand) => ALLOWED_BRANDS.includes(brand.nombre.toUpperCase()))
       setBrands(filteredBrands)
     } catch (error) {
-      console.warn("Error loading brands:", error)
-      setBrands([]) // Set empty array instead of failing
+      console.error("Error loading brands:", error)
     }
   }
 

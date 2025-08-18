@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSimpleAdmin } from "@/context/simple-admin"
+import { useAdmin } from "@/context/admin-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,7 +16,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useSimpleAdmin()
+  const { login } = useAdmin()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,12 +91,13 @@ export default function AdminLoginPage() {
               </Button>
             </form>
 
-            <div className="mt-4 p-3 bg-blue-50 rounded-md">
-              <p className="text-xs text-blue-600">
-                <strong>Usuario:</strong> admin@oxstore.com
-              </p>
-              <p className="text-xs text-blue-600 mt-1">
-                <strong>Contraseña:</strong> admin123
+            <div className="mt-4 p-3 bg-gray-50 rounded-md">
+              <p className="text-xs text-gray-600">
+                <strong>Credenciales de prueba:</strong>
+                <br />
+                Email: admin@oxstore.com
+                <br />
+                Contraseña: admin123
               </p>
             </div>
           </CardContent>

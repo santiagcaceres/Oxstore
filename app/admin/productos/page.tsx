@@ -2,235 +2,279 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Eye, Edit, AlertCircle, RefreshCw } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Search, Package, CheckCircle, XCircle, ImageIcon } from "lucide-react"
+import { getAllZureoProducts } from "@/lib/zureo-api"
+import { getProductImages } from "@/lib/supabase"
+import type { ZureoProduct } from "@/types/zureo"
 
-interface ZureoProduct {
-  codigo: string
-  descripcion: string
-  marca: string
-  precio: number
-  stock?: number
-  rubro?: string
-  subrubro?: string
-  baja?: boolean
+interface ProductWithStatus extends ZureoProduct {
+  hasImage: boolean
+  isComplete: boolean
 }
 
 export default function ProductosPage() {
+  const [products, setProducts] = useState<ProductWithStatus[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<ProductWithStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [products, setProducts] = useState<ZureoProduct[]>([])
-  const [error, setError] = useState<string | null>(null)
-
-  const loadProducts = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch("/api/zureo/products")
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Error loading products from Zureo")
-      }
-
-      // Filter out inactive products
-      const activeProducts = data.filter((product: ZureoProduct) => !product.baja)
-      setProducts(activeProducts)
-    } catch (error) {
-      console.error("Error loading products:", error)
-      setError(error instanceof Error ? error.message : "Error desconocido al cargar productos")
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [filter, setFilter] = useState<"all" | "complete" | "incomplete">("all")
 
   useEffect(() => {
     loadProducts()
   }, [])
 
-  const filteredProducts = products.filter(
-    (product) =>
-      product.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.codigo?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  useEffect(() => {
+    filterProducts()
+  }, [products, searchTerm, filter])
 
-  const productsWithStock = filteredProducts.filter((product) => (product.stock || 0) > 0)
-  const completeProducts = filteredProducts.filter((product) => product.marca && product.descripcion && product.codigo)
+  const loadProducts = async () => {
+    try {
+      setLoading(true)
+      const zureoProducts = await getAllZureoProducts()
+
+      // Verificar estado de cada producto
+      const productsWithStatus = await Promise.all(
+        zureoProducts.map(async (product) => {
+          const images = await getProductImages(product.codigo)
+          const hasImage = images.length > 0
+          const hasPrice = product.precio > 0
+          const hasBrand = product.marca?.nombre && product.marca.nombre.trim() !== ""
+
+          return {
+            ...product,
+            hasImage,
+            isComplete: hasImage && hasPrice && hasBrand,
+          }
+        }),
+      )
+
+      setProducts(productsWithStatus)
+    } catch (error) {
+      console.error("Error loading products:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filterProducts = () => {
+    let filtered = products
+
+    // Filtrar por término de búsqueda
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (product) =>
+          product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.marca?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+    }
+
+    // Filtrar por completitud
+    if (filter === "complete") {
+      filtered = filtered.filter((product) => product.isComplete)
+    } else if (filter === "incomplete") {
+      filtered = filtered.filter((product) => !product.isComplete)
+    }
+
+    setFilteredProducts(filtered)
+  }
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "currency",
+      currency: "ARS",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price)
+  }
 
   if (loading) {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Gestión de Productos</h1>
+          <h1 className="text-3xl font-bold">Productos</h1>
         </div>
         <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-            <p>Cargando productos desde Zureo API...</p>
-          </div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black"></div>
         </div>
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Gestión de Productos</h1>
-          <Button onClick={loadProducts} variant="outline">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Reintentar
-          </Button>
-        </div>
-
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            <strong>Error cargando productos desde Zureo:</strong> {error}
-            <br />
-            <br />
-            Verifica que las credenciales de Zureo estén configuradas correctamente.
-          </AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
+  const completeCount = products.filter((p) => p.isComplete).length
+  const incompleteCount = products.length - completeCount
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Gestión de Productos</h1>
+        <h1 className="text-3xl font-bold">Productos</h1>
         <div className="flex items-center gap-4">
           <Badge variant="outline" className="text-sm">
-            {products.length} productos desde Zureo
+            Total: {products.length}
           </Badge>
-          <Button onClick={loadProducts} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Cargando..." : "Actualizar"}
-          </Button>
+          <Badge variant="outline" className="text-sm text-green-600">
+            Completos: {completeCount}
+          </Badge>
+          <Badge variant="outline" className="text-sm text-red-600">
+            Incompletos: {incompleteCount}
+          </Badge>
         </div>
       </div>
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Datos en tiempo real:</strong> Todos los productos mostrados provienen directamente de la API de
-          Zureo. No se utilizan datos de demostración.
-        </AlertDescription>
-      </Alert>
-
-      {/* Search */}
+      {/* Filtros */}
       <Card>
         <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Buscar por nombre, marca o código..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col md:flex-row gap-4">
+            {/* Buscador */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Buscar por nombre, código o marca..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Filtros de estado */}
+            <div className="flex gap-2">
+              <Button
+                variant={filter === "all" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter("all")}
+                className={filter === "all" ? "bg-black hover:bg-gray-800" : ""}
+              >
+                Todos
+              </Button>
+              <Button
+                variant={filter === "complete" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter("complete")}
+                className={filter === "complete" ? "bg-green-600 hover:bg-green-700" : ""}
+              >
+                Completos
+              </Button>
+              <Button
+                variant={filter === "incomplete" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setFilter("incomplete")}
+                className={filter === "incomplete" ? "bg-red-600 hover:bg-red-700" : ""}
+              >
+                Incompletos
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="stock" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="stock">Con Stock ({productsWithStock.length})</TabsTrigger>
-          <TabsTrigger value="complete">Completos ({completeProducts.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="stock" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Productos con Stock Disponible (Zureo)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {productsWithStock.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No se encontraron productos con stock en Zureo</div>
-              ) : (
-                <div className="grid gap-4">
-                  {productsWithStock.map((product) => (
-                    <div key={product.codigo} className="border rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{product.descripcion}</h3>
-                          <p className="text-sm text-gray-600">
-                            {product.marca} • Código: {product.codigo}
-                          </p>
-                          <div className="flex items-center gap-4 mt-2">
-                            <Badge variant="outline">Stock: {product.stock || 0}</Badge>
-                            <Badge variant="secondary">${product.precio}</Badge>
-                            {product.rubro && <Badge variant="outline">{product.rubro}</Badge>}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+      {/* Lista de productos */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredProducts.map((product) => (
+          <Card key={product.id} className="hover:shadow-md transition-shadow">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-lg line-clamp-2">{product.nombre}</CardTitle>
+                  <p className="text-sm text-gray-500 mt-1">Código: {product.codigo}</p>
                 </div>
-              )}
+                <div className="ml-2">
+                  {product.isComplete ? (
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500" />
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-3">
+              {/* Información del producto */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Precio:</span>
+                  <span className="font-semibold">
+                    {product.precio > 0 ? formatPrice(product.precio) : "Sin precio"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Marca:</span>
+                  <span className="font-medium">{product.marca?.nombre || "Sin marca"}</span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Stock:</span>
+                  <span className="font-medium">{product.stock}</span>
+                </div>
+              </div>
+
+              {/* Estado de completitud */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Imagen:</span>
+                  <div className="flex items-center gap-1">
+                    <ImageIcon className="h-4 w-4" />
+                    {product.hasImage ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span>Precio:</span>
+                  {product.precio > 0 ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                  <span>Marca:</span>
+                  {product.marca?.nombre ? (
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <XCircle className="h-4 w-4 text-red-500" />
+                  )}
+                </div>
+              </div>
+
+              {/* Badge de estado */}
+              <div className="pt-2">
+                <Badge
+                  variant="outline"
+                  className={`w-full justify-center ${
+                    product.isComplete
+                      ? "border-green-500 text-green-700 bg-green-50"
+                      : "border-red-500 text-red-700 bg-red-50"
+                  }`}
+                >
+                  {product.isComplete ? "Producto Completo" : "Producto Incompleto"}
+                </Badge>
+              </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        ))}
+      </div>
 
-        <TabsContent value="complete" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Productos Completos (Zureo)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {completeProducts.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  No se encontraron productos completos en Zureo (con marca, nombre y descripción)
-                </div>
-              ) : (
-                <div className="grid gap-4">
-                  {completeProducts.map((product) => (
-                    <div key={product.codigo} className="border rounded-lg p-4 hover:bg-gray-50">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold">{product.descripcion}</h3>
-                          <p className="text-sm text-gray-600">
-                            {product.marca} • Código: {product.codigo}
-                          </p>
-                          <div className="flex items-center gap-4 mt-2">
-                            <Badge variant="outline">Stock: {product.stock || 0}</Badge>
-                            <Badge variant="secondary">${product.precio}</Badge>
-                            {product.rubro && <Badge variant="outline">{product.rubro}</Badge>}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="outline" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {filteredProducts.length === 0 && !loading && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-600 mb-2">No se encontraron productos</h3>
+            <p className="text-gray-500">
+              {searchTerm || filter !== "all"
+                ? "Intenta ajustar los filtros de búsqueda"
+                : "No hay productos disponibles"}
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

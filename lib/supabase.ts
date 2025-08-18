@@ -11,13 +11,6 @@ if (supabaseUrl && supabaseAnonKey) {
 
 export { supabase }
 
-export function createSupabaseClient() {
-  if (!supabase) {
-    throw new Error("Supabase no está configurado. Verifica las variables de entorno.")
-  }
-  return supabase
-}
-
 // Función para verificar si Supabase está configurado
 export const isSupabaseConfigured = () => {
   return supabase !== null
@@ -399,80 +392,4 @@ export async function deleteBanner(bannerId: string) {
     console.error("Error deleting banner:", error)
     throw error
   }
-}
-
-// Funciones para gestión de productos locales
-export async function createLocalProduct(productData: {
-  product_code: string
-  custom_description?: string
-  custom_title?: string
-  seo_title?: string
-  seo_description?: string
-  tags?: string[]
-  is_featured?: boolean
-}) {
-  if (!supabase) {
-    throw new Error("Supabase no está configurado")
-  }
-
-  const { data, error } = await supabase.from("products").insert(productData).select().single()
-
-  if (error) throw error
-  return data
-}
-
-export async function updateLocalProduct(
-  productCode: string,
-  updates: {
-    custom_description?: string
-    custom_title?: string
-    seo_title?: string
-    seo_description?: string
-    tags?: string[]
-    is_featured?: boolean
-  },
-) {
-  if (!supabase) {
-    throw new Error("Supabase no está configurado")
-  }
-
-  const { data, error } = await supabase
-    .from("products")
-    .update({ ...updates, updated_at: new Date().toISOString() })
-    .eq("product_code", productCode)
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
-}
-
-export async function getLocalProduct(productCode: string) {
-  if (!supabase) return null
-
-  const { data, error } = await supabase.from("products").select("*").eq("product_code", productCode).single()
-
-  if (error) {
-    console.error("Error fetching local product:", error)
-    return null
-  }
-
-  return data
-}
-
-export async function getAllLocalProducts() {
-  if (!supabase) return []
-
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("is_active", true)
-    .order("updated_at", { ascending: false })
-
-  if (error) {
-    console.error("Error fetching local products:", error)
-    return []
-  }
-
-  return data || []
 }
