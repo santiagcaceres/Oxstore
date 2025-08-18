@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAdminAuth } from "@/context/admin-auth"
+import { useSimpleAdmin } from "@/context/simple-admin"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,7 +16,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAdminAuth()
+  const { login } = useSimpleAdmin()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +25,7 @@ export default function AdminLoginPage() {
     setIsLoading(true)
 
     try {
-      const success = await login(email, password)
+      const success = login(email, password)
       if (success) {
         router.push("/admin")
       } else {
@@ -93,11 +93,10 @@ export default function AdminLoginPage() {
 
             <div className="mt-4 p-3 bg-blue-50 rounded-md">
               <p className="text-xs text-blue-600">
-                <strong>Usuarios autorizados:</strong> mariela@oxstore.com, alison@oxstore.com, lorenzo@oxstore.com,
-                patricia@oxstore.com
+                <strong>Usuario:</strong> admin@oxstore.com
               </p>
               <p className="text-xs text-blue-600 mt-1">
-                <strong>Contraseña:</strong> admin123 (para todos los usuarios)
+                <strong>Contraseña:</strong> admin123
               </p>
             </div>
           </CardContent>

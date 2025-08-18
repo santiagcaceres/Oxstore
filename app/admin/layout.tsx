@@ -4,15 +4,15 @@ import type React from "react"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, Package, ImageIcon, LogOut, Tag } from "lucide-react"
-import { useAdminAuth } from "@/context/admin-auth"
+import { LayoutDashboard, Package, ImageIcon, LogOut } from "lucide-react"
+import { useSimpleAdmin } from "@/context/simple-admin"
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated, loading, logout } = useAdminAuth()
+  const { isAuthenticated, loading, logout } = useSimpleAdmin()
   const router = useRouter()
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export default function AdminLayout({
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
-          <p>Verificando autenticación...</p>
+          <p>Cargando...</p>
         </div>
       </div>
     )
@@ -59,14 +59,6 @@ export default function AdminLayout({
               >
                 <Package className="h-5 w-5" />
                 <span>Productos</span>
-              </Link>
-
-              <Link
-                href="/admin/marcas"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                <Tag className="h-5 w-5" />
-                <span>Marcas</span>
               </Link>
 
               <Link
