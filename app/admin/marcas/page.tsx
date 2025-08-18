@@ -37,6 +37,14 @@ const ALLOWED_BRANDS = [
   "PEGUIN",
 ]
 
+const MOCK_BRANDS: Brand[] = [
+  { id: "1", name: "LEVIS", description: "Marca de jeans premium", active: true, productCount: 15 },
+  { id: "2", name: "GATTO PARDO", description: "Moda femenina elegante", active: true, productCount: 8 },
+  { id: "3", name: "MISTRAL", description: "Ropa deportiva y casual", active: true, productCount: 12 },
+  { id: "4", name: "UNIFORM", description: "Ropa urbana moderna", active: true, productCount: 6 },
+  { id: "5", name: "BROOKSFIELD", description: "Elegancia masculina", active: true, productCount: 10 },
+]
+
 export default function MarcasPage() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [filteredBrands, setFilteredBrands] = useState<Brand[]>([])
@@ -59,21 +67,11 @@ export default function MarcasPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch("/api/zureo/brands")
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
+      // Simulate loading delay
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error)
-      }
-
-      const allowedBrands = (data || []).filter((brand: Brand) => ALLOWED_BRANDS.includes(brand.name.toUpperCase()))
-
-      setBrands(allowedBrands)
+      setBrands(MOCK_BRANDS)
     } catch (error) {
       console.error("Error loading brands:", error)
       setError(error instanceof Error ? error.message : "Error desconocido al cargar marcas")
@@ -84,11 +82,7 @@ export default function MarcasPage() {
 
   const loadBrandImages = async () => {
     try {
-      const response = await fetch("/api/brand-images")
-      if (response.ok) {
-        const data = await response.json()
-        setBrandImages(data)
-      }
+      setBrandImages([])
     } catch (error) {
       console.error("Error loading brand images:", error)
     }
@@ -223,10 +217,10 @@ export default function MarcasPage() {
           <div className="flex items-center gap-3 text-blue-700">
             <AlertCircle className="h-5 w-5" />
             <div>
-              <h3 className="font-semibold">Marcas Activas</h3>
+              <h3 className="font-semibold">Datos de Demostración</h3>
               <p className="text-sm mt-1">
-                Solo se muestran las marcas activas configuradas para la tienda ({ALLOWED_BRANDS.length} marcas
-                permitidas)
+                Mostrando marcas de demostración. Los datos reales se cargarán cuando se resuelvan los problemas de
+                conectividad con Zureo.
               </p>
             </div>
           </div>

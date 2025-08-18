@@ -4,7 +4,7 @@ import type React from "react"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, Package, ImageIcon, LogOut } from "lucide-react"
+import { LayoutDashboard, Package, ImageIcon, LogOut, Tag } from "lucide-react"
 import { useSimpleAdmin } from "@/context/simple-admin-context"
 
 export default function AdminLayout({
@@ -61,23 +61,6 @@ export default function AdminLayout({
                 <span>Productos</span>
               </Link>
 
-              {/* 
-              <Link
-                href="/admin/productos-stock"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors ml-4"
-              >
-                <Package className="h-4 w-4" />
-                <span>Con Stock</span>
-              </Link>
-
-              <Link
-                href="/admin/productos/imagenes"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors ml-4"
-              >
-                <Upload className="h-4 w-4" />
-                <span>Subir Imágenes</span>
-              </Link>
-
               <Link
                 href="/admin/marcas"
                 className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
@@ -85,31 +68,6 @@ export default function AdminLayout({
                 <Tag className="h-5 w-5" />
                 <span>Marcas</span>
               </Link>
-
-              <Link
-                href="/admin/pedidos"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                <ShoppingBag className="h-5 w-5" />
-                <span>Pedidos</span>
-              </Link>
-
-              <Link
-                href="/admin/zureo-api"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                <Settings className="h-5 w-5" />
-                <span>API Zureo</span>
-              </Link>
-
-              <Link
-                href="/admin/diagnostico"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
-              >
-                <Stethoscope className="h-5 w-5" />
-                <span>Diagnóstico</span>
-              </Link>
-              */}
 
               <Link
                 href="/admin/banners"
