@@ -65,7 +65,12 @@ export default function HomePage() {
     try {
       const response = await fetch("/api/zureo/products")
       if (!response.ok) {
-        throw new Error("Failed to fetch products")
+        console.warn("Failed to fetch products:", response.status)
+        setFeaturedProducts([])
+        setNewProducts([])
+        setSaleProducts([])
+        setLoading(false)
+        return
       }
 
       const zureoProducts = await response.json()
@@ -91,7 +96,7 @@ export default function HomePage() {
 
       setSaleProducts(completeProducts.slice(-8).reverse())
     } catch (error) {
-      console.error("Error loading products:", error)
+      console.warn("Error loading products:", error)
       setFeaturedProducts([])
       setNewProducts([])
       setSaleProducts([])

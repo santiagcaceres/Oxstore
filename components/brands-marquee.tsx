@@ -38,13 +38,16 @@ export default function BrandsMarquee() {
     try {
       const response = await fetch("/api/zureo/brands")
       if (!response.ok) {
-        throw new Error("Failed to fetch brands")
+        console.warn("Failed to fetch brands:", response.status)
+        setBrands([]) // Set empty array instead of failing
+        return
       }
       const allBrands = await response.json()
       const filteredBrands = allBrands.filter((brand: Brand) => ALLOWED_BRANDS.includes(brand.nombre.toUpperCase()))
       setBrands(filteredBrands)
     } catch (error) {
-      console.error("Error loading brands:", error)
+      console.warn("Error loading brands:", error)
+      setBrands([]) // Set empty array instead of failing
     }
   }
 
