@@ -7,7 +7,6 @@ import Image from "next/image"
 import { X, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { supabase } from "@/lib/supabase/client"
 
 interface PopupBanner {
   id: string
@@ -27,18 +26,17 @@ export default function PopupBanner() {
   useEffect(() => {
     const loadPopupBanner = async () => {
       try {
-        if (!supabase) return
+        // Use mock data instead of Supabase call
+        const mockBanner: PopupBanner = {
+          id: "popup-1",
+          title: "¡10% de Descuento!",
+          description: "Suscríbete a nuestro newsletter y obtén un 10% de descuento en tu primera compra",
+          image_url: "/placeholder.svg?height=200&width=400&text=10%+OFF",
+          link_url: "/",
+          is_active: true,
+        }
 
-        const { data, error } = await supabase
-          .from("banners")
-          .select("*")
-          .eq("banner_type", "popup")
-          .eq("is_active", true)
-          .single()
-
-        if (error || !data) return
-
-        setBanner(data)
+        setBanner(mockBanner)
 
         // Mostrar popup después de 2 segundos si no se ha mostrado antes
         const hasSeenPopup = localStorage.getItem("oxstore-popup-seen")
@@ -48,7 +46,7 @@ export default function PopupBanner() {
           }, 2000)
         }
       } catch (error) {
-        console.error("Error loading popup banner:", error)
+        console.warn("Error loading popup banner:", error)
       }
     }
 
@@ -65,8 +63,6 @@ export default function PopupBanner() {
     setIsSubmitting(true)
 
     try {
-      // Aquí puedes agregar lógica para suscribir el email
-      // Por ejemplo, guardar en Supabase o enviar a un servicio de email
       console.log("Email suscrito:", email)
 
       // Simular envío
@@ -75,7 +71,7 @@ export default function PopupBanner() {
       alert("¡Gracias por suscribirte! Recibirás tu descuento por email.")
       handleClose()
     } catch (error) {
-      console.error("Error subscribing:", error)
+      console.warn("Error subscribing:", error)
       alert("Error al suscribirse. Inténtalo de nuevo.")
     } finally {
       setIsSubmitting(false)

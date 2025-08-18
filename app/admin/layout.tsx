@@ -62,6 +62,14 @@ export default function AdminLayout({
               </Link>
 
               <Link
+                href="/admin/marcas"
+                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                <ImageIcon className="h-5 w-5" />
+                <span>Marcas</span>
+              </Link>
+
+              <Link
                 href="/admin/banners"
                 className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors"
               >

@@ -1,181 +1,173 @@
 "use client"
 
-import { useState } from "react"
-import { DollarSign, Package, TrendingUp, Clock, AlertCircle } from "lucide-react"
+import { useState, useEffect } from "react"
+import { DollarSign, Package, TrendingUp, Clock, AlertCircle, RefreshCw } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-
-interface DashboardStats {
-  totalVentas: number
-  ventasHoy: number
-  pedidosPendientes: number
-  productosStock: number
-  pedidosEnProceso: number
-  pedidosEnviados: number
-}
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalVentas: 15420,
-    ventasHoy: 850,
-    pedidosPendientes: 12,
-    productosStock: 156,
-    pedidosEnProceso: 8,
-    pedidosEnviados: 45,
-  })
+  const [zureoStatus, setZureoStatus] = useState<"loading" | "connected" | "error">("loading")
+  const [zureoError, setZureoError] = useState<string>("")
+  const [productCount, setProductCount] = useState<number>(0)
+  const [brandCount, setBrandCount] = useState<number>(0)
 
-  const [recentOrders] = useState([
-    {
-      id: "ORD-001",
-      customer: "María González",
-      total: 125,
-      status: "Pendiente",
-      date: "2024-01-15",
-      channel: "Web",
-    },
-    {
-      id: "ORD-002",
-      customer: "Juan Pérez",
-      total: 89,
-      status: "En Proceso",
-      date: "2024-01-15",
-      channel: "Web",
-    },
-    {
-      id: "ORD-003",
-      customer: "Ana Silva",
-      total: 156,
-      status: "Empaquetado",
-      date: "2024-01-14",
-      channel: "Web",
-    },
-  ])
+  const checkZureoConnection = async () => {
+    setZureoStatus("loading")
+    setZureoError("")
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Pendiente":
-        return "text-yellow-600 bg-yellow-100"
-      case "En Proceso":
-        return "text-blue-600 bg-blue-100"
-      case "Empaquetado":
-        return "text-purple-600 bg-purple-100"
-      case "Enviado":
-        return "text-green-600 bg-green-100"
-      default:
-        return "text-gray-600 bg-gray-100"
+    try {
+      // Test products endpoint
+      const productsResponse = await fetch("/api/zureo/products")
+      const productsData = await productsResponse.json()
+
+      if (!productsResponse.ok) {
+        throw new Error(productsData.error || "Error connecting to Zureo products API")
+      }
+
+      // Test brands endpoint
+      const brandsResponse = await fetch("/api/zureo/brands")
+      const brandsData = await brandsResponse.json()
+
+      if (!brandsResponse.ok) {
+        throw new Error(brandsData.error || "Error connecting to Zureo brands API")
+      }
+
+      setProductCount(productsData.length || 0)
+      setBrandCount(brandsData.length || 0)
+      setZureoStatus("connected")
+    } catch (error) {
+      console.error("Error checking Zureo connection:", error)
+      setZureoError(error instanceof Error ? error.message : "Error desconocido")
+      setZureoStatus("error")
     }
+  }
+
+  useEffect(() => {
+    checkZureoConnection()
+  }, [])
+
+  if (zureoStatus === "loading") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            <span className="text-sm text-gray-500">Conectando con Zureo...</span>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p>Verificando conexión con Zureo API...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (zureoStatus === "error") {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <Button onClick={checkZureoConnection} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Reintentar
+          </Button>
+        </div>
+
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Error de conexión con Zureo:</strong> {zureoError}
+            <br />
+            <br />
+            Verifica que las credenciales de Zureo estén configuradas correctamente en las variables de entorno:
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>ZUREO_API_USER</li>
+              <li>ZUREO_API_PASSWORD</li>
+              <li>ZUREO_DOMAIN</li>
+              <li>ZUREO_COMPANY_ID</li>
+            </ul>
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <div className="text-sm text-gray-500">Última actualización: {new Date().toLocaleString()}</div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-green-600">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-sm">Zureo conectado</span>
+          </div>
+          <Button onClick={checkZureoConnection} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar
+          </Button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Only real data from Zureo */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ventas Totales</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.totalVentas.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">+12% desde el mes pasado</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ventas Hoy</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.ventasHoy}</div>
-            <p className="text-xs text-muted-foreground">+5% vs ayer</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pedidos Pendientes</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pedidosPendientes}</div>
-            <p className="text-xs text-muted-foreground">Requieren atención</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Productos en Stock</CardTitle>
+            <CardTitle className="text-sm font-medium">Productos en Zureo</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.productosStock}</div>
-            <p className="text-xs text-muted-foreground">Sincronizado con Zureo</p>
+            <div className="text-2xl font-bold">{productCount}</div>
+            <p className="text-xs text-muted-foreground">Sincronizado desde Zureo API</p>
           </CardContent>
         </Card>
-      </div>
 
-      {/* Status Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertCircle className="h-5 w-5 mr-2 text-yellow-500" />
-              Pedidos por Estado
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Pendientes</span>
-              <span className="font-semibold">{stats.pedidosPendientes}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">En Proceso</span>
-              <span className="font-semibold">{stats.pedidosEnProceso}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm">Enviados</span>
-              <span className="font-semibold">{stats.pedidosEnviados}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Pedidos Recientes</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Marcas Disponibles</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-4">
-                      <div>
-                        <p className="font-semibold">{order.id}</p>
-                        <p className="text-sm text-gray-600">{order.customer}</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold">${order.total}</p>
-                        <p className="text-sm text-gray-600">{order.date}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100">{order.channel}</span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div className="text-2xl font-bold">{brandCount}</div>
+            <p className="text-xs text-muted-foreground">Marcas desde Zureo API</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Estado API</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">OK</div>
+            <p className="text-xs text-muted-foreground">Zureo API funcionando</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Última Actualización</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{new Date().toLocaleTimeString()}</div>
+            <p className="text-xs text-muted-foreground">Datos en tiempo real</p>
           </CardContent>
         </Card>
       </div>
+
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Datos en tiempo real:</strong> Toda la información mostrada proviene directamente de la API de Zureo.
+          No se utilizan datos de demostración ni información hardcodeada.
+        </AlertDescription>
+      </Alert>
     </div>
   )
 }

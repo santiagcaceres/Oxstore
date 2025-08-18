@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -9,69 +9,99 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Eye, Edit, AlertCircle, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-const MOCK_PRODUCTS = [
-  {
-    codigo: "LEV001",
-    nombre: "Jean 724 High Rise Straight",
-    marca: "LEVIS",
-    precio: 4081.96,
-    stock: 5,
-    categoria: "Pantalones",
-    descripcion: "Jean de tiro alto con corte recto, ideal para uso diario",
-  },
-  {
-    codigo: "GAT001",
-    nombre: "Blusa agujeros",
-    marca: "GATTO PARDO",
-    precio: 1795.08,
-    stock: 3,
-    categoria: "Blusas",
-    descripcion: "Blusa moderna con detalles de agujeros decorativos",
-  },
-  {
-    codigo: "LEV002",
-    nombre: "511 slim",
-    marca: "LEVIS",
-    precio: 3270.49,
-    stock: 8,
-    categoria: "Pantalones",
-    descripcion: "Jean corte slim fit, cómodo y moderno",
-  },
-]
-
 interface ZureoProduct {
   codigo: string
-  nombre: string
+  descripcion: string
   marca: string
   precio: number
-  stock: number
-  categoria: string
-  descripcion?: string
+  stock?: number
+  rubro?: string
+  subrubro?: string
+  baja?: boolean
 }
 
 export default function ProductosPage() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [products] = useState<ZureoProduct[]>(MOCK_PRODUCTS)
-  const [error] = useState<string | null>(null)
+  const [products, setProducts] = useState<ZureoProduct[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   const loadProducts = async () => {
     setLoading(true)
-    // Simulate loading
-    setTimeout(() => {
+    setError(null)
+
+    try {
+      const response = await fetch("/api/zureo/products")
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error loading products from Zureo")
+      }
+
+      // Filter out inactive products
+      const activeProducts = data.filter((product: ZureoProduct) => !product.baja)
+      setProducts(activeProducts)
+    } catch (error) {
+      console.error("Error loading products:", error)
+      setError(error instanceof Error ? error.message : "Error desconocido al cargar productos")
+    } finally {
       setLoading(false)
-    }, 1000)
+    }
   }
+
+  useEffect(() => {
+    loadProducts()
+  }, [])
 
   const filteredProducts = products.filter(
     (product) =>
-      product.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.codigo.toLowerCase().includes(searchTerm.toLowerCase()),
+      product.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.marca?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.codigo?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const productsWithStock = filteredProducts.filter((product) => product.stock > 0)
-  const completeProducts = filteredProducts.filter((product) => product.marca && product.nombre && product.descripcion)
+  const productsWithStock = filteredProducts.filter((product) => (product.stock || 0) > 0)
+  const completeProducts = filteredProducts.filter((product) => product.marca && product.descripcion && product.codigo)
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Gestión de Productos</h1>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p>Cargando productos desde Zureo API...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Gestión de Productos</h1>
+          <Button onClick={loadProducts} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Reintentar
+          </Button>
+        </div>
+
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Error cargando productos desde Zureo:</strong> {error}
+            <br />
+            <br />
+            Verifica que las credenciales de Zureo estén configuradas correctamente.
+          </AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -79,7 +109,7 @@ export default function ProductosPage() {
         <h1 className="text-3xl font-bold">Gestión de Productos</h1>
         <div className="flex items-center gap-4">
           <Badge variant="outline" className="text-sm">
-            {products.length} productos cargados
+            {products.length} productos desde Zureo
           </Badge>
           <Button onClick={loadProducts} disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
@@ -88,18 +118,11 @@ export default function ProductosPage() {
         </div>
       </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Mostrando datos de demostración. Los productos reales se cargarán cuando se resuelvan los problemas de
-          conectividad con Zureo.
+          <strong>Datos en tiempo real:</strong> Todos los productos mostrados provienen directamente de la API de
+          Zureo. No se utilizan datos de demostración.
         </AlertDescription>
       </Alert>
 
@@ -127,26 +150,25 @@ export default function ProductosPage() {
         <TabsContent value="stock" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Productos con Stock Disponible</CardTitle>
+              <CardTitle>Productos con Stock Disponible (Zureo)</CardTitle>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="text-center py-8">Cargando productos...</div>
-              ) : productsWithStock.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No se encontraron productos con stock</div>
+              {productsWithStock.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">No se encontraron productos con stock en Zureo</div>
               ) : (
                 <div className="grid gap-4">
                   {productsWithStock.map((product) => (
                     <div key={product.codigo} className="border rounded-lg p-4 hover:bg-gray-50">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold">{product.nombre}</h3>
+                          <h3 className="font-semibold">{product.descripcion}</h3>
                           <p className="text-sm text-gray-600">
                             {product.marca} • Código: {product.codigo}
                           </p>
                           <div className="flex items-center gap-4 mt-2">
-                            <Badge variant="outline">Stock: {product.stock}</Badge>
+                            <Badge variant="outline">Stock: {product.stock || 0}</Badge>
                             <Badge variant="secondary">${product.precio}</Badge>
+                            {product.rubro && <Badge variant="outline">{product.rubro}</Badge>}
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -169,14 +191,12 @@ export default function ProductosPage() {
         <TabsContent value="complete" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Productos Completos</CardTitle>
+              <CardTitle>Productos Completos (Zureo)</CardTitle>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="text-center py-8">Cargando productos...</div>
-              ) : completeProducts.length === 0 ? (
+              {completeProducts.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  No se encontraron productos completos (con marca, nombre y descripción)
+                  No se encontraron productos completos en Zureo (con marca, nombre y descripción)
                 </div>
               ) : (
                 <div className="grid gap-4">
@@ -184,14 +204,14 @@ export default function ProductosPage() {
                     <div key={product.codigo} className="border rounded-lg p-4 hover:bg-gray-50">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold">{product.nombre}</h3>
+                          <h3 className="font-semibold">{product.descripcion}</h3>
                           <p className="text-sm text-gray-600">
                             {product.marca} • Código: {product.codigo}
                           </p>
-                          <p className="text-sm text-gray-500 mt-1">{product.descripcion}</p>
                           <div className="flex items-center gap-4 mt-2">
-                            <Badge variant="outline">Stock: {product.stock}</Badge>
+                            <Badge variant="outline">Stock: {product.stock || 0}</Badge>
                             <Badge variant="secondary">${product.precio}</Badge>
+                            {product.rubro && <Badge variant="outline">{product.rubro}</Badge>}
                           </div>
                         </div>
                         <div className="flex gap-2">
