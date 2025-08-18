@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useSimpleAdmin } from "@/context/simple-admin-context"
+import { useAdminAuth } from "@/context/admin-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,7 +16,7 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const { login } = useSimpleAdmin()
+  const { login } = useAdminAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +25,7 @@ export default function AdminLoginPage() {
     setIsLoading(true)
 
     try {
-      const success = login(email, password)
+      const success = await login(email, password)
       if (success) {
         router.push("/admin")
       } else {

@@ -5,14 +5,14 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { LayoutDashboard, Package, ImageIcon, LogOut, Tag } from "lucide-react"
-import { useSimpleAdmin } from "@/context/simple-admin-context"
+import { useAdminAuth } from "@/context/admin-auth"
 
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated, loading, logout } = useSimpleAdmin()
+  const { isAuthenticated, loading, logout } = useAdminAuth()
   const router = useRouter()
 
   useEffect(() => {

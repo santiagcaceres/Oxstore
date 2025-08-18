@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { CartProvider } from "@/context/cart-context"
-import { SimpleAdminProvider } from "@/context/simple-admin-context"
+import { AdminAuthProvider } from "@/context/admin-auth"
 import { AuthProvider } from "@/context/auth-context"
 import { OrderProvider } from "@/context/order-context"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -30,7 +30,7 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <SimpleAdminProvider>
+          <AdminAuthProvider>
             <AuthProvider>
               <CartProvider>
                 <OrderProvider>
@@ -39,7 +39,7 @@ export default function RootLayout({
                 </OrderProvider>
               </CartProvider>
             </AuthProvider>
-          </SimpleAdminProvider>
+          </AdminAuthProvider>
         </ThemeProvider>
       </body>
     </html>
