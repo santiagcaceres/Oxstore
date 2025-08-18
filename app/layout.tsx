@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { CartProvider } from "@/context/cart-context"
 import { AdminProvider } from "@/context/admin-context"
+import { SimpleAdminProvider } from "@/context/simple-admin-context"
 import { AuthProvider } from "@/context/auth-context"
 import { OrderProvider } from "@/context/order-context"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -30,16 +31,18 @@ export default function RootLayout({
     <html lang="es">
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-          <AdminProvider>
-            <AuthProvider>
-              <CartProvider>
-                <OrderProvider>
-                  <ConditionalLayout>{children}</ConditionalLayout>
-                  <PopupBanner />
-                </OrderProvider>
-              </CartProvider>
-            </AuthProvider>
-          </AdminProvider>
+          <SimpleAdminProvider>
+            <AdminProvider>
+              <AuthProvider>
+                <CartProvider>
+                  <OrderProvider>
+                    <ConditionalLayout>{children}</ConditionalLayout>
+                    <PopupBanner />
+                  </OrderProvider>
+                </CartProvider>
+              </AuthProvider>
+            </AdminProvider>
+          </SimpleAdminProvider>
         </ThemeProvider>
       </body>
     </html>
