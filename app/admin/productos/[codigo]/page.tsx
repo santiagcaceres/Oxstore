@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Upload, X, Save } from "lucide-react"
+import { ArrowLeft, Upload, X, Save, AlertCircle, CheckCircle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 interface ProductData {
@@ -61,6 +61,9 @@ export default function EditProductPage() {
   const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string>("")
+  const [success, setSuccess] = useState<string>("")
+  const [uploadingImage, setUploadingImage] = useState(false)
 
   useEffect(() => {
     loadProductData()
@@ -83,29 +86,46 @@ export default function EditProductPage() {
 
   const loadProductData = async () => {
     try {
+      console.log("[v0] Loading product data for code:", codigo)
       const { data, error } = await supabase.from("products").select("*").eq("product_code", codigo).single()
 
-      if (data) {
+      if (error) {
+        console.log("[v0] Supabase error loading product:", error)
+        if (error.code === "PGRST116") {
+          // No rows returned - this is fine, we'll create a new product
+          console.log("[v0] Product not found, will create new one")
+        } else {
+          setError(`Error cargando producto: ${error.message}`)
+        }
+      } else if (data) {
+        console.log("[v0] Product data loaded:", data)
         setProductData(data)
       }
     } catch (error) {
-      console.error("Error loading product data:", error)
+      console.error("[v0] Error loading product data:", error)
+      setError("Error inesperado cargando el producto")
     }
   }
 
   const loadProductImages = async () => {
     try {
+      console.log("[v0] Loading product images for code:", codigo)
       const { data, error } = await supabase
         .from("product_images")
         .select("*")
         .eq("product_code", codigo)
         .order("is_primary", { ascending: false })
 
-      if (data) {
+      if (error) {
+        console.log("[v0] Error loading images:", error)
+        setError(`Error cargando imágenes: ${error.message}`)
+      } else if (data) {
+        console.log("[v0] Images loaded:", data.length, "images")
         setImages(data)
       }
     } catch (error) {
-      console.error("Error loading product images:", error)
+      console.error("[v0] Error loading product images:", error)
+      setError("Error inesperado cargando imágenes")
     } finally {
       setLoading(false)
     }
@@ -113,37 +133,69 @@ export default function EditProductPage() {
 
   const loadCategories = async () => {
     try {
+      console.log("[v0] Loading categories")
       const { data, error } = await supabase.from("product_categories").select("*").order("name")
-      if (data) {
+      if (error) {
+        console.log("[v0] Error loading categories:", error)
+        setError(`Error cargando categorías: ${error.message}`)
+      } else if (data) {
+        console.log("[v0] Categories loaded:", data.length, "categories")
         setCategories(data)
       }
     } catch (error) {
-      console.error("Error loading categories:", error)
+      console.error("[v0] Error loading categories:", error)
+      setError("Error inesperado cargando categorías")
     }
   }
 
   const loadSubcategories = async () => {
     try {
+      console.log("[v0] Loading subcategories")
       const { data, error } = await supabase.from("product_subcategories").select("*").order("name")
-      if (data) {
+      if (error) {
+        console.log("[v0] Error loading subcategories:", error)
+        setError(`Error cargando subcategorías: ${error.message}`)
+      } else if (data) {
+        console.log("[v0] Subcategories loaded:", data.length, "subcategories")
         setSubcategories(data)
       }
     } catch (error) {
-      console.error("Error loading subcategories:", error)
+      console.error("[v0] Error loading subcategories:", error)
+      setError("Error inesperado cargando subcategorías")
     }
   }
 
   const handleSave = async () => {
+    // Clear previous messages
+    setError("")
+    setSuccess("")
+
+    // Validation
+    if (!productData.custom_title?.trim()) {
+      setError("El nombre del producto es requerido")
+      return
+    }
+
     setSaving(true)
     try {
-      const { error } = await supabase.from("products").upsert(productData)
+      console.log("[v0] Saving product data:", productData)
 
-      if (!error) {
-        alert("Producto guardado exitosamente")
+      const { data, error } = await supabase.from("products").upsert(productData, {
+        onConflict: "product_code",
+      })
+
+      if (error) {
+        console.log("[v0] Supabase error saving product:", error)
+        setError(`Error guardando producto: ${error.message}`)
+      } else {
+        console.log("[v0] Product saved successfully:", data)
+        setSuccess("Producto guardado exitosamente")
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(""), 3000)
       }
     } catch (error) {
-      console.error("Error saving product:", error)
-      alert("Error al guardar el producto")
+      console.error("[v0] Error saving product:", error)
+      setError("Error inesperado guardando el producto")
     } finally {
       setSaving(false)
     }
@@ -153,42 +205,105 @@ export default function EditProductPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
+    // Clear previous messages
+    setError("")
+    setSuccess("")
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setError("Por favor selecciona un archivo de imagen válido")
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("La imagen debe ser menor a 5MB")
+      return
+    }
+
+    setUploadingImage(true)
     try {
+      console.log("[v0] Uploading image:", file.name, "Size:", file.size)
+
       const fileExt = file.name.split(".").pop()
       const fileName = `${codigo}-${Date.now()}.${fileExt}`
       const filePath = `products/${fileName}`
 
-      const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, file)
+      console.log("[v0] Upload path:", filePath)
 
-      if (uploadError) throw uploadError
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file)
+
+      if (uploadError) {
+        console.log("[v0] Upload error:", uploadError)
+        setError(`Error subiendo imagen: ${uploadError.message}`)
+        return
+      }
+
+      console.log("[v0] Image uploaded successfully:", uploadData)
 
       const {
         data: { publicUrl },
       } = supabase.storage.from("product-images").getPublicUrl(filePath)
 
-      const { error: dbError } = await supabase.from("product_images").insert({
+      console.log("[v0] Public URL:", publicUrl)
+
+      const { data: dbData, error: dbError } = await supabase.from("product_images").insert({
         product_code: codigo,
         image_url: publicUrl,
         file_path: filePath,
         is_primary: images.length === 0,
       })
 
-      if (!dbError) {
+      if (dbError) {
+        console.log("[v0] Database error:", dbError)
+        setError(`Error guardando imagen en base de datos: ${dbError.message}`)
+        // Try to clean up uploaded file
+        await supabase.storage.from("product-images").remove([filePath])
+      } else {
+        console.log("[v0] Image saved to database:", dbData)
+        setSuccess("Imagen subida exitosamente")
+        setTimeout(() => setSuccess(""), 3000)
         loadProductImages()
       }
     } catch (error) {
-      console.error("Error uploading image:", error)
-      alert("Error al subir la imagen")
+      console.error("[v0] Error uploading image:", error)
+      setError("Error inesperado subiendo la imagen")
+    } finally {
+      setUploadingImage(false)
     }
   }
 
   const removeImage = async (imageId: string, filePath: string) => {
+    setError("")
+    setSuccess("")
+
     try {
-      await supabase.storage.from("product-images").remove([filePath])
-      await supabase.from("product_images").delete().eq("id", imageId)
-      loadProductImages()
+      console.log("[v0] Removing image:", imageId, filePath)
+
+      // Remove from storage
+      const { error: storageError } = await supabase.storage.from("product-images").remove([filePath])
+      if (storageError) {
+        console.log("[v0] Storage removal error:", storageError)
+        setError(`Error eliminando archivo: ${storageError.message}`)
+        return
+      }
+
+      // Remove from database
+      const { error: dbError } = await supabase.from("product_images").delete().eq("id", imageId)
+      if (dbError) {
+        console.log("[v0] Database removal error:", dbError)
+        setError(`Error eliminando imagen de base de datos: ${dbError.message}`)
+      } else {
+        console.log("[v0] Image removed successfully")
+        setSuccess("Imagen eliminada exitosamente")
+        setTimeout(() => setSuccess(""), 3000)
+        loadProductImages()
+      }
     } catch (error) {
-      console.error("Error removing image:", error)
+      console.error("[v0] Error removing image:", error)
+      setError("Error inesperado eliminando la imagen")
     }
   }
 
@@ -231,6 +346,20 @@ export default function EditProductPage() {
         </button>
       </div>
 
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center space-x-2">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+          <span className="text-red-800">{error}</span>
+        </div>
+      )}
+
+      {success && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <span className="text-green-800">{success}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Información del Producto */}
         <div className="space-y-6">
@@ -249,13 +378,16 @@ export default function EditProductPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nombre del Producto <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={productData.custom_title || ""}
                   onChange={(e) => setProductData({ ...productData, custom_title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                   placeholder="Ingrese el nombre del producto"
+                  required
                 />
               </div>
 
@@ -336,7 +468,6 @@ export default function EditProductPage() {
             </div>
           </div>
 
-          {/* Estados */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-lg font-semibold mb-4">Estados</h2>
 
@@ -370,12 +501,20 @@ export default function EditProductPage() {
             <h2 className="text-lg font-semibold mb-4">Imágenes del Producto</h2>
 
             <div className="mb-4">
-              <label className="flex items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50">
+              <label
+                className={`flex items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 ${uploadingImage ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
                 <div className="flex flex-col items-center justify-center">
                   <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">Subir imagen</p>
+                  <p className="text-sm text-gray-500">{uploadingImage ? "Subiendo..." : "Subir imagen"}</p>
                 </div>
-                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} />
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  disabled={uploadingImage}
+                />
               </label>
             </div>
 
@@ -386,6 +525,10 @@ export default function EditProductPage() {
                     src={image.image_url || "/placeholder.svg"}
                     alt="Producto"
                     className="w-full h-32 object-cover rounded-lg"
+                    onError={(e) => {
+                      console.log("[v0] Image load error:", image.image_url)
+                      e.currentTarget.src = "/placeholder.svg"
+                    }}
                   />
                   {image.is_primary && (
                     <span className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
