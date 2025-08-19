@@ -180,13 +180,22 @@ export default function EditProductPage() {
     try {
       console.log("[v0] Saving product data:", productData)
 
-      const { data, error } = await supabase.from("products").upsert(productData, {
-        onConflict: "product_code",
-      })
+      const { data, error } = await supabase
+        .from("products")
+        .upsert(productData, {
+          onConflict: "product_code",
+        })
+        .select()
 
       if (error) {
         console.log("[v0] Supabase error saving product:", error)
-        setError(`Error guardando producto: ${error.message}`)
+        if (error.message.includes("row-level security policy")) {
+          setError(
+            "Error de permisos: No tienes autorización para guardar productos. Verifica la configuración de seguridad.",
+          )
+        } else {
+          setError(`Error guardando producto: ${error.message}`)
+        }
       } else {
         console.log("[v0] Product saved successfully:", data)
         setSuccess("Producto guardado exitosamente")
@@ -233,11 +242,18 @@ export default function EditProductPage() {
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("product-images")
-        .upload(filePath, file)
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        })
 
       if (uploadError) {
         console.log("[v0] Upload error:", uploadError)
-        setError(`Error subiendo imagen: ${uploadError.message}`)
+        if (uploadError.message.includes("Bucket not found")) {
+          setError("Error de configuración: El bucket de imágenes no existe. Por favor contacta al administrador.")
+        } else {
+          setError(`Error subiendo imagen: ${uploadError.message}`)
+        }
         return
       }
 
@@ -249,16 +265,25 @@ export default function EditProductPage() {
 
       console.log("[v0] Public URL:", publicUrl)
 
-      const { data: dbData, error: dbError } = await supabase.from("product_images").insert({
-        product_code: codigo,
-        image_url: publicUrl,
-        file_path: filePath,
-        is_primary: images.length === 0,
-      })
+      const { data: dbData, error: dbError } = await supabase
+        .from("product_images")
+        .insert({
+          product_code: codigo,
+          image_url: publicUrl,
+          file_path: filePath,
+          is_primary: images.length === 0,
+        })
+        .select()
 
       if (dbError) {
         console.log("[v0] Database error:", dbError)
-        setError(`Error guardando imagen en base de datos: ${dbError.message}`)
+        if (dbError.message.includes("row-level security policy")) {
+          setError(
+            "Error de permisos: No tienes autorización para guardar imágenes. Verifica la configuración de seguridad.",
+          )
+        } else {
+          setError(`Error guardando imagen en base de datos: ${dbError.message}`)
+        }
         // Try to clean up uploaded file
         await supabase.storage.from("product-images").remove([filePath])
       } else {
