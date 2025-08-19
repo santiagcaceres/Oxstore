@@ -11,20 +11,30 @@ interface ProductData {
   product_code: string
   custom_title?: string
   custom_description?: string
-  seo_title?: string
-  seo_description?: string
-  tags?: string[]
   is_active?: boolean
   is_featured?: boolean
   gender?: string
+  season?: string
   category?: string
-  type?: string
+  subcategory?: string
 }
 
 interface ProductImage {
   id: string
   image_url: string
   is_primary: boolean
+  file_path: string
+}
+
+interface Category {
+  id: string
+  name: string
+}
+
+interface Subcategory {
+  id: string
+  name: string
+  category_id: string
 }
 
 export default function EditProductPage() {
@@ -37,25 +47,39 @@ export default function EditProductPage() {
     product_code: codigo,
     custom_title: "",
     custom_description: "",
-    seo_title: "",
-    seo_description: "",
-    tags: [],
     is_active: true,
     is_featured: false,
     gender: "",
+    season: "",
     category: "",
-    type: "",
+    subcategory: "",
   })
 
   const [images, setImages] = useState<ProductImage[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
+  const [filteredSubcategories, setFilteredSubcategories] = useState<Subcategory[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [newTag, setNewTag] = useState("")
 
   useEffect(() => {
     loadProductData()
     loadProductImages()
+    loadCategories()
+    loadSubcategories()
   }, [codigo])
+
+  useEffect(() => {
+    if (productData.category) {
+      const categoryObj = categories.find((cat) => cat.name === productData.category)
+      if (categoryObj) {
+        const filtered = subcategories.filter((sub) => sub.category_id === categoryObj.id)
+        setFilteredSubcategories(filtered)
+      }
+    } else {
+      setFilteredSubcategories([])
+    }
+  }, [productData.category, categories, subcategories])
 
   const loadProductData = async () => {
     try {
@@ -84,6 +108,28 @@ export default function EditProductPage() {
       console.error("Error loading product images:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase.from("product_categories").select("*").order("name")
+      if (data) {
+        setCategories(data)
+      }
+    } catch (error) {
+      console.error("Error loading categories:", error)
+    }
+  }
+
+  const loadSubcategories = async () => {
+    try {
+      const { data, error } = await supabase.from("product_subcategories").select("*").order("name")
+      if (data) {
+        setSubcategories(data)
+      }
+    } catch (error) {
+      console.error("Error loading subcategories:", error)
     }
   }
 
@@ -139,29 +185,18 @@ export default function EditProductPage() {
   const removeImage = async (imageId: string, filePath: string) => {
     try {
       await supabase.storage.from("product-images").remove([filePath])
-
       await supabase.from("product_images").delete().eq("id", imageId)
-
       loadProductImages()
     } catch (error) {
       console.error("Error removing image:", error)
     }
   }
 
-  const addTag = () => {
-    if (newTag.trim() && !productData.tags?.includes(newTag.trim())) {
-      setProductData({
-        ...productData,
-        tags: [...(productData.tags || []), newTag.trim()],
-      })
-      setNewTag("")
-    }
-  }
-
-  const removeTag = (tagToRemove: string) => {
+  const handleCategoryChange = (categoryName: string) => {
     setProductData({
       ...productData,
-      tags: productData.tags?.filter((tag) => tag !== tagToRemove) || [],
+      category: categoryName,
+      subcategory: "", // Reset subcategory when category changes
     })
   }
 
@@ -214,12 +249,13 @@ export default function EditProductPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título Personalizado</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
                 <input
                   type="text"
                   value={productData.custom_title || ""}
                   onChange={(e) => setProductData({ ...productData, custom_title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="Ingrese el nombre del producto"
                 />
               </div>
 
@@ -230,6 +266,7 @@ export default function EditProductPage() {
                   onChange={(e) => setProductData({ ...productData, custom_description: e.target.value })}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  placeholder="Descripción detallada del producto"
                 />
               </div>
 
@@ -241,94 +278,61 @@ export default function EditProductPage() {
                     onChange={(e) => setProductData({ ...productData, gender: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Seleccionar</option>
+                    <option value="">Seleccionar género</option>
                     <option value="hombre">Hombre</option>
                     <option value="mujer">Mujer</option>
-                    <option value="unisex">Unisex</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                  <input
-                    type="text"
-                    value={productData.type || ""}
-                    onChange={(e) => setProductData({ ...productData, type: e.target.value })}
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Temporada</label>
+                  <select
+                    value={productData.season || ""}
+                    onChange={(e) => setProductData({ ...productData, season: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                    placeholder="ej: remera, pantalón, etc."
-                  />
+                  >
+                    <option value="">Seleccionar temporada</option>
+                    <option value="verano">Verano</option>
+                    <option value="invierno">Invierno</option>
+                    <option value="todo_el_año">Todo el año</option>
+                  </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
-                <input
-                  type="text"
-                  value={productData.category || ""}
-                  onChange={(e) => setProductData({ ...productData, category: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                  <select
+                    value={productData.category || ""}
+                    onChange={(e) => handleCategoryChange(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Seleccionar categoría</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.name}>
+                        {category.name.charAt(0).toUpperCase() + category.name.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subcategoría</label>
+                  <select
+                    value={productData.subcategory || ""}
+                    onChange={(e) => setProductData({ ...productData, subcategory: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                    disabled={!productData.category}
+                  >
+                    <option value="">Seleccionar subcategoría</option>
+                    {filteredSubcategories.map((subcategory) => (
+                      <option key={subcategory.id} value={subcategory.name}>
+                        {subcategory.name.charAt(0).toUpperCase() + subcategory.name.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* SEO */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4">SEO</h2>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título SEO</label>
-                <input
-                  type="text"
-                  value={productData.seo_title || ""}
-                  onChange={(e) => setProductData({ ...productData, seo_title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descripción SEO</label>
-                <textarea
-                  value={productData.seo_description || ""}
-                  onChange={(e) => setProductData({ ...productData, seo_description: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4">Etiquetas</h2>
-
-            <div className="flex flex-wrap gap-2 mb-4">
-              {productData.tags?.map((tag, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
-                >
-                  {tag}
-                  <button onClick={() => removeTag(tag)} className="ml-2 text-blue-600 hover:text-blue-800">
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={newTag}
-                onChange={(e) => setNewTag(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && addTag()}
-                placeholder="Nueva etiqueta"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              />
-              <button onClick={addTag} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                Agregar
-              </button>
             </div>
           </div>
 
@@ -389,7 +393,7 @@ export default function EditProductPage() {
                     </span>
                   )}
                   <button
-                    onClick={() => removeImage(image.id, image.image_url)}
+                    onClick={() => removeImage(image.id, image.file_path)}
                     className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="h-4 w-4" />
