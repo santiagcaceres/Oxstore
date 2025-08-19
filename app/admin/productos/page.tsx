@@ -1,11 +1,12 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, Package, TrendingUp, DollarSign, ShoppingCart } from "lucide-react"
+import { Search, Package, TrendingUp, DollarSign, ShoppingCart, Edit } from "lucide-react"
 
 interface ProductWithStock {
   id: number
@@ -49,6 +50,7 @@ export default function ProductosPage() {
     productsWithStock: 0,
     totalStockValue: 0,
   })
+  const router = useRouter()
 
   useEffect(() => {
     loadProductsWithStock()
@@ -99,6 +101,10 @@ export default function ProductosPage() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price)
+  }
+
+  const handleEditProduct = (codigo: string) => {
+    router.push(`/admin/productos/${codigo}`)
   }
 
   if (loading) {
@@ -188,7 +194,7 @@ export default function ProductosPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {filteredProducts.map((product) => (
-          <Card key={product.codigo} className="hover:shadow-md transition-shadow">
+          <Card key={product.codigo} className="hover:shadow-md transition-shadow cursor-pointer group">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -235,6 +241,19 @@ export default function ProductosPage() {
                   <p className="text-xs text-gray-600 line-clamp-2">{product.descripcionCorta}</p>
                 </div>
               )}
+
+              {/* Edit button for each product */}
+              <div className="pt-2 border-t">
+                <Button
+                  onClick={() => handleEditProduct(product.codigo)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Producto
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
