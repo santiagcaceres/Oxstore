@@ -1,3 +1,4 @@
+import { Buffer } from "buffer"
 import type { ZureoOrder, ZureoProduct } from "@/types/zureo"
 
 // Caché en memoria para el token de autenticación
@@ -14,26 +15,24 @@ async function getZureoToken(): Promise<string> {
 
   const user = process.env.ZUREO_API_USER
   const pass = process.env.ZUREO_API_PASSWORD
-  const companyId = process.env.ZUREO_COMPANY_ID
+  const domain = process.env.ZUREO_DOMAIN
 
-  if (!user || !pass || !companyId) {
+  if (!user || !pass || !domain) {
     console.error("Faltan credenciales de Zureo en las variables de entorno.")
     throw new Error("Credenciales de Zureo no configuradas.")
   }
 
-  const authUrl = "https://api.zureo.com/auth/token"
-  console.log("[v0] Intentando autenticar con:", authUrl)
+  const credentials = `${user}:${pass}:${domain}`
+  const encodedCredentials = Buffer.from(credentials).toString("base64")
 
   try {
-    const response = await fetch(authUrl, {
+    const response = await fetch("https://api.zureo.com/sdk/v1/security/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        Authorization: `Basic ${encodedCredentials}`,
       },
-      body: JSON.stringify({
-        usuario: user,
-        password: pass,
-      }),
+      body: JSON.stringify({}),
     })
 
     if (!response.ok) {
@@ -43,11 +42,10 @@ async function getZureoToken(): Promise<string> {
     }
 
     const data = await response.json()
-    console.log("[v0] Token obtenido exitosamente")
 
     tokenCache = {
       token: data.token,
-      valid_to: Date.now() + (data.expires_in || 3600) * 1000, // Default 1 hora
+      valid_to: new Date(data.valid_to).getTime(),
     }
 
     return tokenCache.token
@@ -66,10 +64,7 @@ async function zureoFetch(endpoint: string, options: RequestInit = {}): Promise<
     ...options.headers,
   }
 
-  const fullUrl = `https://api.zureo.com${endpoint}`
-  console.log("[v0] Llamando a:", fullUrl)
-
-  const response = await fetch(fullUrl, { ...options, headers })
+  const response = await fetch(`https://api.zureo.com${endpoint}`, { ...options, headers })
 
   if (!response.ok) {
     let errorData
@@ -93,21 +88,14 @@ export async function getProductsFromZureo(
 ): Promise<ZureoProduct[]> {
   const { emp = 1, qty = 1000, includeInactive = false, ...otherParams } = params
   const query = new URLSearchParams({
-    empresa: emp.toString(),
-    limit: qty.toString(),
-    offset: (otherParams.from || 0).toString(),
-    ...Object.fromEntries(
-      Object.entries(otherParams)
-        .filter(([k]) => k !== "from")
-        .map(([k, v]) => [k, String(v)]),
-    ),
+    emp: emp.toString(),
+    qty: qty.toString(),
+    ...Object.fromEntries(Object.entries(otherParams).map(([k, v]) => [k, String(v)])),
   }).toString()
 
   try {
-    const result = await zureoFetch(`/api/productos?${query}`)
-    const products = result.data || result.productos || result || []
-
-    console.log(`[v0] Obtenidos ${products.length} productos de Zureo`)
+    const result = await zureoFetch(`/sdk/v1/product/all?${query}`)
+    const products = result.data || result.products || []
 
     if (includeInactive) {
       return products
@@ -125,7 +113,7 @@ export async function getAllZureoProducts(): Promise<ZureoProduct[]> {
 
 export async function getProductById(id: string): Promise<ZureoProduct | null> {
   try {
-    const result = await zureoFetch(`/api/productos/${id}`)
+    const result = await zureoFetch(`/sdk/v1/product/get?id=${id}`)
     const product = result.data || result.product || result
 
     // Verificar que el producto no esté dado de baja
@@ -179,7 +167,7 @@ export async function searchZureoProducts(query: string): Promise<ZureoProduct[]
 export async function getProductImages(id: string, varId?: string): Promise<any[]> {
   try {
     const query = varId ? `id=${id}&var=${varId}` : `id=${id}`
-    const result = await zureoFetch(`/api/productos/${id}/imagenes?${query}`)
+    const result = await zureoFetch(`/sdk/v1/product/image?${query}`)
     return result.data || result || []
   } catch (error) {
     console.error(`Error obteniendo imágenes del producto ${id}:`, error)
@@ -207,53 +195,53 @@ export async function getZureoProducts(
 
 // --- Funciones para Empresas ---
 export async function getCompaniesFromZureo(): Promise<any> {
-  const result = await zureoFetch("/api/empresas")
+  const result = await zureoFetch("/sdk/v1/company/all")
   return result.data || result
 }
 
 export async function getCompanyById(id: number): Promise<any> {
-  const result = await zureoFetch(`/api/empresas/${id}`)
+  const result = await zureoFetch(`/sdk/v1/company/get?id=${id}`)
   return result.data || result
 }
 
 // --- Funciones para Marcas ---
 export async function getBrandsFromZureo(): Promise<any> {
-  const result = await zureoFetch("/api/marcas")
+  const result = await zureoFetch("/sdk/v1/brand/all")
   return result.data || result
 }
 
 // --- Funciones para Tipos de Producto ---
 export async function getProductTypesFromZureo(emp = 1): Promise<any> {
-  const result = await zureoFetch(`/api/tipos-productos?emp=${emp}`)
+  const result = await zureoFetch(`/sdk/v1/product_type/all?emp=${emp}`)
   return result.data || result
 }
 
 // --- Funciones para Precios ---
 export async function getPricesFromZureo(emp = 1): Promise<any> {
-  const result = await zureoFetch(`/api/precios?emp=${emp}`)
+  const result = await zureoFetch(`/sdk/v1/prices/all?emp=${emp}`)
   return result.data || result
 }
 
 // --- Funciones para Métodos de Pago ---
 export async function getPaymentMethodsFromZureo(): Promise<any> {
-  const result = await zureoFetch("/api/metodos-pago")
+  const result = await zureoFetch("/sdk/v1/payment/methods")
   return result.data || result
 }
 
 // --- Funciones para Envíos ---
 export async function getShippingMethodsFromZureo(emp = 1): Promise<any> {
-  const result = await zureoFetch(`/api/envios?emp=${emp}`)
+  const result = await zureoFetch(`/sdk/v1/shipping/get?emp=${emp}`)
   return result.data || result
 }
 
 export async function getLocalitiesFromZureo(): Promise<any> {
-  const result = await zureoFetch("/api/localidades")
+  const result = await zureoFetch("/sdk/v1/shipping/localities")
   return result.data || result
 }
 
 // --- Funciones para Pedidos ---
 export async function createOrderInZureo(orderData: Omit<ZureoOrder, "id_empresa">): Promise<any> {
-  return zureoFetch("/api/pedidos", {
+  return zureoFetch("/sdk/v1/order/add", {
     method: "POST",
     body: JSON.stringify({ ...orderData, id_empresa: 1 }),
   })
@@ -261,8 +249,8 @@ export async function createOrderInZureo(orderData: Omit<ZureoOrder, "id_empresa
 
 // --- Funciones para Stock ---
 export async function getStockBySucursal(emp = 1, suc = 1, date?: string): Promise<any> {
-  const query = date ? `empresa=${emp}&sucursal=${suc}&fecha=${date}` : `empresa=${emp}&sucursal=${suc}`
-  const result = await zureoFetch(`/api/stock?${query}`)
+  const query = date ? `emp=${emp}&suc=${suc}&date=${date}` : `emp=${emp}&suc=${suc}`
+  const result = await zureoFetch(`/sdk/v1/product/stock-by-sucursal?${query}`)
   return result.data || result
 }
 
@@ -288,7 +276,7 @@ export async function uploadProductImage(productId: string, imageFile: File): Pr
       filename: imageFile.name,
     }
 
-    const result = await zureoFetch("/api/productos/imagenes", {
+    const result = await zureoFetch("/sdk/v1/product/image/add", {
       method: "POST",
       body: JSON.stringify(imageData),
     })
