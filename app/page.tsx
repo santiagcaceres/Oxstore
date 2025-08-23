@@ -5,8 +5,9 @@ import ProductSlider from "@/components/product-slider"
 import BannerCarousel from "@/components/banner-carousel"
 import BannerGrid from "@/components/banner-grid"
 import BrandsMarquee from "@/components/brands-marquee"
+import { getAllZureoProducts } from "@/lib/zureo-api"
+import { transformZureoProduct } from "@/lib/data-transformer"
 import { getBannersByType } from "@/lib/supabase"
-import { createClient } from "@/lib/supabase/client"
 
 interface Product {
   id: string
@@ -39,8 +40,6 @@ export default function HomePage() {
   const [productBanners, setProductBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
 
-  const supabase = createClient()
-
   useEffect(() => {
     loadProducts()
     loadBanners()
@@ -66,77 +65,27 @@ export default function HomePage() {
 
   const loadProducts = async () => {
     try {
-      const { data: customProducts, error } = await supabase
-        .from("products")
-        .select(`
-          *,
-          product_images (
-            image_url,
-            is_primary
-          )
-        `)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
+      const zureoProducts = await getAllZureoProducts()
 
-      if (customProducts && customProducts.length > 0) {
-        // Obtener datos de stock desde Zureo para estos productos
-        const response = await fetch("/api/zureo/products-with-stock")
-        const stockData = await response.json()
+      // Solo productos con marca, imagen y precio
+      const completeProducts = zureoProducts
+        .filter((product: any) => product.marca?.nombre && product.precio > 0 && !product.baja)
+        .map((product: any) => {
+          const transformed = transformZureoProduct(product)
+          return {
+            ...transformed,
+            brand: product.marca.nombre,
+          }
+        })
+        .filter((product: Product) => product.images.length > 0)
 
-        if (stockData.success) {
-          const productsWithStock = customProducts
-            .map((product: any) => {
-              const stockInfo = stockData.products.find((p: any) => p.codigo === product.product_code)
-              if (!stockInfo || stockInfo.stock <= 0) return null
+      // Productos destacados (primeros 8)
+      setFeaturedProducts(completeProducts.slice(0, 8))
 
-              return {
-                id: product.product_code,
-                title: product.custom_title || stockInfo.nombre,
-                price: stockInfo.precio,
-                images: product.product_images
-                  ?.filter((img: any) => img.image_url)
-                  .map((img: any) => img.image_url) || ["/placeholder.svg"],
-                handle: product.product_code,
-                brand: stockInfo.marca || "Sin marca",
-              }
-            })
-            .filter(Boolean)
+      // Productos nuevos (siguientes 8)
+      setNewProducts(completeProducts.slice(8, 16))
 
-          // Dividir productos en categorías
-          const featured = productsWithStock
-            .filter((p: any) => customProducts.find((cp: any) => cp.product_code === p.id)?.is_featured)
-            .slice(0, 8)
-
-          const remaining = productsWithStock.filter(
-            (p: any) => !customProducts.find((cp: any) => cp.product_code === p.id)?.is_featured,
-          )
-
-          setFeaturedProducts(featured.length > 0 ? featured : remaining.slice(0, 8))
-          setNewProducts(remaining.slice(0, 8))
-          setSaleProducts(remaining.slice(-8).reverse())
-        }
-      } else {
-        // Fallback: usar productos de Zureo directamente si no hay productos personalizados
-        const response = await fetch("/api/zureo/products-with-stock")
-        const data = await response.json()
-
-        if (data.success) {
-          const products = data.products
-            .filter((product: any) => product.stock > 0)
-            .map((product: any) => ({
-              id: product.codigo,
-              title: product.nombre,
-              price: product.precio,
-              images: [product.imagen || "/placeholder.svg"],
-              handle: product.codigo,
-              brand: product.marca || "Sin marca",
-            }))
-
-          setFeaturedProducts(products.slice(0, 8))
-          setNewProducts(products.slice(8, 16))
-          setSaleProducts(products.slice(-8).reverse())
-        }
-      }
+      setSaleProducts(completeProducts.slice(-8).reverse())
     } catch (error) {
       console.error("Error loading products:", error)
     } finally {

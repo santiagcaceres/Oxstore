@@ -4,7 +4,17 @@ import type React from "react"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { LayoutDashboard, Package, Tag, ImageIcon, ShoppingBag, Stethoscope, Settings, LogOut } from "lucide-react"
+import {
+  LayoutDashboard,
+  Package,
+  Upload,
+  Tag,
+  ImageIcon,
+  ShoppingBag,
+  Stethoscope,
+  Settings,
+  LogOut,
+} from "lucide-react"
 import { useAdmin } from "@/context/admin-context"
 
 export default function AdminLayout({
@@ -59,6 +69,22 @@ export default function AdminLayout({
               >
                 <Package className="h-5 w-5" />
                 <span>Productos</span>
+              </Link>
+
+              <Link
+                href="/admin/productos-stock"
+                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors ml-4"
+              >
+                <Package className="h-4 w-4" />
+                <span>Con Stock</span>
+              </Link>
+
+              <Link
+                href="/admin/productos/imagenes"
+                className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors ml-4"
+              >
+                <Upload className="h-4 w-4" />
+                <span>Subir Imágenes</span>
               </Link>
 
               <Link
