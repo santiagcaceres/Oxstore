@@ -1,0 +1,297 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { notFound } from "next/navigation"
+import Image from "next/image"
+import { Header } from "@/components/header"
+import { Footer } from "@/components/footer"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { ShoppingCart, Heart, Share2, Minus, Plus, Star } from "lucide-react"
+import type { Product } from "@/lib/database"
+
+interface ProductPageProps {
+  params: {
+    slug: string
+  }
+}
+
+export default function ProductPage({ params }: ProductPageProps) {
+  const [product, setProduct] = useState<Product | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [selectedImage, setSelectedImage] = useState(0)
+  const [quantity, setQuantity] = useState(1)
+
+  useEffect(() => {
+    const loadProduct = async () => {
+      try {
+        const response = await fetch(`/api/products/${params.slug}`)
+        if (response.ok) {
+          const data = await response.json()
+          setProduct(data)
+        } else {
+          notFound()
+        }
+      } catch (error) {
+        console.error("Error loading product:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadProduct()
+  }, [params.slug])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="aspect-square bg-muted rounded-lg" />
+              <div className="space-y-4">
+                <div className="h-8 bg-muted rounded w-3/4" />
+                <div className="h-6 bg-muted rounded w-1/2" />
+                <div className="h-12 bg-muted rounded w-1/3" />
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (!product) {
+    notFound()
+  }
+
+  const hasDiscount = product.compare_price && product.compare_price > product.price
+  const discountPercentage = hasDiscount
+    ? Math.round(((product.compare_price! - product.price) / product.compare_price!) * 100)
+    : 0
+
+  const increaseQuantity = () => {
+    if (quantity < product.stock_quantity) {
+      setQuantity((prev) => prev + 1)
+    }
+  }
+
+  const decreaseQuantity = () => {
+    if (quantity > 1) {
+      setQuantity((prev) => prev - 1)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+
+      <main className="container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/">Inicio</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/productos">Productos</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{product.name}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          {/* Product Images */}
+          <div className="space-y-4">
+            <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
+              <Image
+                src={product.images?.[selectedImage]?.image_url || "/placeholder.svg?height=600&width=600"}
+                alt={product.images?.[selectedImage]?.alt_text || product.name}
+                fill
+                className="object-cover"
+                priority
+              />
+
+              {/* Badges */}
+              <div className="absolute top-4 left-4 flex flex-col gap-2">
+                {hasDiscount && <Badge variant="destructive">-{discountPercentage}%</Badge>}
+                {product.is_featured && <Badge variant="secondary">Destacado</Badge>}
+              </div>
+            </div>
+
+            {/* Thumbnail Images */}
+            {product.images && product.images.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto">
+                {product.images.map((image, index) => (
+                  <button
+                    key={image.id}
+                    onClick={() => setSelectedImage(index)}
+                    className={`flex-shrink-0 aspect-square w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
+                      selectedImage === index ? "border-primary" : "border-transparent"
+                    }`}
+                  >
+                    <Image
+                      src={image.image_url || "/placeholder.svg"}
+                      alt={image.alt_text || product.name}
+                      width={80}
+                      height={80}
+                      className="object-cover w-full h-full"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Product Info */}
+          <div className="space-y-6">
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wide mb-2">{product.brand}</p>
+              <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+
+              {/* Rating */}
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <span className="text-sm text-muted-foreground">(4.8) 124 reseñas</span>
+              </div>
+
+              {/* Price */}
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-3xl font-bold">${product.price}</span>
+                {hasDiscount && (
+                  <span className="text-xl text-muted-foreground line-through">${product.compare_price}</span>
+                )}
+              </div>
+
+              {/* Stock Status */}
+              <div className="mb-6">
+                {product.stock_quantity > 0 ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span className="text-sm text-green-600">
+                      {product.stock_quantity > 10 ? "En stock" : `Solo ${product.stock_quantity} disponibles`}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-red-500 rounded-full" />
+                    <span className="text-sm text-red-600">Agotado</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Quantity Selector */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <span className="font-medium">Cantidad:</span>
+                <div className="flex items-center border rounded-lg">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={decreaseQuantity}
+                    disabled={quantity <= 1}
+                    className="h-10 w-10"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <span className="px-4 py-2 min-w-[3rem] text-center">{quantity}</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={increaseQuantity}
+                    disabled={quantity >= product.stock_quantity}
+                    className="h-10 w-10"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <Button size="lg" className="flex-1" disabled={product.stock_quantity === 0}>
+                  <ShoppingCart className="h-5 w-5 mr-2" />
+                  {product.stock_quantity === 0 ? "Agotado" : "Agregar al Carrito"}
+                </Button>
+                <Button variant="outline" size="lg">
+                  <Heart className="h-5 w-5" />
+                </Button>
+                <Button variant="outline" size="lg">
+                  <Share2 className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Product Details Tabs */}
+            <Tabs defaultValue="description" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="description">Descripción</TabsTrigger>
+                <TabsTrigger value="specifications">Especificaciones</TabsTrigger>
+                <TabsTrigger value="reviews">Reseñas</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="description" className="mt-6">
+                <div className="prose prose-sm max-w-none">
+                  <p>{product.description}</p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="specifications" className="mt-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="font-medium">SKU:</span>
+                    <span>{product.sku}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b">
+                    <span className="font-medium">Marca:</span>
+                    <span>{product.brand}</span>
+                  </div>
+                  {product.weight && (
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="font-medium">Peso:</span>
+                      <span>{product.weight}g</span>
+                    </div>
+                  )}
+                  {product.dimensions && (
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="font-medium">Dimensiones:</span>
+                      <span>{product.dimensions}</span>
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="reviews" className="mt-6">
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Las reseñas estarán disponibles próximamente.</p>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  )
+}
