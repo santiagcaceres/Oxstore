@@ -156,7 +156,7 @@ export default function AdminProductsPage() {
         <div>
           <h1 className="text-3xl font-bold">Productos con Stock</h1>
           <p className="text-muted-foreground">
-            Solo productos con stock disponible - Sincronización automática cada 30 minutos
+            Solo productos con stock disponible - Sincronización automática cada 12 horas
             {lastSync && (
               <span className="block text-xs mt-1">
                 Última sincronización: {new Date(lastSync).toLocaleString()}
