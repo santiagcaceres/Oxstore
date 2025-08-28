@@ -7,6 +7,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 
 interface Banner {
   id: number
@@ -38,11 +39,19 @@ export default function HomePage() {
 
   const loadBanners = async () => {
     try {
-      const response = await fetch("/api/banners")
-      if (response.ok) {
-        const data = await response.json()
-        setBanners(data.banners || [])
+      const supabase = createClient()
+      const { data: bannersData, error } = await supabase
+        .from("banners")
+        .select("*")
+        .eq("is_active", true)
+        .order("position", { ascending: true })
+
+      if (error) {
+        console.error("Error loading banners:", error)
+        return
       }
+
+      setBanners(bannersData || [])
     } catch (error) {
       console.error("Error loading banners:", error)
     }
@@ -50,13 +59,22 @@ export default function HomePage() {
 
   const loadPopup = async () => {
     try {
-      const response = await fetch("/api/popups")
-      if (response.ok) {
-        const data = await response.json()
-        if (data.popup && data.popup.is_active) {
-          setPopup(data.popup)
-          setTimeout(() => setShowPopup(true), data.popup.show_delay || 5000)
-        }
+      const supabase = createClient()
+      const { data: popupData, error } = await supabase
+        .from("popups")
+        .select("*")
+        .eq("is_active", true)
+        .limit(1)
+        .single()
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error loading popup:", error)
+        return
+      }
+
+      if (popupData) {
+        setPopup(popupData)
+        setTimeout(() => setShowPopup(true), popupData.show_delay || 5000)
       }
     } catch (error) {
       console.error("Error loading popup:", error)
