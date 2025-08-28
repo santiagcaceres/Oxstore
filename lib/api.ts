@@ -52,54 +52,25 @@ export class ZureoAPI {
   }
 
   constructor() {
-    const envUrl = process.env.ZUREO_API_URL
-
-    if (!envUrl) {
-      console.error("❌ ZUREO_API_URL environment variable is not configured!")
-      console.error("Please set ZUREO_API_URL in your Vercel Project Settings")
-      console.error("Example: ZUREO_API_URL=https://api.zureo.com")
-      this.baseUrl = "https://api.zureo.com" // Fallback más seguro
-    } else {
-      try {
-        const testUrl = new URL(envUrl)
-        if (!testUrl.protocol.startsWith("http")) {
-          throw new Error("URL must use http or https protocol")
-        }
-        this.baseUrl = envUrl
-        console.log("✅ Using Zureo API URL:", envUrl)
-      } catch (error) {
-        console.error("❌ Invalid ZUREO_API_URL:", envUrl)
-        console.error("URL must be in format: https://your-zureo-domain.com")
-        console.error("Contact Zureo support for your correct API URL")
-        this.baseUrl = "https://api.zureo.com" // Fallback más seguro
-      }
-    }
+    this.baseUrl = process.env.ZUREO_API_URL || "https://api.zureo.com"
+    console.log("✅ Using Zureo API URL:", this.baseUrl)
   }
 
   async authenticate(): Promise<boolean> {
     try {
       const authUrl = `${this.baseUrl}/sdk/v1/security/login`
 
-      try {
-        new URL(authUrl)
-      } catch (error) {
-        console.error("❌ Cannot construct authentication URL:", authUrl)
-        console.error("Please check your ZUREO_API_URL environment variable")
-        return false
-      }
-
-      const authString = `${this.credentials.usuario}:${this.credentials.password}:${this.credentials.dominio}`
-      const base64Auth = Buffer.from(authString).toString("base64")
+      const credentials = `${this.credentials.usuario}:${this.credentials.password}:${this.credentials.dominio}`
+      const encodedCredentials = Buffer.from(credentials).toString("base64")
 
       console.log("🔐 Attempting authentication with Zureo...")
       console.log("Auth URL:", authUrl)
-      console.log("Domain:", this.credentials.dominio)
 
       const response = await fetch(authUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Basic ${base64Auth}`,
+          Authorization: `Basic ${encodedCredentials}`,
         },
       })
 
@@ -112,13 +83,12 @@ export class ZureoAPI {
 
       const data = await response.json()
       this.token = data.token
-      this.tokenExpiry = new Date(data.valid_to).getTime()
+      this.tokenExpiry = Date.now() + 24 * 60 * 60 * 1000
 
       console.log("✅ Successfully authenticated with Zureo API")
       return true
     } catch (error) {
       console.error("❌ Error authenticating with Zureo:", error)
-      console.error("Please verify your ZUREO_API_URL and credentials")
       return false
     }
   }
@@ -156,16 +126,15 @@ export class ZureoAPI {
       const limit = 1000
 
       while (true) {
-        const url = `${this.baseUrl}/sdk/v1/product/all?emp=${this.credentials.companyId}&qty=${limit}&from=${offset}`
+        const url = `${this.baseUrl}/sdk/v1/product/all?emp=${this.credentials.companyId}&from=${offset}&qty=${limit}`
         const response = await this.makeAuthenticatedRequest(url)
 
-        if (!response.data || response.data.length === 0) {
+        if (!response?.data || response.data.length === 0) {
           break
         }
 
         allProducts.push(...response.data)
 
-        // Si recibimos menos de 1000 productos, hemos llegado al final
         if (response.data.length < limit) {
           break
         }
@@ -173,6 +142,7 @@ export class ZureoAPI {
         offset += limit
       }
 
+      console.log(`📦 Fetched ${allProducts.length} products from Zureo`)
       return allProducts
     } catch (error) {
       console.error("Error fetching all products:", error)
@@ -184,7 +154,7 @@ export class ZureoAPI {
     try {
       const url = `${this.baseUrl}/sdk/v1/brand/all`
       const response = await this.makeAuthenticatedRequest(url)
-      return response.data || []
+      return response?.data || []
     } catch (error) {
       console.error("Error fetching marcas:", error)
       return []
@@ -197,9 +167,9 @@ export class ZureoAPI {
 
   async getRubros(): Promise<ZureoRubro[]> {
     try {
-      const url = `${this.baseUrl}/sdk/v1/product_type/all?emp=${this.credentials.companyId}&with_prods=true`
+      const url = `${this.baseUrl}/sdk/v1/product_type/all?emp=${this.credentials.companyId}`
       const response = await this.makeAuthenticatedRequest(url)
-      return response.data || []
+      return response?.data || []
     } catch (error) {
       console.error("Error fetching rubros:", error)
       return []
@@ -214,11 +184,11 @@ export class ZureoAPI {
   convertToApiProduct(zureoProduct: any): ApiProduct {
     return {
       id: zureoProduct.id.toString(),
-      name: zureoProduct.nombre || zureoProduct.descripcion,
+      name: zureoProduct.nombre || "Producto sin nombre",
       price: zureoProduct.precio || 0,
       stock: zureoProduct.stock || 0,
-      sku: zureoProduct.codigo,
-      category: zureoProduct.tipo?.nombre || zureoProduct.rubro || "Sin categoría",
+      sku: zureoProduct.codigo || "",
+      category: zureoProduct.tipo?.nombre || "Sin categoría",
       images: ["/generic-product-display.png"],
     }
   }
