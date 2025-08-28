@@ -13,6 +13,7 @@ import {
   Settings,
   BarChart3,
   Bug,
+  Download,
 } from "lucide-react"
 
 const navigation = [
@@ -40,6 +41,11 @@ const navigation = [
     name: "Banners",
     href: "/admin/banners",
     icon: ImageIcon,
+  },
+  {
+    name: "Zureo Sync",
+    href: "/admin/zureo-sync",
+    icon: Download,
   },
   {
     name: "Zureo Debug",
