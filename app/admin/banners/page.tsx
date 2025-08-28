@@ -19,7 +19,21 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Search, Edit, Upload } from "lucide-react"
-import type { Banner } from "@/lib/database"
+import { createClient } from "@supabase/supabase-js"
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+
+interface Banner {
+  id: number
+  title: string
+  subtitle?: string
+  image_url?: string
+  link_url?: string
+  position: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
 
 export default function AdminBannersPage() {
   const [banners, setBanners] = useState<Banner[]>([])
@@ -32,9 +46,13 @@ export default function AdminBannersPage() {
   useEffect(() => {
     const loadBanners = async () => {
       try {
-        const response = await fetch("/api/banners")
-        const data = await response.json()
-        setBanners(data)
+        const { data, error } = await supabase.from("banners").select("*").order("position", { ascending: true })
+
+        if (error) {
+          console.error("Error loading banners:", error)
+        } else {
+          setBanners(data || [])
+        }
       } catch (error) {
         console.error("Error loading banners:", error)
       } finally {
@@ -53,16 +71,17 @@ export default function AdminBannersPage() {
 
   const toggleBannerStatus = async (bannerId: number, isActive: boolean) => {
     try {
-      const response = await fetch(`/api/banners/${bannerId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: isActive }),
-      })
+      const { error } = await supabase
+        .from("banners")
+        .update({ is_active: isActive, updated_at: new Date().toISOString() })
+        .eq("id", bannerId)
 
-      if (response.ok) {
+      if (!error) {
         setBanners((prev) =>
           prev.map((banner) => (banner.id === bannerId ? { ...banner, is_active: isActive } : banner)),
         )
+      } else {
+        console.error("Error updating banner status:", error)
       }
     } catch (error) {
       console.error("Error updating banner status:", error)
@@ -79,16 +98,16 @@ export default function AdminBannersPage() {
     if (!editingBanner) return
 
     try {
-      const response = await fetch(`/api/banners/${editingBanner.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const { error } = await supabase
+        .from("banners")
+        .update({
           image_url: imageUrl,
           link_url: linkUrl,
-        }),
-      })
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingBanner.id)
 
-      if (response.ok) {
+      if (!error) {
         setBanners((prev) =>
           prev.map((banner) =>
             banner.id === editingBanner.id ? { ...banner, image_url: imageUrl, link_url: linkUrl } : banner,
@@ -97,6 +116,8 @@ export default function AdminBannersPage() {
         setEditingBanner(null)
         setImageUrl("")
         setLinkUrl("")
+      } else {
+        console.error("Error updating banner:", error)
       }
     } catch (error) {
       console.error("Error updating banner:", error)
