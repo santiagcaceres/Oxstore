@@ -61,11 +61,18 @@ class ZureoAPI {
   private tokenExpiry: Date | null = null
 
   constructor() {
-    this.baseUrl = process.env.ZUREO_API_URL || "https://020128150011"
+    this.baseUrl = process.env.ZUREO_API_URL || "https://api.zureo.com"
     this.username = process.env.ZUREO_USERNAME || ""
     this.password = process.env.ZUREO_PASSWORD || ""
     this.domain = process.env.ZUREO_DOMAIN || ""
     this.companyId = process.env.ZUREO_COMPANY_ID || "1"
+
+    console.log("[v0] ZureoAPI initialized with:")
+    console.log("- Base URL:", this.baseUrl)
+    console.log("- Username:", this.username ? "✓ Set" : "✗ Missing")
+    console.log("- Password:", this.password ? "✓ Set" : "✗ Missing")
+    console.log("- Domain:", this.domain || "✗ Missing")
+    console.log("- Company ID:", this.companyId)
   }
 
   private async authenticate(): Promise<string> {
@@ -78,6 +85,10 @@ class ZureoAPI {
     const encodedCredentials = Buffer.from(credentials).toString("base64")
 
     try {
+      console.log("[v0] Authenticating with Zureo API...")
+      console.log("- Auth URL:", `${this.baseUrl}/sdk/v1/security/login`)
+      console.log("- Credentials format:", `${this.username}:***:${this.domain}`)
+
       const response = await fetch(`${this.baseUrl}/sdk/v1/security/login`, {
         method: "POST",
         headers: {
@@ -87,16 +98,23 @@ class ZureoAPI {
       })
 
       if (!response.ok) {
-        throw new Error(`Authentication failed: ${response.status}`)
+        const errorText = await response.text()
+        console.error("[v0] Authentication failed:")
+        console.error("- Status:", response.status, response.statusText)
+        console.error("- Response:", errorText)
+        throw new Error(`Authentication failed: ${response.status} ${response.statusText} - ${errorText}`)
       }
 
       const data: ZureoAuthResponse = await response.json()
       this.token = data.token
       this.tokenExpiry = new Date(data.valid_to)
 
+      console.log("[v0] Authentication successful!")
+      console.log("- Token expires:", this.tokenExpiry.toISOString())
+
       return this.token
     } catch (error) {
-      console.error("Zureo authentication error:", error)
+      console.error("[v0] Zureo authentication error:", error)
       throw error
     }
   }
@@ -104,25 +122,40 @@ class ZureoAPI {
   private async makeRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const token = await this.authenticate()
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...options.headers,
-      },
-    })
+    const fullUrl = `${this.baseUrl}${endpoint}`
+    console.log("[v0] Making request to:", fullUrl)
 
-    if (response.status === 429) {
-      const errorData = await response.json()
-      throw new Error(`Rate limit exceeded. Try again after: ${errorData.until}`)
+    try {
+      const response = await fetch(fullUrl, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...options.headers,
+        },
+      })
+
+      if (response.status === 429) {
+        const errorData = await response.json()
+        const errorMsg = `Rate limit exceeded. Try again after: ${errorData.until}`
+        console.error("[v0]", errorMsg)
+        throw new Error(errorMsg)
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        const errorMsg = `API request failed: ${response.status} ${response.statusText} - ${errorText}`
+        console.error("[v0]", errorMsg)
+        throw new Error(errorMsg)
+      }
+
+      const data = await response.json()
+      console.log("[v0] Request successful, received data keys:", Object.keys(data))
+      return data
+    } catch (error) {
+      console.error("[v0] Request error for", fullUrl, ":", error)
+      throw error
     }
-
-    if (!response.ok) {
-      throw new Error(`API request failed: ${response.status}`)
-    }
-
-    return response.json()
   }
 
   async getAllProducts(): Promise<ZureoProduct[]> {
@@ -130,31 +163,47 @@ class ZureoAPI {
     let offset = 0
     const limit = 1000
 
+    console.log("[v0] Starting to fetch all products...")
+    console.log("- Company ID:", this.companyId)
+    console.log("- Limit per request:", limit)
+
     while (true) {
       try {
+        console.log(`[v0] Fetching products batch: offset=${offset}, limit=${limit}`)
+
         const response = await this.makeRequest<{
           data: ZureoProduct[]
           from: number
           qty: number
         }>(`/sdk/v1/product/all?emp=${this.companyId}&from=${offset}&qty=${limit}`)
 
+        console.log(`[v0] Received ${response.data?.length || 0} products in this batch`)
+
+        if (!response.data || response.data.length === 0) {
+          console.log("[v0] No more products to fetch")
+          break
+        }
+
         allProducts.push(...response.data)
 
         // If we got less than the limit, we've reached the end
         if (response.qty < limit) {
+          console.log("[v0] Reached end of products (received less than limit)")
           break
         }
 
         offset += limit
 
         // Add delay to respect rate limiting (12 calls every 30 seconds)
+        console.log("[v0] Waiting 2.5s before next request (rate limiting)...")
         await new Promise((resolve) => setTimeout(resolve, 2500))
       } catch (error) {
-        console.error(`Error fetching products at offset ${offset}:`, error)
+        console.error(`[v0] Error fetching products at offset ${offset}:`, error)
         throw error
       }
     }
 
+    console.log(`[v0] Total products fetched: ${allProducts.length}`)
     return allProducts
   }
 
@@ -197,7 +246,15 @@ class ZureoAPI {
   }
 
   async getBrands(): Promise<ZureoBrand[]> {
-    return this.makeRequest<{ data: ZureoBrand[] }>("/sdk/v1/brand/all").then((response) => response.data)
+    console.log("[v0] Fetching brands from Zureo...")
+    try {
+      const response = await this.makeRequest<{ data: ZureoBrand[] }>("/sdk/v1/brand/all")
+      console.log(`[v0] Fetched ${response.data?.length || 0} brands`)
+      return response.data || []
+    } catch (error) {
+      console.error("[v0] Error fetching brands:", error)
+      throw error
+    }
   }
 
   async getProductTypes(): Promise<ZureoProductType[]> {

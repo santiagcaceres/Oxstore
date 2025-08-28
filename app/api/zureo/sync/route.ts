@@ -8,9 +8,25 @@ export async function POST(request: NextRequest) {
   try {
     console.log("[v0] Starting product synchronization from Zureo...")
 
+    console.log("[v0] Sync configuration:")
+    console.log("- API URL:", process.env.ZUREO_API_URL || "https://api.zureo.com")
+    console.log("- Company ID:", process.env.ZUREO_COMPANY_ID || "1")
+    console.log("- Username:", process.env.ZUREO_USERNAME ? "✓ Set" : "✗ Missing")
+    console.log("- Domain:", process.env.ZUREO_DOMAIN || "✗ Missing")
+
     // Get all products from Zureo
     const zureoProducts = await zureoAPI.getAllProducts()
     console.log(`[v0] Fetched ${zureoProducts.length} products from Zureo`)
+
+    if (zureoProducts.length === 0) {
+      console.warn("[v0] No products received from Zureo API")
+      return NextResponse.json(
+        {
+          error: "No products received from Zureo API. Check API configuration and credentials.",
+        },
+        { status: 400 },
+      )
+    }
 
     // Transform and insert products
     const transformedProducts = zureoProducts.map((product) => ({
@@ -57,30 +73,52 @@ export async function POST(request: NextRequest) {
     console.log(`[v0] Successfully synchronized ${data?.length || 0} products`)
 
     // Sync brands
+    console.log("[v0] Starting brand synchronization...")
     const zureoBrands = await zureoAPI.getBrands()
-    const transformedBrands = zureoBrands.map((brand) => ({
-      zureo_id: brand.id,
-      name: brand.nombre,
-      slug: brand.nombre
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, ""),
-      updated_at: new Date(brand.fecha_modificado),
-    }))
+    console.log(`[v0] Fetched ${zureoBrands.length} brands from Zureo`)
 
-    await supabase.from("brands").upsert(transformedBrands, { onConflict: "zureo_id" })
+    if (zureoBrands.length > 0) {
+      const transformedBrands = zureoBrands.map((brand) => ({
+        zureo_id: brand.id,
+        name: brand.nombre,
+        slug: brand.nombre
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, ""),
+        updated_at: new Date(brand.fecha_modificado),
+      }))
 
-    console.log(`[v0] Synchronized ${zureoBrands.length} brands`)
+      const { error: brandsError } = await supabase.from("brands").upsert(transformedBrands, { onConflict: "zureo_id" })
+
+      if (brandsError) {
+        console.error("[v0] Error syncing brands:", brandsError)
+      } else {
+        console.log(`[v0] Successfully synchronized ${zureoBrands.length} brands`)
+      }
+    }
 
     return NextResponse.json({
       success: true,
       products_synced: data?.length || 0,
       brands_synced: zureoBrands.length,
       message: "Synchronization completed successfully",
+      api_info: {
+        endpoint: process.env.ZUREO_API_URL || "https://api.zureo.com",
+        company_id: process.env.ZUREO_COMPANY_ID || "1",
+        limit_per_request: 1000,
+        pagination: "Automatic",
+      },
     })
   } catch (error) {
     console.error("[v0] Sync error:", error)
-    return NextResponse.json({ error: "Failed to synchronize products" }, { status: 500 })
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+    return NextResponse.json(
+      {
+        error: `Failed to synchronize products: ${errorMessage}`,
+        details: error instanceof Error ? error.stack : "No additional details",
+      },
+      { status: 500 },
+    )
   }
 }
 

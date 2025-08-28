@@ -75,7 +75,7 @@ export function HeroBanner() {
   }
 
   if (loading || banners.length === 0) {
-    return <div className="aspect-square bg-muted skeleton rounded-lg" />
+    return <div className="aspect-[3/2] bg-muted skeleton" />
   }
 
   const currentBanner = banners[currentIndex]
@@ -85,7 +85,7 @@ export function HeroBanner() {
       : currentBanner.image_url
 
   return (
-    <div className="relative aspect-square overflow-hidden rounded-lg group parallax">
+    <div className="relative aspect-[3/2] overflow-hidden group parallax">
       {/* Background Images with Crossfade Effect */}
       <div className="absolute inset-0">
         {banners.map((banner, index) => {

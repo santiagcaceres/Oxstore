@@ -80,12 +80,55 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center space-x-2">
-            <Image src="/logo-oxstore.png" alt="Oxstore" width={120} height={40} className="h-8 w-auto" />
-          </Link>
+          <div className="flex items-center gap-4">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+                <nav className="flex flex-col space-y-4 mt-8">
+                  <Link href="/categoria/mujer" className="text-lg font-medium hover:text-primary transition-colors">
+                    MUJER
+                  </Link>
+                  <Link href="/categoria/hombre" className="text-lg font-medium hover:text-primary transition-colors">
+                    HOMBRE
+                  </Link>
+                  <Link href="/nuevo" className="text-lg font-medium hover:text-primary transition-colors">
+                    NUEVO
+                  </Link>
+                  <div className="border-t pt-4">
+                    <h3 className="text-lg font-medium mb-2">MARCAS</h3>
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                      {brands.map((brand) => (
+                        <Link
+                          key={brand.id}
+                          href={`/marca/${brand.slug}`}
+                          className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
+                        >
+                          {brand.nombre}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                  <Link
+                    href="/ofertas"
+                    className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors"
+                  >
+                    OFERTAS
+                  </Link>
+                </nav>
+              </SheetContent>
+            </Sheet>
+
+            <Link href="/" className="flex items-center space-x-2">
+              <Image src="/logo-oxstore.png" alt="Oxstore" width={120} height={40} className="h-8 w-auto" />
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-8 absolute left-1/2 transform -translate-x-1/2">
             <div
               className="relative"
               onMouseEnter={() => setIsMujerOpen(true)}
@@ -302,48 +345,6 @@ export function Header() {
                 )}
               </Link>
             </Button>
-
-            {/* Mobile Menu */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <nav className="flex flex-col space-y-4 mt-8">
-                  <Link href="/categoria/mujer" className="text-lg font-medium hover:text-primary transition-colors">
-                    MUJER
-                  </Link>
-                  <Link href="/categoria/hombre" className="text-lg font-medium hover:text-primary transition-colors">
-                    HOMBRE
-                  </Link>
-                  <Link href="/nuevo" className="text-lg font-medium hover:text-primary transition-colors">
-                    NUEVO
-                  </Link>
-                  <div className="border-t pt-4">
-                    <h3 className="text-lg font-medium mb-2">MARCAS</h3>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {brands.map((brand) => (
-                        <Link
-                          key={brand.id}
-                          href={`/marca/${brand.slug}`}
-                          className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
-                        >
-                          {brand.nombre}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                  <Link
-                    href="/ofertas"
-                    className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors"
-                  >
-                    OFERTAS
-                  </Link>
-                </nav>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
 
