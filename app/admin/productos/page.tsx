@@ -17,21 +17,17 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Search, MoreHorizontal, Edit, Eye, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { createClient } from "@supabase/supabase-js"
-
-const supabaseUrl = "https://your-supabase-url.supabase.co"
-const supabaseKey = "your-supabase-key"
-const supabase = createClient(supabaseUrl, supabaseKey)
+import { createClient } from "@/lib/supabase/client"
 
 interface Product {
   id: number
   zureo_id: number
-  codigo: string
+  zureo_code: string
   name: string
   slug: string
   description: string
   price: number
-  stock: number
+  stock_quantity: number
   category: string
   brand: string
   image_url: string
@@ -96,10 +92,11 @@ export default function AdminProductsPage() {
 
   const loadLocalProducts = async () => {
     try {
+      const supabase = createClient()
       const { data: products } = await supabase
         .from("products")
         .select("*")
-        .gt("stock", 0)
+        .gt("stock_quantity", 0)
         .order("created_at", { ascending: false })
 
       setProducts(products || [])
@@ -115,6 +112,7 @@ export default function AdminProductsPage() {
       setError(null)
       setSyncStatus("Forzando sincronización...")
 
+      const supabase = createClient()
       await supabase.from("sync_status").delete().eq("type", "products")
 
       const response = await fetch("/api/zureo/products/sync")
@@ -145,11 +143,11 @@ export default function AdminProductsPage() {
 
   const filteredProducts = products.filter(
     (product) =>
-      product.stock > 0 &&
+      product.stock_quantity > 0 &&
       (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.codigo.toLowerCase().includes(searchTerm.toLowerCase())),
+        product.zureo_code.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
   return (
@@ -222,7 +220,7 @@ export default function AdminProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${products.reduce((sum, p) => sum + p.price * p.stock, 0).toLocaleString()}
+              ${products.reduce((sum, p) => sum + p.price * p.stock_quantity, 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -292,7 +290,7 @@ export default function AdminProductsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{product.codigo}</Badge>
+                      <Badge variant="outline">{product.zureo_code}</Badge>
                     </TableCell>
                     <TableCell>
                       <div>
@@ -304,10 +302,10 @@ export default function AdminProductsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={product.stock <= 5 ? "secondary" : "default"}
+                        variant={product.stock_quantity <= 5 ? "secondary" : "default"}
                         className="bg-green-100 text-green-800"
                       >
-                        {product.stock} unidades
+                        {product.stock_quantity} unidades
                       </Badge>
                     </TableCell>
                     <TableCell>

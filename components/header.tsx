@@ -128,7 +128,7 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8 absolute left-1/2 transform -translate-x-1/2">
+          <nav className="hidden md:flex items-center space-x-8">
             <div
               className="relative"
               onMouseEnter={() => setIsMujerOpen(true)}
@@ -143,7 +143,7 @@ export function Header() {
               </Link>
 
               {isMujerOpen && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[110]">
+                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[130]">
                   <div className="p-6">
                     {(() => {
                       const subcats = getSubcategoriesForGender("mujer")
@@ -213,7 +213,7 @@ export function Header() {
               </Link>
 
               {isHombreOpen && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[110]">
+                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[130]">
                   <div className="p-6">
                     {(() => {
                       const subcats = getSubcategoriesForGender("hombre")
@@ -284,7 +284,7 @@ export function Header() {
               </button>
 
               {isBrandsOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[110]">
+                <div className="absolute top-full left-0 mt-2 w-64 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[130]">
                   <div className="p-4 max-h-96 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-2">
                       {brands.map((brand) => (
@@ -313,8 +313,8 @@ export function Header() {
           </nav>
 
           {/* Search Bar */}
-          <div className="hidden lg:flex items-center flex-1 max-w-sm mx-8">
-            <div className="relative w-full">
+          <div className="hidden lg:flex items-center ml-auto">
+            <div className="relative w-80">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input type="search" placeholder="Buscar productos..." className="pl-10 pr-4" />
             </div>

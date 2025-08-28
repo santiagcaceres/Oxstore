@@ -19,10 +19,10 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Search, Edit, Upload } from "lucide-react"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/client"
 import ImageUpload from "@/components/image-upload"
 
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+const supabase = createClient()
 
 interface Banner {
   id: number
@@ -97,6 +97,8 @@ export default function AdminBannersPage() {
     if (!editingBanner) return
 
     try {
+      console.log("[v0] Updating banner image:", { bannerId: editingBanner.id, newImageUrl })
+
       const { error } = await supabase
         .from("banners")
         .update({
@@ -109,11 +111,12 @@ export default function AdminBannersPage() {
         setBanners((prev) =>
           prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, image_url: newImageUrl } : banner)),
         )
+        console.log("[v0] Banner image updated successfully")
       } else {
-        console.error("Error updating banner image:", error)
+        console.error("[v0] Error updating banner image:", error)
       }
     } catch (error) {
-      console.error("Error updating banner image:", error)
+      console.error("[v0] Error updating banner image:", error)
     }
   }
 
@@ -123,6 +126,8 @@ export default function AdminBannersPage() {
     const placeholderUrl = `/placeholder.svg?height=400&width=800&text=${encodeURIComponent(editingBanner.title)}`
 
     try {
+      console.log("[v0] Resetting banner image to placeholder:", { bannerId: editingBanner.id, placeholderUrl })
+
       const { error } = await supabase
         .from("banners")
         .update({
@@ -135,11 +140,12 @@ export default function AdminBannersPage() {
         setBanners((prev) =>
           prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, image_url: placeholderUrl } : banner)),
         )
+        console.log("[v0] Banner image reset successfully")
       } else {
-        console.error("Error resetting banner image:", error)
+        console.error("[v0] Error resetting banner image:", error)
       }
     } catch (error) {
-      console.error("Error resetting banner image:", error)
+      console.error("[v0] Error resetting banner image:", error)
     }
   }
 

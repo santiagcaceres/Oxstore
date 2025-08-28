@@ -3,18 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import {
-  LayoutDashboard,
-  Package,
-  FolderOpen,
-  ShoppingCart,
-  ImageIcon,
-  Users,
-  Settings,
-  BarChart3,
-  Bug,
-  Download,
-} from "lucide-react"
+import { LayoutDashboard, Package, ShoppingCart, Settings } from "lucide-react"
 
 const navigation = [
   {
@@ -23,48 +12,18 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: "Productos",
-    href: "/admin/productos",
-    icon: Package,
-  },
-  {
-    name: "Categorías",
-    href: "/admin/categorias",
-    icon: FolderOpen,
-  },
-  {
     name: "Pedidos",
     href: "/admin/pedidos",
     icon: ShoppingCart,
   },
   {
-    name: "Banners",
-    href: "/admin/banners",
-    icon: ImageIcon,
+    name: "Productos",
+    href: "/admin/productos",
+    icon: Package,
   },
   {
-    name: "Zureo Sync",
+    name: "Configuración Zureo",
     href: "/admin/zureo-sync",
-    icon: Download,
-  },
-  {
-    name: "Zureo Debug",
-    href: "/admin/zureo-debug",
-    icon: Bug,
-  },
-  {
-    name: "Clientes",
-    href: "/admin/clientes",
-    icon: Users,
-  },
-  {
-    name: "Reportes",
-    href: "/admin/reportes",
-    icon: BarChart3,
-  },
-  {
-    name: "Configuración",
-    href: "/admin/configuracion",
     icon: Settings,
   },
 ]
