@@ -1,5 +1,5 @@
 // Database connection and query utilities
-import { zureoAPI, type ZureoProduct } from "./api"
+import { zureoAPI } from "./zureo-api"
 
 export interface Product {
   id: number
@@ -65,128 +65,69 @@ export interface Banner {
 }
 
 export class Database {
-  static async getProducts(filters?: {
-    category?: string
-    featured?: boolean
-    search?: string
-    limit?: number
-    offset?: number
-  }): Promise<{ products: Product[]; total: number }> {
-    try {
-      console.log("[v0] Fetching products from Zureo API...")
-      const zureoProducts = await zureoAPI.getAllProducts()
-      console.log("[v0] Zureo products fetched:", zureoProducts.length)
+  // Los productos ahora se obtienen directamente desde /api/zureo/products
 
-      // Convertir productos de Zureo al formato interno
-      let products: Product[] = zureoProducts.map((zp: ZureoProduct, index: number) => ({
-        id: zp.id,
-        name: zp.descripcion,
-        slug: zp.descripcion
+  static async getProductBySlug(slug: string): Promise<Product | null> {
+    try {
+      const zureoProducts = await zureoAPI.getAllProducts()
+      const product = zureoProducts.find(
+        (p) =>
+          p.nombre
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .trim() === slug,
+      )
+
+      if (!product) return null
+
+      return {
+        id: product.id,
+        name: product.nombre,
+        slug: product.nombre
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, "")
           .replace(/\s+/g, "-")
           .trim(),
-        description: zp.descripcion,
-        short_description: zp.descripcion.substring(0, 100),
-        price: zp.precio,
-        compare_price: zp.precio * 1.2, // Precio comparativo 20% mayor
-        sku: zp.codigo,
-        stock_quantity: zp.stock,
-        category_id: 1, // Por defecto, se puede mapear según el rubro
-        brand: zp.marca || "Oxstore",
-        is_active: zp.stock > 0,
-        is_featured: index < 6, // Los primeros 6 productos como destacados
+        description: product.descripcion_larga || product.descripcion_corta,
+        short_description: product.descripcion_corta,
+        price: product.precio,
+        compare_price: product.precio * 1.2,
+        sku: product.codigo,
+        stock_quantity: product.stock,
+        category_id: 1,
+        brand: product.marca.nombre,
+        is_active: product.stock > 0,
+        is_featured: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        images: [
-          {
-            id: zp.id,
-            product_id: zp.id,
-            image_url: zp.imagen || "/generic-product-display.png",
-            alt_text: zp.descripcion,
-            sort_order: 0,
-            is_primary: true,
-            created_at: new Date().toISOString(),
-          },
-        ],
-      }))
-
-      console.log("[v0] Products converted:", products.length)
-
-      // Aplicar filtros
-      if (filters?.category) {
-        const categoryMap: { [key: string]: string } = {
-          mujer: "mujer",
-          hombre: "hombre",
-        }
-        const categoryFilter = categoryMap[filters.category]
-        if (categoryFilter) {
-          products = products.filter(
-            (p) => p.name.toLowerCase().includes(categoryFilter) || p.brand.toLowerCase().includes(categoryFilter),
-          )
-        }
-      }
-
-      if (filters?.featured) {
-        products = products.filter((p) => p.is_featured)
-        console.log("[v0] Featured products filtered:", products.length)
-      }
-
-      if (filters?.search) {
-        const searchTerm = filters.search.toLowerCase()
-        products = products.filter(
-          (p) =>
-            p.name.toLowerCase().includes(searchTerm) ||
-            p.description.toLowerCase().includes(searchTerm) ||
-            p.brand.toLowerCase().includes(searchTerm) ||
-            p.sku.toLowerCase().includes(searchTerm),
-        )
-      }
-
-      const total = products.length
-      const offset = filters?.offset || 0
-      const limit = filters?.limit || 20
-
-      console.log("[v0] Final products count:", products.slice(offset, offset + limit).length)
-
-      return {
-        products: products.slice(offset, offset + limit),
-        total,
       }
     } catch (error) {
-      console.error("[v0] Error fetching products from Zureo:", error)
-      return {
-        products: [],
-        total: 0,
-      }
+      console.error("[v0] Error fetching product by slug:", error)
+      return null
     }
-  }
-
-  static async getProductBySlug(slug: string): Promise<Product | null> {
-    const { products } = await this.getProducts()
-    return products.find((p) => p.slug === slug) || null
   }
 
   static async getCategories(): Promise<Category[]> {
     try {
       console.log("[v0] Fetching categories from Zureo API...")
-      const rubros = await zureoAPI.getRubros()
-      console.log("[v0] Zureo categories fetched:", rubros.length)
+      const productTypes = await zureoAPI.getProductTypes()
+      console.log("[v0] Zureo categories fetched:", productTypes.length)
 
       const allowedCategories = ["mujer", "hombre", "vestimenta", "calzado", "accesorios"]
 
-      return rubros
-        .filter((rubro) => allowedCategories.some((cat) => rubro.nombre.toLowerCase().includes(cat)))
-        .map((rubro, index) => ({
-          id: rubro.id,
-          name: rubro.nombre,
-          slug: rubro.nombre
+      return productTypes
+        .filter((type) => allowedCategories.some((cat) => type.nombre.toLowerCase().includes(cat)))
+        .map((type, index) => ({
+          id: type.id,
+          name: type.nombre,
+          slug: type.nombre
             .toLowerCase()
             .replace(/[^a-z0-9\s-]/g, "")
             .replace(/\s+/g, "-")
             .trim(),
-          description: `Productos de ${rubro.nombre}`,
-          image_url: `/categoria-${rubro.nombre.toLowerCase()}.png`,
+          description: `Productos de ${type.nombre}`,
+          image_url: `/categoria-${type.nombre.toLowerCase()}.png`,
           is_active: true,
           sort_order: index + 1,
           created_at: new Date().toISOString(),

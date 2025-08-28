@@ -31,27 +31,94 @@ export function ProductGrid({
   const loadProducts = async (reset = false) => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      if (category) params.set("category", category)
-      if (featured) params.set("featured", "true")
-      if (search) params.set("search", search)
-      params.set("limit", limit.toString())
-      params.set("offset", reset ? "0" : offset.toString())
+      const response = await fetch(`/api/zureo/products`)
 
-      const response = await fetch(`/api/products?${params}`)
-      const data = await response.json()
-
-      if (reset) {
-        setProducts(data.products)
-        setOffset(data.products.length)
-      } else {
-        setProducts((prev) => [...prev, ...data.products])
-        setOffset((prev) => prev + data.products.length)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      setHasMore(data.products.length === limit)
+      const data = await response.json()
+
+      const convertedProducts: Product[] =
+        data.products?.map((zp: any) => ({
+          id: zp.id,
+          name: zp.nombre,
+          slug: zp.nombre
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .trim(),
+          description: zp.descripcion_larga || zp.descripcion_corta,
+          short_description: zp.descripcion_corta,
+          price: zp.precio,
+          compare_price: zp.precio * 1.2,
+          sku: zp.codigo,
+          stock_quantity: zp.stock,
+          category_id: 1,
+          brand: zp.marca?.nombre || "Oxstore",
+          is_active: zp.stock > 0,
+          is_featured: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          images: [
+            {
+              id: zp.id,
+              product_id: zp.id,
+              image_url: "/generic-product-display.png",
+              alt_text: zp.nombre,
+              sort_order: 0,
+              is_primary: true,
+              created_at: new Date().toISOString(),
+            },
+          ],
+        })) || []
+
+      let filteredProducts = convertedProducts
+
+      if (category) {
+        const categoryMap: { [key: string]: string } = {
+          mujer: "mujer",
+          hombre: "hombre",
+        }
+        const categoryFilter = categoryMap[category]
+        if (categoryFilter) {
+          filteredProducts = filteredProducts.filter(
+            (p) => p.name.toLowerCase().includes(categoryFilter) || p.brand.toLowerCase().includes(categoryFilter),
+          )
+        }
+      }
+
+      if (featured) {
+        filteredProducts = filteredProducts.slice(0, 6) // First 6 as featured
+      }
+
+      if (search) {
+        const searchTerm = search.toLowerCase()
+        filteredProducts = filteredProducts.filter(
+          (p) =>
+            p.name.toLowerCase().includes(searchTerm) ||
+            p.description.toLowerCase().includes(searchTerm) ||
+            p.brand.toLowerCase().includes(searchTerm) ||
+            p.sku.toLowerCase().includes(searchTerm),
+        )
+      }
+
+      const currentOffset = reset ? 0 : offset
+      const paginatedProducts = filteredProducts.slice(currentOffset, currentOffset + limit)
+
+      if (reset) {
+        setProducts(paginatedProducts)
+        setOffset(paginatedProducts.length)
+      } else {
+        setProducts((prev) => [...prev, ...paginatedProducts])
+        setOffset((prev) => prev + paginatedProducts.length)
+      }
+
+      setHasMore(currentOffset + limit < filteredProducts.length)
     } catch (error) {
       console.error("Error loading products:", error)
+      setProducts([])
+      setHasMore(false)
     } finally {
       setLoading(false)
     }
