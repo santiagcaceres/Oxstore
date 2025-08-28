@@ -12,9 +12,17 @@ interface ProductGridProps {
   search?: string
   initialProducts?: Product[]
   className?: string
+  limit?: number
 }
 
-export function ProductGrid({ category, featured, search, initialProducts = [], className = "" }: ProductGridProps) {
+export function ProductGrid({
+  category,
+  featured,
+  search,
+  initialProducts = [],
+  className = "",
+  limit = 12,
+}: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
@@ -27,7 +35,7 @@ export function ProductGrid({ category, featured, search, initialProducts = [], 
       if (category) params.set("category", category)
       if (featured) params.set("featured", "true")
       if (search) params.set("search", search)
-      params.set("limit", "12")
+      params.set("limit", limit.toString())
       params.set("offset", reset ? "0" : offset.toString())
 
       const response = await fetch(`/api/products?${params}`)
@@ -41,7 +49,7 @@ export function ProductGrid({ category, featured, search, initialProducts = [], 
         setOffset((prev) => prev + data.products.length)
       }
 
-      setHasMore(data.products.length === 12)
+      setHasMore(data.products.length === limit)
     } catch (error) {
       console.error("Error loading products:", error)
     } finally {
@@ -69,14 +77,19 @@ export function ProductGrid({ category, featured, search, initialProducts = [], 
 
   return (
     <div className={className}>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div
+        className={`grid gap-6 ${
+          limit === 5
+            ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+            : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+        }`}
+      >
         {products.map((product) => (
           <ProductCard key={product.id} product={product} className="animate-fade-in-up" />
         ))}
 
-        {/* Loading skeletons */}
         {loading &&
-          Array.from({ length: 8 }).map((_, i) => (
+          Array.from({ length: Math.min(8, limit) }).map((_, i) => (
             <div key={i} className="space-y-4">
               <Skeleton className="aspect-square w-full" />
               <div className="space-y-2">
@@ -88,8 +101,7 @@ export function ProductGrid({ category, featured, search, initialProducts = [], 
           ))}
       </div>
 
-      {/* Load More Button */}
-      {hasMore && !loading && products.length > 0 && (
+      {hasMore && !loading && products.length > 0 && limit > 5 && (
         <div className="text-center mt-8">
           <Button onClick={loadMore} variant="outline" size="lg">
             Cargar más productos

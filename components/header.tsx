@@ -15,10 +15,24 @@ interface Brand {
   slug: string
 }
 
+interface Category {
+  id: number
+  nombre: string
+  slug: string
+  subcategorias: {
+    id: number
+    nombre: string
+    slug: string
+  }[]
+}
+
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [brands, setBrands] = useState<Brand[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [isBrandsOpen, setIsBrandsOpen] = useState(false)
+  const [isMujerOpen, setIsMujerOpen] = useState(false)
+  const [isHombreOpen, setIsHombreOpen] = useState(false)
   const { state } = useCart()
 
   useEffect(() => {
@@ -33,8 +47,34 @@ export function Header() {
         console.error("Error fetching brands:", error)
       }
     }
+
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch("/api/zureo/categories")
+        if (response.ok) {
+          const data = await response.json()
+          setCategories(data.categories || [])
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+      }
+    }
+
     fetchBrands()
+    fetchCategories()
   }, [])
+
+  const getSubcategoriesForGender = (gender: "mujer" | "hombre") => {
+    const vestimenta = categories.find((cat) => cat.slug === "vestimenta")
+    const calzado = categories.find((cat) => cat.slug === "calzado")
+    const accesorios = categories.find((cat) => cat.slug === "accesorios")
+
+    return {
+      vestimenta: vestimenta?.subcategorias || [],
+      calzado: calzado?.subcategorias || [],
+      accesorios: accesorios?.subcategorias || [],
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -46,12 +86,150 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link href="/categoria/mujer" className="text-sm font-medium hover:text-primary transition-colors">
-              MUJER
+            <div
+              className="relative"
+              onMouseEnter={() => setIsMujerOpen(true)}
+              onMouseLeave={() => setIsMujerOpen(false)}
+            >
+              <Link
+                href="/categoria/mujer"
+                className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1"
+              >
+                MUJER
+                <ChevronDown className="h-3 w-3" />
+              </Link>
+
+              {isMujerOpen && (
+                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-50">
+                  <div className="p-6">
+                    {(() => {
+                      const subcats = getSubcategoriesForGender("mujer")
+                      return (
+                        <div className="grid grid-cols-3 gap-6">
+                          <div>
+                            <h3 className="font-semibold text-sm mb-3 text-primary">VESTIMENTA</h3>
+                            <div className="space-y-2">
+                              {subcats.vestimenta.map((subcat) => (
+                                <Link
+                                  key={subcat.id}
+                                  href={`/categoria/mujer/${subcat.slug}`}
+                                  className="block text-sm hover:text-primary transition-colors"
+                                >
+                                  {subcat.nombre}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm mb-3 text-primary">CALZADO</h3>
+                            <div className="space-y-2">
+                              {subcats.calzado.map((subcat) => (
+                                <Link
+                                  key={subcat.id}
+                                  href={`/categoria/mujer/${subcat.slug}`}
+                                  className="block text-sm hover:text-primary transition-colors"
+                                >
+                                  {subcat.nombre}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm mb-3 text-primary">ACCESORIOS</h3>
+                            <div className="space-y-2">
+                              {subcats.accesorios.map((subcat) => (
+                                <Link
+                                  key={subcat.id}
+                                  href={`/categoria/mujer/${subcat.slug}`}
+                                  className="block text-sm hover:text-primary transition-colors"
+                                >
+                                  {subcat.nombre}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div
+              className="relative"
+              onMouseEnter={() => setIsHombreOpen(true)}
+              onMouseLeave={() => setIsHombreOpen(false)}
+            >
+              <Link
+                href="/categoria/hombre"
+                className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1"
+              >
+                HOMBRE
+                <ChevronDown className="h-3 w-3" />
+              </Link>
+
+              {isHombreOpen && (
+                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-50">
+                  <div className="p-6">
+                    {(() => {
+                      const subcats = getSubcategoriesForGender("hombre")
+                      return (
+                        <div className="grid grid-cols-3 gap-6">
+                          <div>
+                            <h3 className="font-semibold text-sm mb-3 text-primary">VESTIMENTA</h3>
+                            <div className="space-y-2">
+                              {subcats.vestimenta.map((subcat) => (
+                                <Link
+                                  key={subcat.id}
+                                  href={`/categoria/hombre/${subcat.slug}`}
+                                  className="block text-sm hover:text-primary transition-colors"
+                                >
+                                  {subcat.nombre}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm mb-3 text-primary">CALZADO</h3>
+                            <div className="space-y-2">
+                              {subcats.calzado.map((subcat) => (
+                                <Link
+                                  key={subcat.id}
+                                  href={`/categoria/hombre/${subcat.slug}`}
+                                  className="block text-sm hover:text-primary transition-colors"
+                                >
+                                  {subcat.nombre}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-sm mb-3 text-primary">ACCESORIOS</h3>
+                            <div className="space-y-2">
+                              {subcats.accesorios.map((subcat) => (
+                                <Link
+                                  key={subcat.id}
+                                  href={`/categoria/hombre/${subcat.slug}`}
+                                  className="block text-sm hover:text-primary transition-colors"
+                                >
+                                  {subcat.nombre}
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Link href="/nuevo" className="text-sm font-medium hover:text-primary transition-colors">
+              NUEVO
             </Link>
-            <Link href="/categoria/hombre" className="text-sm font-medium hover:text-primary transition-colors">
-              HOMBRE
-            </Link>
+
             <div
               className="relative"
               onMouseEnter={() => setIsBrandsOpen(true)}
@@ -139,6 +317,9 @@ export function Header() {
                   </Link>
                   <Link href="/categoria/hombre" className="text-lg font-medium hover:text-primary transition-colors">
                     HOMBRE
+                  </Link>
+                  <Link href="/nuevo" className="text-lg font-medium hover:text-primary transition-colors">
+                    NUEVO
                   </Link>
                   <div className="border-t pt-4">
                     <h3 className="text-lg font-medium mb-2">MARCAS</h3>

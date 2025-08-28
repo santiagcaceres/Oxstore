@@ -75,7 +75,7 @@ export function HeroBanner() {
   }
 
   if (loading || banners.length === 0) {
-    return <div className="aspect-[16/9] md:aspect-[21/9] bg-muted skeleton rounded-lg" />
+    return <div className="aspect-square bg-muted skeleton rounded-lg" />
   }
 
   const currentBanner = banners[currentIndex]
@@ -85,7 +85,7 @@ export function HeroBanner() {
       : currentBanner.image_url
 
   return (
-    <div className="relative aspect-[16/9] md:aspect-[21/9] overflow-hidden rounded-lg group parallax">
+    <div className="relative aspect-square overflow-hidden rounded-lg group parallax">
       {/* Background Images with Crossfade Effect */}
       <div className="absolute inset-0">
         {banners.map((banner, index) => {
@@ -121,9 +121,9 @@ export function HeroBanner() {
         <div
           className={`max-w-2xl transition-all duration-700 ${isTransitioning ? "opacity-0 transform translate-y-8" : "opacity-100 transform translate-y-0"}`}
         >
-          <h1 className="text-3xl md:text-5xl font-bold mb-4 animate-fade-in-up stagger-1">{currentBanner.title}</h1>
+          <h1 className="text-2xl md:text-4xl font-bold mb-4 animate-fade-in-up stagger-1">{currentBanner.title}</h1>
           {currentBanner.subtitle && (
-            <p className="text-lg md:text-xl mb-6 text-white/90 animate-fade-in-up stagger-2">
+            <p className="text-base md:text-lg mb-6 text-white/90 animate-fade-in-up stagger-2">
               {currentBanner.subtitle}
             </p>
           )}
