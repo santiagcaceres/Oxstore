@@ -12,7 +12,6 @@ import {
   Users,
   Settings,
   BarChart3,
-  RefreshCw,
   Bug,
 } from "lucide-react"
 
@@ -41,11 +40,6 @@ const navigation = [
     name: "Banners",
     href: "/admin/banners",
     icon: ImageIcon,
-  },
-  {
-    name: "Sincronizar",
-    href: "/admin/sincronizar",
-    icon: RefreshCw,
   },
   {
     name: "Zureo Debug",

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCw, Database, Tag, Package } from "lucide-react"
+import { Loader2, RefreshCw, Database, Tag, Package, Key } from "lucide-react"
 
 interface DebugResponse {
   endpoint: string
@@ -21,6 +21,88 @@ export default function ZureoDebugPage() {
 
   const addResponse = (response: DebugResponse) => {
     setResponses((prev) => [response, ...prev.slice(0, 9)]) // Keep last 10 responses
+  }
+
+  const testAuthentication = async () => {
+    setLoading("token")
+    const timestamp = new Date().toISOString()
+
+    try {
+      console.log("[v0] Testing authentication step by step")
+
+      const response = await fetch("/api/zureo/debug/token", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      const data = await response.json()
+
+      addResponse({
+        endpoint: "Paso 1: Autenticación (/api/zureo/debug/token)",
+        method: "GET",
+        status: response.status,
+        data,
+        timestamp,
+      })
+
+      console.log("[v0] Authentication response:", data)
+    } catch (error) {
+      console.error("[v0] Authentication error:", error)
+
+      addResponse({
+        endpoint: "Paso 1: Autenticación (/api/zureo/debug/token)",
+        method: "GET",
+        status: 0,
+        data: null,
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp,
+      })
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  const testProductsStepByStep = async () => {
+    setLoading("products-debug")
+    const timestamp = new Date().toISOString()
+
+    try {
+      console.log("[v0] Testing products step by step")
+
+      const response = await fetch("/api/zureo/debug/products", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+
+      const data = await response.json()
+
+      addResponse({
+        endpoint: "Paso 2: Productos (/api/zureo/debug/products)",
+        method: "GET",
+        status: response.status,
+        data,
+        timestamp,
+      })
+
+      console.log("[v0] Products debug response:", data)
+    } catch (error) {
+      console.error("[v0] Products debug error:", error)
+
+      addResponse({
+        endpoint: "Paso 2: Productos (/api/zureo/debug/products)",
+        method: "GET",
+        status: 0,
+        data: null,
+        error: error instanceof Error ? error.message : "Unknown error",
+        timestamp,
+      })
+    } finally {
+      setLoading(null)
+    }
   }
 
   const testEndpoint = async (endpoint: string, label: string) => {
@@ -110,7 +192,7 @@ export default function ZureoDebugPage() {
       <div>
         <h1 className="text-3xl font-bold">Zureo API Debug</h1>
         <p className="text-muted-foreground">
-          Herramienta de debug para verificar conexiones y respuestas de la API de Zureo
+          Herramienta de debug para verificar conexiones y respuestas de la API de Zureo paso a paso
         </p>
       </div>
 
@@ -135,6 +217,91 @@ export default function ZureoDebugPage() {
             <div>
               <strong>Paginación:</strong> Automática
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Debug Paso a Paso</CardTitle>
+          <CardDescription>
+            Prueba el proceso completo de autenticación y obtención de productos paso a paso
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button
+              onClick={testAuthentication}
+              disabled={loading === "token"}
+              className="flex items-center gap-2 bg-transparent"
+              variant="outline"
+            >
+              {loading === "token" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Key className="h-4 w-4" />}
+              Paso 1: Obtener Token
+            </Button>
+
+            <Button
+              onClick={testProductsStepByStep}
+              disabled={loading === "products-debug"}
+              className="flex items-center gap-2 bg-transparent"
+              variant="outline"
+            >
+              {loading === "products-debug" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Package className="h-4 w-4" />
+              )}
+              Paso 2: Obtener Productos
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Probar Endpoints Individuales</CardTitle>
+          <CardDescription>Prueba endpoints individuales para verificar respuestas específicas</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button
+              onClick={() => testEndpoint("/api/zureo/products", "Productos")}
+              disabled={loading === "/api/zureo/products"}
+              className="flex items-center gap-2"
+            >
+              {loading === "/api/zureo/products" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Package className="h-4 w-4" />
+              )}
+              Productos
+            </Button>
+
+            <Button
+              onClick={() => testEndpoint("/api/zureo/brands", "Marcas")}
+              disabled={loading === "/api/zureo/brands"}
+              className="flex items-center gap-2"
+            >
+              {loading === "/api/zureo/brands" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Tag className="h-4 w-4" />
+              )}
+              Marcas
+            </Button>
+
+            <Button
+              onClick={() => testEndpoint("/api/zureo/categories", "Categorías")}
+              disabled={loading === "/api/zureo/categories"}
+              className="flex items-center gap-2"
+            >
+              {loading === "/api/zureo/categories" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Database className="h-4 w-4" />
+              )}
+              Categorías
+            </Button>
           </div>
         </CardContent>
       </Card>
