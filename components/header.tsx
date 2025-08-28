@@ -77,7 +77,7 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
@@ -143,7 +143,7 @@ export function Header() {
               </Link>
 
               {isMujerOpen && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-50">
+                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[110]">
                   <div className="p-6">
                     {(() => {
                       const subcats = getSubcategoriesForGender("mujer")
@@ -213,7 +213,7 @@ export function Header() {
               </Link>
 
               {isHombreOpen && (
-                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-50">
+                <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[110]">
                   <div className="p-6">
                     {(() => {
                       const subcats = getSubcategoriesForGender("hombre")
@@ -284,7 +284,7 @@ export function Header() {
               </button>
 
               {isBrandsOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-background border rounded-lg shadow-lg animate-fade-in-up z-50">
+                <div className="absolute top-full left-0 mt-2 w-64 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[110]">
                   <div className="p-4 max-h-96 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-2">
                       {brands.map((brand) => (

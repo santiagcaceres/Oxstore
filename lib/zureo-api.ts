@@ -194,11 +194,15 @@ class ZureoAPI {
 
         offset += limit
 
-        // Add delay to respect rate limiting (12 calls every 30 seconds)
-        console.log("[v0] Waiting 2.5s before next request (rate limiting)...")
-        await new Promise((resolve) => setTimeout(resolve, 2500))
+        console.log("[v0] Waiting 3s before next request (rate limiting)...")
+        await new Promise((resolve) => setTimeout(resolve, 3000))
       } catch (error) {
         console.error(`[v0] Error fetching products at offset ${offset}:`, error)
+        if (error instanceof Error && error.message.includes("Rate limit exceeded")) {
+          console.log("[v0] Rate limited, waiting 60 seconds before retry...")
+          await new Promise((resolve) => setTimeout(resolve, 60000))
+          continue // Retry the same offset
+        }
         throw error
       }
     }
@@ -248,6 +252,7 @@ class ZureoAPI {
   async getBrands(): Promise<ZureoBrand[]> {
     console.log("[v0] Fetching brands from Zureo...")
     try {
+      await new Promise((resolve) => setTimeout(resolve, 1000))
       const response = await this.makeRequest<{ data: ZureoBrand[] }>("/sdk/v1/brand/all")
       console.log(`[v0] Fetched ${response.data?.length || 0} brands`)
       return response.data || []

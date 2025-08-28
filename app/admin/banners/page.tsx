@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,31 +9,25 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Plus, Search, MoreHorizontal, Edit, Trash2, Eye, GripVertical } from "lucide-react"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Search, Edit, Upload } from "lucide-react"
 import type { Banner } from "@/lib/database"
 
 export default function AdminBannersPage() {
   const [banners, setBanners] = useState<Banner[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
+  const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
+  const [imageUrl, setImageUrl] = useState("")
+  const [linkUrl, setLinkUrl] = useState("")
 
   useEffect(() => {
     const loadBanners = async () => {
@@ -76,26 +69,50 @@ export default function AdminBannersPage() {
     }
   }
 
-  const deleteBanner = async (bannerId: number) => {
+  const openEditDialog = (banner: Banner) => {
+    setEditingBanner(banner)
+    setImageUrl(banner.image_url || "")
+    setLinkUrl(banner.link_url || "")
+  }
+
+  const updateBanner = async () => {
+    if (!editingBanner) return
+
     try {
-      const response = await fetch(`/api/banners/${bannerId}`, {
-        method: "DELETE",
+      const response = await fetch(`/api/banners/${editingBanner.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          image_url: imageUrl,
+          link_url: linkUrl,
+        }),
       })
 
       if (response.ok) {
-        setBanners((prev) => prev.filter((banner) => banner.id !== bannerId))
+        setBanners((prev) =>
+          prev.map((banner) =>
+            banner.id === editingBanner.id ? { ...banner, image_url: imageUrl, link_url: linkUrl } : banner,
+          ),
+        )
+        setEditingBanner(null)
+        setImageUrl("")
+        setLinkUrl("")
       }
     } catch (error) {
-      console.error("Error deleting banner:", error)
+      console.error("Error updating banner:", error)
     }
   }
 
   const getPositionBadge = (position: string) => {
     switch (position) {
       case "hero":
-        return <Badge variant="default">Hero</Badge>
+        return <Badge variant="default">Principal</Badge>
       case "secondary":
         return <Badge variant="secondary">Secundario</Badge>
+      case "category":
+        return <Badge className="bg-purple-100 text-purple-800">Categoría</Badge>
+      case "offers":
+        return <Badge className="bg-orange-100 text-orange-800">Ofertas</Badge>
       default:
         return <Badge variant="outline">{position}</Badge>
     }
@@ -105,19 +122,13 @@ export default function AdminBannersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Banners</h1>
-          <p className="text-muted-foreground">Gestiona los banners promocionales de tu tienda</p>
+          <h1 className="text-3xl font-bold">Banners Predefinidos</h1>
+          <p className="text-muted-foreground">Edita las imágenes y enlaces de los banners de tu tienda</p>
         </div>
-        <Button asChild>
-          <Link href="/admin/banners/nuevo">
-            <Plus className="h-4 w-4 mr-2" />
-            Crear Banner
-          </Link>
-        </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Banners</CardTitle>
@@ -136,18 +147,10 @@ export default function AdminBannersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Banners Hero</CardTitle>
+            <CardTitle className="text-sm font-medium">Posiciones</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{banners.filter((b) => b.position === "hero").length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Banners Programados</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{banners.filter((b) => b.start_date || b.end_date).length}</div>
+            <div className="text-2xl font-bold">{new Set(banners.map((b) => b.position)).size}</div>
           </CardContent>
         </Card>
       </div>
@@ -155,8 +158,8 @@ export default function AdminBannersPage() {
       {/* Banners Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Lista de Banners</CardTitle>
-          <CardDescription>Gestiona todos los banners promocionales de tu tienda</CardDescription>
+          <CardTitle>Banners de la Tienda</CardTitle>
+          <CardDescription>Edita las imágenes y enlaces de destino de cada banner</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-2 mb-4">
@@ -180,12 +183,10 @@ export default function AdminBannersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-12"></TableHead>
                   <TableHead>Banner</TableHead>
                   <TableHead>Posición</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Fechas</TableHead>
-                  <TableHead>Orden</TableHead>
+                  <TableHead>Enlace</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -193,13 +194,8 @@ export default function AdminBannersPage() {
                 {filteredBanners.map((banner) => (
                   <TableRow key={banner.id}>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="cursor-grab">
-                        <GripVertical className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                    <TableCell>
                       <div className="flex items-center space-x-3">
-                        <div className="w-16 h-10 relative rounded-lg overflow-hidden bg-muted">
+                        <div className="w-20 h-12 relative rounded-lg overflow-hidden bg-muted">
                           <Image
                             src={banner.image_url || "/placeholder.svg"}
                             alt={banner.title}
@@ -226,64 +222,68 @@ export default function AdminBannersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm">
-                        {banner.start_date && <p>Inicio: {new Date(banner.start_date).toLocaleDateString()}</p>}
-                        {banner.end_date && <p>Fin: {new Date(banner.end_date).toLocaleDateString()}</p>}
-                        {!banner.start_date && !banner.end_date && (
-                          <span className="text-muted-foreground">Sin programar</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{banner.sort_order}</Badge>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">{banner.link_url || "Sin enlace"}</code>
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm" onClick={() => openEditDialog(banner)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Editar
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem>
-                            <Eye className="mr-2 h-4 w-4" />
-                            Vista previa
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/admin/banners/${banner.id}/editar`}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Eliminar
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Esta acción no se puede deshacer. El banner será eliminado permanentemente.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => deleteBanner(banner.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <DialogHeader>
+                            <DialogTitle>Editar Banner: {banner.title}</DialogTitle>
+                            <DialogDescription>Cambia la imagen y el enlace de destino del banner.</DialogDescription>
+                          </DialogHeader>
+                          <div className="grid gap-4 py-4">
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="image-url" className="text-right">
+                                Imagen URL
+                              </Label>
+                              <Input
+                                id="image-url"
+                                value={imageUrl}
+                                onChange={(e) => setImageUrl(e.target.value)}
+                                className="col-span-3"
+                                placeholder="https://ejemplo.com/imagen.jpg"
+                              />
+                            </div>
+                            <div className="grid grid-cols-4 items-center gap-4">
+                              <Label htmlFor="link-url" className="text-right">
+                                Enlace URL
+                              </Label>
+                              <Input
+                                id="link-url"
+                                value={linkUrl}
+                                onChange={(e) => setLinkUrl(e.target.value)}
+                                className="col-span-3"
+                                placeholder="/categoria/mujer"
+                              />
+                            </div>
+                            {imageUrl && (
+                              <div className="col-span-4">
+                                <Label className="text-sm font-medium">Vista previa:</Label>
+                                <div className="mt-2 w-full h-32 relative rounded-lg overflow-hidden bg-muted">
+                                  <Image
+                                    src={imageUrl || "/placeholder.svg"}
+                                    alt="Vista previa"
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <DialogFooter>
+                            <Button onClick={updateBanner}>
+                              <Upload className="h-4 w-4 mr-2" />
+                              Guardar Cambios
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </TableCell>
                   </TableRow>
                 ))}
