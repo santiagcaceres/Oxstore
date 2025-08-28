@@ -20,6 +20,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Search, Edit, Upload } from "lucide-react"
 import { createClient } from "@supabase/supabase-js"
+import ImageUpload from "@/components/image-upload"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
@@ -40,7 +41,6 @@ export default function AdminBannersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
-  const [imageUrl, setImageUrl] = useState("")
   const [linkUrl, setLinkUrl] = useState("")
 
   useEffect(() => {
@@ -90,18 +90,66 @@ export default function AdminBannersPage() {
 
   const openEditDialog = (banner: Banner) => {
     setEditingBanner(banner)
-    setImageUrl(banner.image_url || "")
     setLinkUrl(banner.link_url || "")
   }
 
-  const updateBanner = async () => {
+  const handleImageUploaded = async (newImageUrl: string) => {
     if (!editingBanner) return
 
     try {
       const { error } = await supabase
         .from("banners")
         .update({
-          image_url: imageUrl,
+          image_url: newImageUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingBanner.id)
+
+      if (!error) {
+        setBanners((prev) =>
+          prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, image_url: newImageUrl } : banner)),
+        )
+      } else {
+        console.error("Error updating banner image:", error)
+      }
+    } catch (error) {
+      console.error("Error updating banner image:", error)
+    }
+  }
+
+  const handleImageDeleted = async () => {
+    if (!editingBanner) return
+
+    const placeholderUrl = `/placeholder.svg?height=400&width=800&text=${encodeURIComponent(editingBanner.title)}`
+
+    try {
+      const { error } = await supabase
+        .from("banners")
+        .update({
+          image_url: placeholderUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingBanner.id)
+
+      if (!error) {
+        setBanners((prev) =>
+          prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, image_url: placeholderUrl } : banner)),
+        )
+      } else {
+        console.error("Error resetting banner image:", error)
+      }
+    } catch (error) {
+      console.error("Error resetting banner image:", error)
+    }
+  }
+
+  const updateBannerLink = async () => {
+    if (!editingBanner) return
+
+    try {
+      const { error } = await supabase
+        .from("banners")
+        .update({
           link_url: linkUrl,
           updated_at: new Date().toISOString(),
         })
@@ -109,18 +157,15 @@ export default function AdminBannersPage() {
 
       if (!error) {
         setBanners((prev) =>
-          prev.map((banner) =>
-            banner.id === editingBanner.id ? { ...banner, image_url: imageUrl, link_url: linkUrl } : banner,
-          ),
+          prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, link_url: linkUrl } : banner)),
         )
         setEditingBanner(null)
-        setImageUrl("")
         setLinkUrl("")
       } else {
-        console.error("Error updating banner:", error)
+        console.error("Error updating banner link:", error)
       }
     } catch (error) {
-      console.error("Error updating banner:", error)
+      console.error("Error updating banner link:", error)
     }
   }
 
@@ -130,8 +175,14 @@ export default function AdminBannersPage() {
         return <Badge variant="default">Principal</Badge>
       case "secondary":
         return <Badge variant="secondary">Secundario</Badge>
-      case "category":
+      case "category-jeans":
+      case "category-canguros":
+      case "category-remeras":
+      case "category-buzos":
         return <Badge className="bg-purple-100 text-purple-800">Categoría</Badge>
+      case "gender-mujer":
+      case "gender-hombre":
+        return <Badge className="bg-blue-100 text-blue-800">Género</Badge>
       case "offers":
         return <Badge className="bg-orange-100 text-orange-800">Ofertas</Badge>
       default:
@@ -144,7 +195,7 @@ export default function AdminBannersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Banners Predefinidos</h1>
-          <p className="text-muted-foreground">Edita las imágenes y enlaces de los banners de tu tienda</p>
+          <p className="text-muted-foreground">Sube imágenes desde tu PC y configura enlaces de los banners</p>
         </div>
       </div>
 
@@ -180,7 +231,7 @@ export default function AdminBannersPage() {
       <Card>
         <CardHeader>
           <CardTitle>Banners de la Tienda</CardTitle>
-          <CardDescription>Edita las imágenes y enlaces de destino de cada banner</CardDescription>
+          <CardDescription>Sube imágenes desde tu PC y configura enlaces de destino</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-2 mb-4">
@@ -253,24 +304,25 @@ export default function AdminBannersPage() {
                             Editar
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-[600px]">
                           <DialogHeader>
                             <DialogTitle>Editar Banner: {banner.title}</DialogTitle>
-                            <DialogDescription>Cambia la imagen y el enlace de destino del banner.</DialogDescription>
+                            <DialogDescription>
+                              Sube una imagen desde tu PC y configura el enlace de destino.
+                            </DialogDescription>
                           </DialogHeader>
-                          <div className="grid gap-4 py-4">
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="image-url" className="text-right">
-                                Imagen URL
-                              </Label>
-                              <Input
-                                id="image-url"
-                                value={imageUrl}
-                                onChange={(e) => setImageUrl(e.target.value)}
-                                className="col-span-3"
-                                placeholder="https://ejemplo.com/imagen.jpg"
+                          <div className="grid gap-6 py-4">
+                            <div>
+                              <Label className="text-sm font-medium mb-3 block">Imagen del Banner</Label>
+                              <ImageUpload
+                                bannerId={banner.id.toString()}
+                                currentImageUrl={banner.image_url}
+                                bannerPosition={banner.position}
+                                onImageUploaded={handleImageUploaded}
+                                onImageDeleted={handleImageDeleted}
                               />
                             </div>
+
                             <div className="grid grid-cols-4 items-center gap-4">
                               <Label htmlFor="link-url" className="text-right">
                                 Enlace URL
@@ -283,24 +335,11 @@ export default function AdminBannersPage() {
                                 placeholder="/categoria/mujer"
                               />
                             </div>
-                            {imageUrl && (
-                              <div className="col-span-4">
-                                <Label className="text-sm font-medium">Vista previa:</Label>
-                                <div className="mt-2 w-full h-32 relative rounded-lg overflow-hidden bg-muted">
-                                  <Image
-                                    src={imageUrl || "/placeholder.svg"}
-                                    alt="Vista previa"
-                                    fill
-                                    className="object-cover"
-                                  />
-                                </div>
-                              </div>
-                            )}
                           </div>
                           <DialogFooter>
-                            <Button onClick={updateBanner}>
+                            <Button onClick={updateBannerLink}>
                               <Upload className="h-4 w-4 mr-2" />
-                              Guardar Cambios
+                              Guardar Enlace
                             </Button>
                           </DialogFooter>
                         </DialogContent>
