@@ -75,7 +75,7 @@ export function HeroBanner() {
   }
 
   if (loading || banners.length === 0) {
-    return <div className="aspect-[3/2] bg-muted skeleton" />
+    return <div className="h-64 md:h-80 bg-muted skeleton" />
   }
 
   const currentBanner = banners[currentIndex]
@@ -85,89 +85,84 @@ export function HeroBanner() {
       : currentBanner.image_url
 
   return (
-    <div className="relative aspect-[3/2] overflow-hidden group parallax">
-      {/* Background Images with Crossfade Effect */}
-      <div className="absolute inset-0">
-        {banners.map((banner, index) => {
-          const bannerImageUrl =
-            banner.mobile_image_url && typeof window !== "undefined" && window.innerWidth < 768
-              ? banner.mobile_image_url
-              : banner.image_url
+    <div className="relative h-64 md:h-80 bg-gray-100 group">
+      <div className="flex h-full">
+        <div className="relative w-1/2 md:w-3/5">
+          {banners.map((banner, index) => {
+            const bannerImageUrl =
+              banner.mobile_image_url && typeof window !== "undefined" && window.innerWidth < 768
+                ? banner.mobile_image_url
+                : banner.image_url
 
-          return (
-            <div
-              key={banner.id}
-              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                index === currentIndex ? "opacity-100" : "opacity-0"
-              }`}
-            >
-              <Image
-                src={bannerImageUrl || "/placeholder.svg"}
-                alt={banner.title}
-                fill
-                className="object-cover transition-transform duration-[10000ms] ease-out group-hover:scale-105"
-                priority={index === 0}
-              />
-            </div>
-          )
-        })}
-      </div>
+            return (
+              <div
+                key={banner.id}
+                className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                  index === currentIndex ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <Image
+                  src={bannerImageUrl || "/placeholder.svg?height=320&width=600&query=pareja+moderna+ropa+elegante"}
+                  alt={banner.title}
+                  fill
+                  className="object-cover"
+                  priority={index === 0}
+                />
+              </div>
+            )
+          })}
+        </div>
 
-      {/* Enhanced Overlay with Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-black/50" />
-
-      {/* Content with Staggered Animations */}
-      <div className="absolute inset-0 flex items-center justify-center text-center text-white p-8">
-        <div
-          className={`max-w-2xl transition-all duration-700 ${isTransitioning ? "opacity-0 transform translate-y-8" : "opacity-100 transform translate-y-0"}`}
-        >
-          <h1 className="text-2xl md:text-4xl font-bold mb-4 animate-fade-in-up stagger-1">{currentBanner.title}</h1>
-          {currentBanner.subtitle && (
-            <p className="text-base md:text-lg mb-6 text-white/90 animate-fade-in-up stagger-2">
-              {currentBanner.subtitle}
-            </p>
-          )}
-          {currentBanner.link_url && currentBanner.button_text && (
-            <Button
-              asChild
-              size="lg"
-              className="bg-white text-black hover:bg-white/90 hover-scale btn-press animate-fade-in-up stagger-3"
-            >
-              <Link href={currentBanner.link_url}>{currentBanner.button_text}</Link>
-            </Button>
-          )}
+        <div className="w-1/2 md:w-2/5 flex items-center justify-center bg-white p-6 md:p-8">
+          <div
+            className={`text-center transition-all duration-700 ${
+              isTransitioning ? "opacity-0 transform translate-y-8" : "opacity-100 transform translate-y-0"
+            }`}
+          >
+            <h1 className="text-xl md:text-3xl font-bold mb-3 text-gray-900">{currentBanner.title}</h1>
+            {currentBanner.subtitle && (
+              <p className="text-sm md:text-base mb-4 text-gray-600">{currentBanner.subtitle}</p>
+            )}
+            {currentBanner.link_url && currentBanner.button_text && (
+              <Button
+                asChild
+                size="lg"
+                className="bg-black text-white hover:bg-gray-800 px-6 py-2 text-sm md:text-base"
+              >
+                <Link href={currentBanner.link_url}>{currentBanner.button_text}</Link>
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Enhanced Navigation */}
       {banners.length > 1 && (
         <>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 opacity-0 group-hover:opacity-100 transition-all duration-300 hover-scale transform -translate-x-2 group-hover:translate-x-0"
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
             onClick={prevSlide}
             disabled={isTransitioning}
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 opacity-0 group-hover:opacity-100 transition-all duration-300 hover-scale transform translate-x-2 group-hover:translate-x-0"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
             onClick={nextSlide}
             disabled={isTransitioning}
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-5 w-5" />
           </Button>
 
-          {/* Enhanced Dots with Animation */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+          <div className="absolute bottom-3 left-1/4 -translate-x-1/2 flex space-x-2">
             {banners.map((_, index) => (
               <button
                 key={index}
-                className={`w-3 h-3 rounded-full transition-all duration-300 hover-scale ${
-                  index === currentIndex ? "bg-white scale-125 animate-pulse-glow" : "bg-white/50 hover:bg-white/70"
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  index === currentIndex ? "bg-white" : "bg-white/50 hover:bg-white/70"
                 }`}
                 onClick={() => goToSlide(index)}
                 disabled={isTransitioning}
@@ -175,19 +170,6 @@ export function HeroBanner() {
             ))}
           </div>
         </>
-      )}
-
-      {/* Progress Bar */}
-      {banners.length > 1 && (
-        <div className="absolute bottom-0 left-0 w-full h-1 bg-white/20">
-          <div
-            className="h-full bg-white transition-all duration-[5000ms] ease-linear"
-            style={{
-              width: `${((currentIndex + 1) / banners.length) * 100}%`,
-              animation: "none",
-            }}
-          />
-        </div>
       )}
     </div>
   )
