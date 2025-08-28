@@ -75,7 +75,26 @@ export function HeroBanner() {
   }
 
   if (loading || banners.length === 0) {
-    return <div className="h-64 md:h-80 bg-muted skeleton" />
+    return (
+      <div className="h-64 md:h-80 bg-gradient-to-r from-gray-100 to-gray-200 flex items-center justify-center">
+        <div className="text-center p-8">
+          {loading ? (
+            <div className="space-y-3">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-300 rounded w-48 mx-auto mb-2"></div>
+                <div className="h-3 bg-gray-300 rounded w-32 mx-auto"></div>
+              </div>
+              <p className="text-gray-500 text-sm">Cargando banners...</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <h2 className="text-xl font-semibold text-gray-700">No hay banners disponibles</h2>
+              <p className="text-gray-500 text-sm">Configure banners desde el panel de administración</p>
+            </div>
+          )}
+        </div>
+      </div>
+    )
   }
 
   const currentBanner = banners[currentIndex]
