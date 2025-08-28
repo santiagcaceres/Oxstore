@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server"
-import { ZureoAPI } from "@/lib/api"
+import { zureoAPI } from "@/lib/zureo-api"
 
 export async function GET() {
   try {
-    const zureoAPI = new ZureoAPI()
+    console.log("[v0] GET /api/zureo/categories - Starting request")
 
-    const rubros = await zureoAPI.getRubros()
+    const rubros = await zureoAPI.getProductTypes()
+
+    console.log(`[v0] GET /api/zureo/categories - Successfully fetched ${rubros.length} rubros`)
 
     const categories = [
       {
@@ -59,10 +61,20 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       categories,
-      zureoRubros: rubros, // Include original Zureo data for reference
+      zureoRubros: rubros,
+      timestamp: new Date().toISOString(),
+      endpoint: "https://api.zureo.com/sdk/v1/product_type/all",
     })
   } catch (error) {
-    console.error("Error fetching categories:", error)
-    return NextResponse.json({ success: false, error: "Error al obtener categorías" }, { status: 500 })
+    console.error("[v0] GET /api/zureo/categories - Error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Error al obtener categorías",
+        timestamp: new Date().toISOString(),
+        endpoint: "https://api.zureo.com/sdk/v1/product_type/all",
+      },
+      { status: 500 },
+    )
   }
 }

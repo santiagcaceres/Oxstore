@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { ZureoAPI } from "@/lib/api"
+import { zureoAPI } from "@/lib/zureo-api"
 
 export async function GET(request: Request, { params }: { params: { slug: string } }) {
   try {
@@ -7,22 +7,42 @@ export async function GET(request: Request, { params }: { params: { slug: string
     const page = Number.parseInt(searchParams.get("page") || "1")
     const limit = 20
 
-    const zureoAPI = new ZureoAPI()
+    console.log(`[v0] GET /api/zureo/brands/${params.slug}/products - Starting request (page: ${page})`)
 
     // Convertir slug a nombre de marca
     const brandName = params.slug.replace(/-/g, " ")
 
-    // Obtener productos filtrados por marca
-    const products = await zureoAPI.getProductsByBrand(brandName, page, limit)
+    const allProducts = await zureoAPI.getAllProducts()
+    const brandProducts = allProducts.filter((product) =>
+      product.marca.nombre.toLowerCase().includes(brandName.toLowerCase()),
+    )
+
+    // Apply pagination
+    const startIndex = (page - 1) * limit
+    const endIndex = startIndex + limit
+    const paginatedProducts = brandProducts.slice(startIndex, endIndex)
+
+    console.log(
+      `[v0] GET /api/zureo/brands/${params.slug}/products - Found ${brandProducts.length} products for brand "${brandName}"`,
+    )
 
     return NextResponse.json({
       success: true,
-      products,
+      products: paginatedProducts,
       currentPage: page,
-      totalPages: Math.ceil(products.length / limit),
+      totalPages: Math.ceil(brandProducts.length / limit),
+      totalProducts: brandProducts.length,
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error("Error fetching brand products:", error)
-    return NextResponse.json({ success: false, error: "Error al obtener productos de la marca" }, { status: 500 })
+    console.error(`[v0] GET /api/zureo/brands/${params.slug}/products - Error:`, error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Error al obtener productos de la marca",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
+    )
   }
 }

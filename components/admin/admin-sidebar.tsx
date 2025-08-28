@@ -13,6 +13,7 @@ import {
   Settings,
   BarChart3,
   RefreshCw,
+  Bug,
 } from "lucide-react"
 
 const navigation = [
@@ -45,6 +46,11 @@ const navigation = [
     name: "Sincronizar",
     href: "/admin/sincronizar",
     icon: RefreshCw,
+  },
+  {
+    name: "Zureo Debug",
+    href: "/admin/zureo-debug",
+    icon: Bug,
   },
   {
     name: "Clientes",

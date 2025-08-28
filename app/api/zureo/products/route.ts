@@ -1,18 +1,32 @@
 import { NextResponse } from "next/server"
-import { ZureoAPI } from "@/lib/api"
+import { zureoAPI } from "@/lib/zureo-api"
 
 export async function GET() {
   try {
-    const zureoApi = new ZureoAPI()
-    const products = await zureoApi.getAllProducts()
+    console.log("[v0] GET /api/zureo/products - Starting request")
+
+    const products = await zureoAPI.getAllProducts()
+
+    console.log(`[v0] GET /api/zureo/products - Successfully fetched ${products.length} products`)
 
     return NextResponse.json({
       products,
       total: products.length,
       timestamp: new Date().toISOString(),
+      endpoint: "https://api.zureo.com/sdk/v1/product/all",
+      company: "1",
     })
   } catch (error) {
-    console.error("Error fetching Zureo products:", error)
-    return NextResponse.json({ error: "Error al obtener productos de Zureo" }, { status: 500 })
+    console.error("[v0] GET /api/zureo/products - Error:", error)
+
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Error al obtener productos de Zureo",
+        timestamp: new Date().toISOString(),
+        endpoint: "https://api.zureo.com/sdk/v1/product/all",
+        company: "1",
+      },
+      { status: 500 },
+    )
   }
 }

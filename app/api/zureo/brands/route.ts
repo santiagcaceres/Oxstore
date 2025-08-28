@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server"
-import { ZureoAPI } from "@/lib/api"
+import { zureoAPI } from "@/lib/zureo-api"
 
 export async function GET() {
   try {
-    const zureoAPI = new ZureoAPI()
+    console.log("[v0] GET /api/zureo/brands - Starting request")
+
     const brands = await zureoAPI.getBrands()
+
+    console.log(`[v0] GET /api/zureo/brands - Successfully fetched ${brands.length} brands`)
 
     return NextResponse.json({
       success: true,
@@ -16,9 +19,19 @@ export async function GET() {
           .replace(/\s+/g, "-")
           .replace(/[^\w-]/g, ""),
       })),
+      timestamp: new Date().toISOString(),
+      endpoint: "https://api.zureo.com/sdk/v1/brand/all",
     })
   } catch (error) {
-    console.error("Error fetching brands:", error)
-    return NextResponse.json({ success: false, error: "Error al obtener marcas" }, { status: 500 })
+    console.error("[v0] GET /api/zureo/brands - Error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Error al obtener marcas",
+        timestamp: new Date().toISOString(),
+        endpoint: "https://api.zureo.com/sdk/v1/brand/all",
+      },
+      { status: 500 },
+    )
   }
 }

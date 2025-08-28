@@ -1,20 +1,33 @@
 import { NextResponse } from "next/server"
-import { ZureoAPI } from "@/lib/api"
+import { zureoAPI } from "@/lib/zureo-api"
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
-    const zureoApi = new ZureoAPI()
-    const products = await zureoApi.getAllProducts()
+    console.log(`[v0] GET /api/zureo/products/${params.id} - Starting request`)
+
+    const products = await zureoAPI.getAllProducts()
     const product = products.find((p) => p.id.toString() === params.id)
 
     if (!product) {
+      console.log(`[v0] GET /api/zureo/products/${params.id} - Product not found`)
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    return NextResponse.json({ product })
+    console.log(`[v0] GET /api/zureo/products/${params.id} - Product found: ${product.nombre}`)
+
+    return NextResponse.json({
+      product,
+      timestamp: new Date().toISOString(),
+    })
   } catch (error) {
-    console.error("Error fetching product:", error)
-    return NextResponse.json({ error: "Error al obtener producto" }, { status: 500 })
+    console.error(`[v0] GET /api/zureo/products/${params.id} - Error:`, error)
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Error al obtener producto",
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
+    )
   }
 }
 
