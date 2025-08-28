@@ -15,51 +15,65 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, MoreHorizontal, Edit, Eye, RefreshCw, AlertCircle } from "lucide-react"
+import { Search, MoreHorizontal, Edit, Eye, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
-interface ZureoProduct {
+interface Product {
   id: number
-  codigo: string
-  descripcion: string
-  marca: string
-  rubro: string
-  precio: number
+  zureo_id: number
+  name: string
+  slug: string
+  description: string
+  price: number
   stock: number
-  activo: boolean
-  // Local customizations
-  local_images?: string[]
-  local_description?: string
-  local_price?: number
-  is_featured?: boolean
-  slug?: string
+  category: string
+  brand: string
+  image_url: string
+  is_featured: boolean
+  discount_percentage: number
+  created_at: string
+  updated_at: string
 }
 
 export default function AdminProductsPage() {
-  const [products, setProducts] = useState<ZureoProduct[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
 
   useEffect(() => {
-    loadProducts()
+    loadProductsAutomatically()
   }, [])
 
-  const loadProducts = async () => {
+  const loadProductsAutomatically = async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch("/api/zureo/products")
+      setSyncStatus("Obteniendo token de autenticación...")
+
+      const response = await fetch("/api/zureo/products/sync")
 
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
-      setProducts(data.products || [])
+
+      if (!data.success) {
+        throw new Error(data.error || "Error al sincronizar productos")
+      }
+
+      setSyncStatus("Productos sincronizados correctamente")
+
+      await loadLocalProducts()
+
       setLastSync(new Date().toLocaleString())
+
+      // Limpiar mensaje de éxito después de 3 segundos
+      setTimeout(() => setSyncStatus(null), 3000)
     } catch (error) {
       console.error("Error loading products:", error)
       setError(error instanceof Error ? error.message : "Error desconocido")
@@ -68,17 +82,46 @@ export default function AdminProductsPage() {
     }
   }
 
-  const syncProducts = async () => {
+  const loadLocalProducts = async () => {
+    try {
+      const response = await fetch("/api/products/local")
+
+      if (!response.ok) {
+        throw new Error("Error al cargar productos locales")
+      }
+
+      const data = await response.json()
+      setProducts(data.products || [])
+    } catch (error) {
+      console.error("Error loading local products:", error)
+      // Si falla la carga local, mostrar array vacío
+      setProducts([])
+    }
+  }
+
+  const manualSync = async () => {
     try {
       setSyncing(true)
       setError(null)
-      const response = await fetch("/api/sync-products", { method: "POST" })
+      setSyncStatus("Sincronizando productos...")
+
+      const response = await fetch("/api/zureo/products/sync")
 
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
 
-      await loadProducts()
+      const data = await response.json()
+
+      if (!data.success) {
+        throw new Error(data.error || "Error al sincronizar productos")
+      }
+
+      setSyncStatus(`Sincronizados ${data.summary.totalInserted} productos`)
+      await loadLocalProducts()
+      setLastSync(new Date().toLocaleString())
+
+      setTimeout(() => setSyncStatus(null), 3000)
     } catch (error) {
       console.error("Error syncing products:", error)
       setError(error instanceof Error ? error.message : "Error al sincronizar")
@@ -89,10 +132,9 @@ export default function AdminProductsPage() {
 
   const filteredProducts = products.filter(
     (product) =>
-      product.descripcion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      product.rubro.toLowerCase().includes(searchTerm.toLowerCase()),
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      product.category.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
   return (
@@ -101,14 +143,14 @@ export default function AdminProductsPage() {
         <div>
           <h1 className="text-3xl font-bold">Productos</h1>
           <p className="text-muted-foreground">
-            Gestiona el catálogo de productos sincronizado desde Zureo
+            Catálogo de productos sincronizado automáticamente desde Zureo
             {lastSync && <span className="block text-xs mt-1">Última sincronización: {lastSync}</span>}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={syncProducts} disabled={syncing}>
+          <Button variant="outline" onClick={manualSync} disabled={syncing || loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
-            {syncing ? "Sincronizando..." : "Sincronizar"}
+            {syncing ? "Sincronizando..." : "Sincronizar Ahora"}
           </Button>
         </div>
       </div>
@@ -117,6 +159,13 @@ export default function AdminProductsPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {syncStatus && (
+        <Alert>
+          <CheckCircle className="h-4 w-4" />
+          <AlertDescription>{syncStatus}</AlertDescription>
         </Alert>
       )}
 
@@ -131,10 +180,10 @@ export default function AdminProductsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Productos Activos</CardTitle>
+            <CardTitle className="text-sm font-medium">Productos con Stock</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{products.filter((p) => p.activo).length}</div>
+            <div className="text-2xl font-bold">{products.filter((p) => p.stock > 0).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -147,10 +196,12 @@ export default function AdminProductsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
+            <CardTitle className="text-sm font-medium">Con Descuento</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">{products.filter((p) => p.stock <= 5).length}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {products.filter((p) => p.discount_percentage > 0).length}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -159,9 +210,7 @@ export default function AdminProductsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Lista de Productos</CardTitle>
-          <CardDescription>
-            Productos sincronizados desde Zureo - Edita imágenes y configuraciones locales
-          </CardDescription>
+          <CardDescription>Productos sincronizados desde Zureo - Edita configuraciones locales</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center space-x-2 mb-4">
@@ -181,7 +230,8 @@ export default function AdminProductsPage() {
             <div className="text-center py-8">
               <div className="animate-pulse">
                 <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-2 text-muted-foreground" />
-                <p className="text-muted-foreground">Cargando productos desde Zureo...</p>
+                <p className="text-muted-foreground">Sincronizando productos desde Zureo...</p>
+                {syncStatus && <p className="text-sm text-muted-foreground mt-2">{syncStatus}</p>}
               </div>
             </div>
           ) : (
@@ -189,7 +239,6 @@ export default function AdminProductsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Producto</TableHead>
-                  <TableHead>Código</TableHead>
                   <TableHead>Precio</TableHead>
                   <TableHead>Stock</TableHead>
                   <TableHead>Estado</TableHead>
@@ -203,26 +252,25 @@ export default function AdminProductsPage() {
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-muted">
                           <Image
-                            src={product.local_images?.[0] || "/generic-product-display.png"}
-                            alt={product.descripcion}
+                            src={product.image_url || "/placeholder.svg"}
+                            alt={product.name}
                             fill
                             className="object-cover"
                           />
                         </div>
                         <div>
-                          <p className="font-medium">{product.descripcion}</p>
+                          <p className="font-medium">{product.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            {product.marca} • {product.rubro}
+                            {product.brand} • {product.category}
                           </p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-sm">{product.codigo}</TableCell>
                     <TableCell>
                       <div>
-                        <p className="font-medium">${product.local_price || product.precio}</p>
-                        {product.local_price && product.local_price !== product.precio && (
-                          <p className="text-sm text-muted-foreground">Zureo: ${product.precio}</p>
+                        <p className="font-medium">${product.price}</p>
+                        {product.discount_percentage > 0 && (
+                          <p className="text-sm text-green-600">-{product.discount_percentage}% descuento</p>
                         )}
                       </div>
                     </TableCell>
@@ -235,15 +283,10 @@ export default function AdminProductsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
-                        <Badge variant={product.activo ? "default" : "secondary"}>
-                          {product.activo ? "Activo" : "Inactivo"}
+                        <Badge variant={product.stock > 0 ? "default" : "secondary"}>
+                          {product.stock > 0 ? "Disponible" : "Sin Stock"}
                         </Badge>
                         {product.is_featured && <Badge variant="outline">Destacado</Badge>}
-                        {product.local_images?.length && (
-                          <Badge variant="outline" className="text-xs">
-                            {product.local_images.length} imagen{product.local_images.length > 1 ? "es" : ""}
-                          </Badge>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -256,7 +299,7 @@ export default function AdminProductsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                            <Link href={`/producto/${product.slug || product.codigo}`}>
+                            <Link href={`/producto/${product.slug}`}>
                               <Eye className="mr-2 h-4 w-4" />
                               Ver en tienda
                             </Link>
@@ -264,7 +307,7 @@ export default function AdminProductsPage() {
                           <DropdownMenuItem asChild>
                             <Link href={`/admin/productos/${product.id}/editar`}>
                               <Edit className="mr-2 h-4 w-4" />
-                              Editar imágenes y configuración
+                              Editar configuración
                             </Link>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -284,7 +327,7 @@ export default function AdminProductsPage() {
                   : "No hay productos sincronizados desde Zureo."}
               </p>
               {!searchTerm && (
-                <Button onClick={syncProducts} className="mt-4" disabled={syncing}>
+                <Button onClick={manualSync} className="mt-4" disabled={syncing}>
                   <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
                   Sincronizar productos
                 </Button>
