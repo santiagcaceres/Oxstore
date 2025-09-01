@@ -39,17 +39,10 @@ interface Brand {
   slug: string
 }
 
-interface Category {
-  id: number
-  name: string
-  slug: string
-}
-
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [product, setProduct] = useState<Product | null>(null)
   const [brands, setBrands] = useState<Brand[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +51,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [customPrice, setCustomPrice] = useState("")
   const [customImage, setCustomImage] = useState("")
   const [selectedBrand, setSelectedBrand] = useState("")
+  const [selectedGender, setSelectedGender] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
+  const [selectedSubcategory, setSelectedSubcategory] = useState("")
   const [isFeatured, setIsFeatured] = useState(false)
   const [uploading, setUploading] = useState(false)
 
@@ -67,10 +62,40 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   )
 
+  const genderOptions = [
+    { value: "hombre", label: "Hombre" },
+    { value: "mujer", label: "Mujer" },
+  ]
+
+  const categoryOptions = [
+    { value: "marca", label: "Marca" },
+    { value: "vestimenta", label: "Vestimenta" },
+    { value: "accesorios", label: "Accesorios" },
+  ]
+
+  const subcategoryOptions = {
+    vestimenta: [
+      { value: "camisetas", label: "Camisetas" },
+      { value: "pantalones", label: "Pantalones" },
+      { value: "jeans", label: "Jeans" },
+      { value: "buzos", label: "Buzos" },
+      { value: "canguros", label: "Canguros" },
+      { value: "remeras", label: "Remeras" },
+      { value: "vestidos", label: "Vestidos" },
+      { value: "camisas", label: "Camisas" },
+    ],
+    accesorios: [
+      { value: "zapatillas", label: "Zapatillas" },
+      { value: "zapatos", label: "Zapatos" },
+      { value: "bolsos", label: "Bolsos" },
+      { value: "cinturones", label: "Cinturones" },
+      { value: "gorros", label: "Gorros" },
+    ],
+  }
+
   useEffect(() => {
     loadProduct()
     loadBrands()
-    loadCategories()
   }, [params.id])
 
   const loadProduct = async () => {
@@ -91,7 +116,10 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setCustomPrice(prod.price?.toString() || "")
       setCustomImage(prod.image_url || "")
       setSelectedBrand(prod.brand || "")
-      setSelectedCategory(prod.category || "")
+      const categoryParts = (prod.category || "").split("-")
+      setSelectedGender(categoryParts[0] || "")
+      setSelectedCategory(categoryParts[1] || "")
+      setSelectedSubcategory(categoryParts[2] || "")
       setIsFeatured(prod.is_featured || false)
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error desconocido")
@@ -108,17 +136,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setBrands(data || [])
     } catch (error) {
       console.error("Error cargando marcas:", error)
-    }
-  }
-
-  const loadCategories = async () => {
-    try {
-      const { data, error } = await supabase.from("categories").select("*").order("name")
-
-      if (error) throw error
-      setCategories(data || [])
-    } catch (error) {
-      console.error("Error cargando categorías:", error)
     }
   }
 
@@ -154,6 +171,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSaving(true)
       setError(null)
 
+      const categoryString = [selectedGender, selectedCategory, selectedSubcategory].filter(Boolean).join("-")
+
       const response = await fetch(`/api/admin/products/${params.id}`, {
         method: "PATCH",
         headers: {
@@ -166,7 +185,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           local_images: customImage ? [customImage] : [],
           is_featured: isFeatured,
           brand: selectedBrand,
-          category: selectedCategory,
+          category: categoryString,
         }),
       })
 
@@ -313,37 +332,80 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div>
-                <Label htmlFor="brand">Marca</Label>
-                <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                <Label htmlFor="gender">Género</Label>
+                <Select value={selectedGender} onValueChange={setSelectedGender}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar marca" />
+                    <SelectValue placeholder="Seleccionar género" />
                   </SelectTrigger>
                   <SelectContent>
-                    {brands.map((brand) => (
-                      <SelectItem key={brand.id} value={brand.name}>
-                        {brand.name}
+                    {genderOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
                 <Label htmlFor="category">Categoría</Label>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <Select
+                  value={selectedCategory}
+                  onValueChange={(value) => {
+                    setSelectedCategory(value)
+                    setSelectedSubcategory("") // Reset subcategory when category changes
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar categoría" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.name}>
-                        {category.name}
+                    {categoryOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {selectedCategory &&
+                selectedCategory !== "marca" &&
+                subcategoryOptions[selectedCategory as keyof typeof subcategoryOptions] && (
+                  <div>
+                    <Label htmlFor="subcategory">Subcategoría</Label>
+                    <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar subcategoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subcategoryOptions[selectedCategory as keyof typeof subcategoryOptions].map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+            </div>
+
+            <div>
+              <Label htmlFor="brand">Marca</Label>
+              <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar marca" />
+                </SelectTrigger>
+                <SelectContent>
+                  {brands.map((brand) => (
+                    <SelectItem key={brand.id} value={brand.name}>
+                      {brand.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex items-center space-x-2">
