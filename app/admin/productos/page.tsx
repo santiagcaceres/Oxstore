@@ -21,10 +21,9 @@ import { createClient } from "@/lib/supabase/client"
 
 interface Product {
   id: number
-  zureo_id: number
+  zureo_id: string // Changed from number to string to match products_in_stock table
   zureo_code: string
   name: string
-  slug: string
   description: string
   price: number
   stock_quantity: number
@@ -32,9 +31,10 @@ interface Product {
   brand: string
   image_url: string
   is_featured: boolean
-  discount_percentage: number
   created_at: string
   updated_at: string
+  last_sync_at: string // Added field from products_in_stock table
+  zureo_data: any // Added zureo_data field
 }
 
 export default function AdminProductsPage() {
@@ -94,11 +94,13 @@ export default function AdminProductsPage() {
     try {
       const supabase = createClient()
       const { data: products } = await supabase
-        .from("products")
+        .from("products_in_stock")
         .select("*")
         .gt("stock_quantity", 0)
+        .eq("is_active", true)
         .order("created_at", { ascending: false })
 
+      console.log("[v0] Loaded products from products_in_stock:", products?.length || 0)
       setProducts(products || [])
     } catch (error) {
       console.error("Error loading local products:", error)
@@ -156,7 +158,8 @@ export default function AdminProductsPage() {
         <div>
           <h1 className="text-3xl font-bold">Productos con Stock</h1>
           <p className="text-muted-foreground">
-            Solo productos con stock disponible - Sincronización automática cada 12 horas
+            Solo productos con stock disponible - Sincronización automática cada 24 horas{" "}
+            {/* Updated from 12 to 24 hours */}
             {lastSync && (
               <span className="block text-xs mt-1">
                 Última sincronización: {new Date(lastSync).toLocaleString()}
