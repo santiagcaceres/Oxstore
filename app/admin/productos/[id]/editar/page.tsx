@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -10,18 +9,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, X, Save, ArrowLeft, AlertCircle } from "lucide-react"
-import { uploadImage } from "@/lib/storage"
+import { createBrowserClient } from "@supabase/ssr"
 
 interface Product {
   id: number
   zureo_id: number
   zureo_code: string
   name: string
-  slug: string
   description: string
   price: number
   stock_quantity: number
@@ -29,15 +28,28 @@ interface Product {
   brand: string
   image_url: string
   is_featured: boolean
-  discount_percentage: number
   zureo_data: string
   created_at: string
   updated_at: string
 }
 
+interface Brand {
+  id: number
+  name: string
+  slug: string
+}
+
+interface Category {
+  id: number
+  name: string
+  slug: string
+}
+
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [product, setProduct] = useState<Product | null>(null)
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,17 +57,26 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [customDescription, setCustomDescription] = useState("")
   const [customPrice, setCustomPrice] = useState("")
   const [customImage, setCustomImage] = useState("")
+  const [selectedBrand, setSelectedBrand] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("")
   const [isFeatured, setIsFeatured] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  )
+
   useEffect(() => {
     loadProduct()
+    loadBrands()
+    loadCategories()
   }, [params.id])
 
   const loadProduct = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/zureo/products/${params.id}`)
+      const response = await fetch(`/api/products/${params.id}`)
 
       if (!response.ok) {
         throw new Error("Producto no encontrado")
@@ -69,11 +90,35 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setCustomDescription(prod.description || "")
       setCustomPrice(prod.price?.toString() || "")
       setCustomImage(prod.image_url || "")
+      setSelectedBrand(prod.brand || "")
+      setSelectedCategory(prod.category || "")
       setIsFeatured(prod.is_featured || false)
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error desconocido")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadBrands = async () => {
+    try {
+      const { data, error } = await supabase.from("brands").select("*").order("name")
+
+      if (error) throw error
+      setBrands(data || [])
+    } catch (error) {
+      console.error("Error cargando marcas:", error)
+    }
+  }
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase.from("categories").select("*").order("name")
+
+      if (error) throw error
+      setCategories(data || [])
+    } catch (error) {
+      console.error("Error cargando categorías:", error)
     }
   }
 
@@ -83,8 +128,18 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
     try {
       setUploading(true)
-      const imageUrl = await uploadImage(file, "products")
-      setCustomImage(imageUrl)
+
+      const fileExt = file.name.split(".").pop()
+      const fileName = `${Date.now()}.${fileExt}`
+      const filePath = `products/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from("banners").upload(filePath, file, { upsert: true })
+
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from("banners").getPublicUrl(filePath)
+
+      setCustomImage(data.publicUrl)
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error al subir imagen")
     } finally {
@@ -99,7 +154,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSaving(true)
       setError(null)
 
-      const response = await fetch(`/api/zureo/products/${params.id}`, {
+      const response = await fetch(`/api/products/${params.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -110,6 +165,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           local_price: customPrice ? Number.parseFloat(customPrice) : null,
           local_images: customImage ? [customImage] : [],
           is_featured: isFeatured,
+          brand: selectedBrand,
+          category: selectedCategory,
         }),
       })
 
@@ -197,16 +254,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-sm font-medium text-muted-foreground">Marca</Label>
-                <p>{product.brand}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Categoría</Label>
-                <p>{product.category}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
                 <Label className="text-sm font-medium text-muted-foreground">Precio Zureo</Label>
                 <p className="text-lg font-semibold">${originalProduct?.precio || product.price}</p>
               </div>
@@ -261,6 +308,40 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 onChange={(e) => setCustomPrice(e.target.value)}
               />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="brand">Marca</Label>
+                <Select value={selectedBrand} onValueChange={setSelectedBrand}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar marca" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {brands.map((brand) => (
+                      <SelectItem key={brand.id} value={brand.name}>
+                        {brand.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="category">Categoría</Label>
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="flex items-center space-x-2">
               <Switch id="featured" checked={isFeatured} onCheckedChange={setIsFeatured} />
               <Label htmlFor="featured">Producto destacado</Label>
