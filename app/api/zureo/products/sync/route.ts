@@ -7,13 +7,13 @@ export async function GET() {
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
     // Verificar última sincronización
-    const { data: syncStatus } = await supabase.from("sync_status").select("*").eq("type", "products").single()
+    const { data: syncStatus } = await supabase.from("sync_status").select("*").eq("sync_type", "products").single()
 
     const now = new Date()
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
     // Si hay sincronización reciente (menos de 24 horas), devolver productos existentes
-    if (syncStatus && new Date(syncStatus.last_sync) > twentyFourHoursAgo) {
+    if (syncStatus && new Date(syncStatus.last_sync_at) > twentyFourHoursAgo) {
       console.log("[v0] Using cached products (sync within 24 hours)")
 
       const { data: products } = await supabase
@@ -25,7 +25,7 @@ export async function GET() {
       return Response.json({
         success: true,
         fromCache: true,
-        lastSync: syncStatus.last_sync,
+        lastSync: syncStatus.last_sync_at,
         products: products || [],
         summary: {
           totalProducts: products?.length || 0,
@@ -211,10 +211,12 @@ export async function GET() {
 
     const syncTime = new Date().toISOString()
     await supabase.from("sync_status").upsert({
-      type: "products",
-      last_sync: syncTime,
+      sync_type: "products",
+      last_sync_at: syncTime,
       total_records: insertedCount,
       status: "completed",
+      created_at: syncTime,
+      updated_at: syncTime,
     })
 
     return Response.json({
