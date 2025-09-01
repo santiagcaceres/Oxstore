@@ -5,6 +5,7 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { CartProvider } from "@/contexts/cart-context"
+import { FloatingCart } from "@/components/floating-cart"
 
 export const metadata: Metadata = {
   title: "Oxstore - Tu tienda de confianza",
@@ -21,7 +22,10 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            {children}
+            <FloatingCart />
+          </CartProvider>
         </ThemeProvider>
       </body>
     </html>

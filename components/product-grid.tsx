@@ -68,11 +68,11 @@ export function ProductGrid({
       const convertedProducts: Product[] = (productsData || []).map((p: any) => ({
         id: p.id,
         name: p.name,
-        slug: p.name
+        slug: `${p.id}-${p.name
           .toLowerCase()
           .replace(/[^a-z0-9\s-]/g, "")
           .replace(/\s+/g, "-")
-          .trim(),
+          .trim()}`,
         description: p.description,
         short_description: p.description?.substring(0, 100) + "...",
         price: p.price,

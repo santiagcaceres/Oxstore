@@ -212,9 +212,7 @@ export default function AdminProductsPage() {
             <CardTitle className="text-sm font-medium">Con Descuento</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {products.filter((p) => p.discount_percentage > 0).length}
-            </div>
+            <div className="text-2xl font-bold text-orange-600">0</div>
           </CardContent>
         </Card>
         <Card>
@@ -298,9 +296,6 @@ export default function AdminProductsPage() {
                     <TableCell>
                       <div>
                         <p className="font-medium">${product.price.toLocaleString()}</p>
-                        {product.discount_percentage > 0 && (
-                          <p className="text-sm text-green-600">-{product.discount_percentage}% descuento</p>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -329,7 +324,7 @@ export default function AdminProductsPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                           <DropdownMenuItem asChild>
-                            <Link href={`/producto/${product.slug}`}>
+                            <Link href={`/producto/${product.zureo_code}`}>
                               <Eye className="mr-2 h-4 w-4" />
                               Ver en tienda
                             </Link>

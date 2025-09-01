@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { ShoppingCart, Heart, Share2, Minus, Plus, Star } from "lucide-react"
 import type { Product } from "@/lib/database"
+import { useCart } from "@/contexts/cart-context"
 
 interface ProductPageProps {
   params: {
@@ -30,6 +31,8 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const { addItem } = useCart()
+  const [isAddingToCart, setIsAddingToCart] = useState(false)
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -90,6 +93,26 @@ export default function ProductPage({ params }: ProductPageProps) {
   const decreaseQuantity = () => {
     if (quantity > 1) {
       setQuantity((prev) => prev - 1)
+    }
+  }
+
+  const handleAddToCart = async () => {
+    if (product && product.stock_quantity > 0) {
+      setIsAddingToCart(true)
+
+      addItem({
+        id: product.id.toString(),
+        name: product.name,
+        price: product.price,
+        image: product.images?.[0]?.image_url || "/placeholder.svg",
+        slug: params.slug,
+        quantity: quantity,
+      })
+
+      // Animation feedback
+      setTimeout(() => {
+        setIsAddingToCart(false)
+      }, 1000)
     }
   }
 
@@ -229,9 +252,16 @@ export default function ProductPage({ params }: ProductPageProps) {
 
               {/* Action Buttons */}
               <div className="flex gap-3">
-                <Button size="lg" className="flex-1" disabled={product.stock_quantity === 0}>
-                  <ShoppingCart className="h-5 w-5 mr-2" />
-                  {product.stock_quantity === 0 ? "Agotado" : "Agregar al Carrito"}
+                <Button
+                  size="lg"
+                  className={`flex-1 transition-all duration-300 ${isAddingToCart ? "bg-green-500 hover:bg-green-600" : ""}`}
+                  disabled={product.stock_quantity === 0 || isAddingToCart}
+                  onClick={handleAddToCart}
+                >
+                  <ShoppingCart
+                    className={`h-5 w-5 mr-2 transition-transform duration-300 ${isAddingToCart ? "scale-110" : ""}`}
+                  />
+                  {isAddingToCart ? "¡Agregado!" : product.stock_quantity === 0 ? "Agotado" : "Agregar al Carrito"}
                 </Button>
                 <Button variant="outline" size="lg">
                   <Heart className="h-5 w-5" />

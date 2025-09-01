@@ -157,6 +157,24 @@ INSERT INTO products_in_stock (
     NOW(),
     NOW(),
     NOW()
+),
+-- Agregando producto gratuito para pruebas sin pago
+(
+    'TEST009',
+    'MUESTRA-GRATIS-009',
+    'Muestra Gratuita - Sticker Pack',
+    'Pack de stickers promocionales gratuitos. Perfecto para probar el proceso de compra sin costo. Incluye 5 stickers de diferentes diseños.',
+    0.00,
+    100,
+    'promocional',
+    'OxStore',
+    '/placeholder.svg?height=400&width=400&text=Muestra+Gratuita',
+    true,
+    true,
+    '{"codigo": "MUESTRA-GRATIS-009", "stock": 100, "categoria": "promocional", "marca": "OxStore", "precio": 0.00}',
+    NOW(),
+    NOW(),
+    NOW()
 );
 
 -- Actualizar el estado de sincronización
@@ -170,7 +188,7 @@ INSERT INTO sync_status (
 ) VALUES (
     'products_test',
     'completed',
-    8,
+    9, -- Actualizado de 8 a 9 productos
     NOW(),
     NOW(),
     NOW()
