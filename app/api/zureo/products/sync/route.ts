@@ -17,7 +17,7 @@ export async function GET() {
       console.log("[v0] Using cached products (sync within 24 hours)")
 
       const { data: products } = await supabase
-        .from("products")
+        .from("products_in_stock")
         .select("*")
         .gt("stock_quantity", 0)
         .order("created_at", { ascending: false })
@@ -153,7 +153,7 @@ export async function GET() {
     console.log(`[v0] Products with stock: ${productsWithStock.length}`)
 
     // Paso 4: Limpiar productos existentes y guardar nuevos
-    await supabase.from("products").delete().neq("id", 0)
+    await supabase.from("products_in_stock").delete().neq("id", 0)
 
     // Convertir y guardar productos con stock
     const internalProducts = productsWithStock
@@ -200,7 +200,7 @@ export async function GET() {
 
     for (let i = 0; i < internalProducts.length; i += batchSize) {
       const batch = internalProducts.slice(i, i + batchSize)
-      const { error } = await supabase.from("products").insert(batch)
+      const { error } = await supabase.from("products_in_stock").insert(batch)
 
       if (error) {
         console.error(`[v0] Error inserting batch ${i / batchSize + 1}:`, error)
