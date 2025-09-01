@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { ProductCard } from "@/components/product-card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { createClient } from "@/lib/supabase/client"
 import type { Product } from "@/lib/database"
 
 interface ProductGridProps {
@@ -31,90 +32,81 @@ export function ProductGrid({
   const loadProducts = async (reset = false) => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/zureo/products`)
+      const supabase = createClient()
+      let query = supabase.from("products_in_stock").select("*").gt("stock_quantity", 0).eq("is_active", true)
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      const convertedProducts: Product[] =
-        data.products?.map((zp: any) => ({
-          id: zp.id,
-          name: zp.nombre,
-          slug: zp.nombre
-            .toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, "")
-            .replace(/\s+/g, "-")
-            .trim(),
-          description: zp.descripcion_larga || zp.descripcion_corta,
-          short_description: zp.descripcion_corta,
-          price: zp.precio,
-          compare_price: zp.precio * 1.2,
-          sku: zp.codigo,
-          stock_quantity: zp.stock,
-          category_id: 1,
-          brand: zp.marca?.nombre || "Oxstore",
-          is_active: zp.stock > 0,
-          is_featured: false,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          images: [
-            {
-              id: zp.id,
-              product_id: zp.id,
-              image_url: "/generic-product-display.png",
-              alt_text: zp.nombre,
-              sort_order: 0,
-              is_primary: true,
-              created_at: new Date().toISOString(),
-            },
-          ],
-        })) || []
-
-      let filteredProducts = convertedProducts
-
+      // Apply category filter
       if (category) {
-        const categoryMap: { [key: string]: string } = {
-          mujer: "mujer",
-          hombre: "hombre",
-        }
-        const categoryFilter = categoryMap[category]
-        if (categoryFilter) {
-          filteredProducts = filteredProducts.filter(
-            (p) => p.name.toLowerCase().includes(categoryFilter) || p.brand.toLowerCase().includes(categoryFilter),
-          )
-        }
+        query = query.eq("category", category)
       }
 
+      // Apply featured filter
       if (featured) {
-        filteredProducts = filteredProducts.slice(0, 6) // First 6 as featured
+        query = query.eq("is_featured", true)
       }
 
+      // Apply search filter
       if (search) {
         const searchTerm = search.toLowerCase()
-        filteredProducts = filteredProducts.filter(
-          (p) =>
-            p.name.toLowerCase().includes(searchTerm) ||
-            p.description.toLowerCase().includes(searchTerm) ||
-            p.brand.toLowerCase().includes(searchTerm) ||
-            p.sku.toLowerCase().includes(searchTerm),
+        query = query.or(
+          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,brand.ilike.%${searchTerm}%,zureo_code.ilike.%${searchTerm}%`,
         )
       }
 
       const currentOffset = reset ? 0 : offset
-      const paginatedProducts = filteredProducts.slice(currentOffset, currentOffset + limit)
+      const { data: productsData, error } = await query
+        .order("created_at", { ascending: false })
+        .range(currentOffset, currentOffset + limit - 1)
 
-      if (reset) {
-        setProducts(paginatedProducts)
-        setOffset(paginatedProducts.length)
-      } else {
-        setProducts((prev) => [...prev, ...paginatedProducts])
-        setOffset((prev) => prev + paginatedProducts.length)
+      if (error) {
+        console.error("Error loading products:", error)
+        setProducts([])
+        setHasMore(false)
+        return
       }
 
-      setHasMore(currentOffset + limit < filteredProducts.length)
+      const convertedProducts: Product[] = (productsData || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.name
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .trim(),
+        description: p.description,
+        short_description: p.description?.substring(0, 100) + "...",
+        price: p.price,
+        compare_price: p.price * 1.2,
+        sku: p.zureo_code,
+        stock_quantity: p.stock_quantity,
+        category_id: 1,
+        brand: p.brand,
+        is_active: p.is_active,
+        is_featured: p.is_featured,
+        created_at: p.created_at,
+        updated_at: p.updated_at,
+        images: [
+          {
+            id: p.id,
+            product_id: p.id,
+            image_url: p.image_url || "/placeholder.svg?height=400&width=400",
+            alt_text: p.name,
+            sort_order: 0,
+            is_primary: true,
+            created_at: p.created_at,
+          },
+        ],
+      }))
+
+      if (reset) {
+        setProducts(convertedProducts)
+        setOffset(convertedProducts.length)
+      } else {
+        setProducts((prev) => [...prev, ...convertedProducts])
+        setOffset((prev) => prev + convertedProducts.length)
+      }
+
+      setHasMore(convertedProducts.length === limit)
     } catch (error) {
       console.error("Error loading products:", error)
       setProducts([])
