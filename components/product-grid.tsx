@@ -27,11 +27,13 @@ export function ProductGrid({
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
-  const [offset, setOffset] = useState(initialProducts.length)
+  const [offset, setOffset] = useState(0)
 
   const loadProducts = async (reset = false) => {
     setLoading(true)
     try {
+      console.log("[v0] Loading products with params:", { category, featured, search, reset, offset })
+
       const supabase = createClient()
       let query = supabase.from("products_in_stock").select("*").gt("stock_quantity", 0).eq("is_active", true)
 
@@ -59,11 +61,13 @@ export function ProductGrid({
         .range(currentOffset, currentOffset + limit - 1)
 
       if (error) {
-        console.error("Error loading products:", error)
+        console.error("[v0] Error loading products:", error)
         setProducts([])
         setHasMore(false)
         return
       }
+
+      console.log("[v0] Loaded products from database:", productsData?.length || 0)
 
       const convertedProducts: Product[] = (productsData || []).map((p: any) => ({
         id: p.id,
@@ -107,8 +111,14 @@ export function ProductGrid({
       }
 
       setHasMore(convertedProducts.length === limit)
+      console.log(
+        "[v0] Products state updated:",
+        convertedProducts.length,
+        "total:",
+        reset ? convertedProducts.length : products.length + convertedProducts.length,
+      )
     } catch (error) {
-      console.error("Error loading products:", error)
+      console.error("[v0] Error loading products:", error)
       setProducts([])
       setHasMore(false)
     } finally {
@@ -117,10 +127,10 @@ export function ProductGrid({
   }
 
   useEffect(() => {
-    if (initialProducts.length === 0) {
-      loadProducts(true)
-    }
-  }, [category, featured, search])
+    console.log("[v0] useEffect triggered with:", { category, featured, search })
+    setOffset(0)
+    loadProducts(true)
+  }, [category, featured, search, limit])
 
   const loadMore = () => {
     loadProducts(false)
