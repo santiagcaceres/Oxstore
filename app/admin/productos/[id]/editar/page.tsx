@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, X, Save, ArrowLeft, AlertCircle } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
+import { loadBrands } from "@/utils/loadBrands" // Import loadBrands function
 
 interface Product {
   id: number
@@ -31,6 +32,8 @@ interface Product {
   zureo_data: string | object
   created_at: string
   updated_at: string
+  sale_price?: number
+  discount_percentage?: number
 }
 
 interface Brand {
@@ -39,10 +42,20 @@ interface Brand {
   slug: string
 }
 
+interface ProductImage {
+  id: number
+  product_id: number
+  image_url: string
+  alt_text: string
+  sort_order: number
+  is_primary: boolean
+}
+
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [product, setProduct] = useState<Product | null>(null)
   const [brands, setBrands] = useState<Brand[]>([])
+  const [productImages, setProductImages] = useState<ProductImage[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -50,6 +63,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [customDescription, setCustomDescription] = useState("")
   const [customPrice, setCustomPrice] = useState("")
   const [customImage, setCustomImage] = useState("")
+  const [salePrice, setSalePrice] = useState("")
+  const [discountPercentage, setDiscountPercentage] = useState("")
+  const [isOnSale, setIsOnSale] = useState(false)
   const [selectedBrand, setSelectedBrand] = useState("")
   const [selectedGender, setSelectedGender] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
@@ -95,8 +111,24 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     loadProduct()
-    loadBrands()
+    loadBrandsData()
+    loadProductImages()
   }, [params.id])
+
+  const loadProductImages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("product_images")
+        .select("*")
+        .eq("product_id", params.id)
+        .order("sort_order")
+
+      if (error) throw error
+      setProductImages(data || [])
+    } catch (error) {
+      console.error("Error cargando imágenes:", error)
+    }
+  }
 
   const loadProduct = async () => {
     try {
@@ -115,6 +147,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setCustomDescription(prod.description || "")
       setCustomPrice(prod.price?.toString() || "")
       setCustomImage(prod.image_url || "")
+      setSalePrice(prod.sale_price?.toString() || "")
+      setDiscountPercentage(prod.discount_percentage?.toString() || "")
+      setIsOnSale(!!prod.sale_price || !!prod.discount_percentage)
       setSelectedBrand(prod.brand || "")
       const categoryParts = (prod.category || "").split("-")
       setSelectedGender(categoryParts[0] || "")
@@ -128,12 +163,10 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
   }
 
-  const loadBrands = async () => {
+  const loadBrandsData = async () => {
     try {
-      const { data, error } = await supabase.from("brands").select("*").order("name")
-
-      if (error) throw error
-      setBrands(data || [])
+      const brandsData = await loadBrands()
+      setBrands(brandsData)
     } catch (error) {
       console.error("Error cargando marcas:", error)
     }
@@ -156,11 +189,51 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
       const { data } = supabase.storage.from("banners").getPublicUrl(filePath)
 
-      setCustomImage(data.publicUrl)
+      // Add to product_images table
+      const { error: insertError } = await supabase.from("product_images").insert({
+        product_id: Number.parseInt(params.id),
+        image_url: data.publicUrl,
+        alt_text: customName || product?.name || "Imagen del producto",
+        sort_order: productImages.length,
+        is_primary: productImages.length === 0, // First image is primary
+      })
+
+      if (insertError) throw insertError
+
+      // Reload images
+      await loadProductImages()
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error al subir imagen")
     } finally {
       setUploading(false)
+    }
+  }
+
+  const removeImage = async (imageId: number) => {
+    try {
+      const { error } = await supabase.from("product_images").delete().eq("id", imageId)
+
+      if (error) throw error
+
+      await loadProductImages()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Error al eliminar imagen")
+    }
+  }
+
+  const setPrimaryImage = async (imageId: number) => {
+    try {
+      // First, set all images as non-primary
+      await supabase.from("product_images").update({ is_primary: false }).eq("product_id", params.id)
+
+      // Then set the selected image as primary
+      const { error } = await supabase.from("product_images").update({ is_primary: true }).eq("id", imageId)
+
+      if (error) throw error
+
+      await loadProductImages()
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Error al establecer imagen principal")
     }
   }
 
@@ -186,6 +259,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           is_featured: isFeatured,
           brand: selectedBrand,
           category: categoryString,
+          sale_price: isOnSale && salePrice ? Number.parseFloat(salePrice) : null,
+          discount_percentage: isOnSale && discountPercentage ? Number.parseInt(discountPercentage) : null,
         }),
       })
 
@@ -412,43 +487,101 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               <Switch id="featured" checked={isFeatured} onCheckedChange={setIsFeatured} />
               <Label htmlFor="featured">Producto destacado</Label>
             </div>
+
+            <div className="space-y-4 border-t pt-4">
+              <div className="flex items-center space-x-2">
+                <Switch id="on-sale" checked={isOnSale} onCheckedChange={setIsOnSale} />
+                <Label htmlFor="on-sale">Producto en oferta</Label>
+              </div>
+
+              {isOnSale && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="sale-price">Precio de oferta</Label>
+                    <Input
+                      id="sale-price"
+                      type="number"
+                      step="0.01"
+                      placeholder="Precio con descuento"
+                      value={salePrice}
+                      onChange={(e) => setSalePrice(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="discount-percentage">% Descuento</Label>
+                    <Input
+                      id="discount-percentage"
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="Porcentaje de descuento"
+                      value={discountPercentage}
+                      onChange={(e) => setDiscountPercentage(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Gestión de Imagen */}
       <Card>
         <CardHeader>
-          <CardTitle>Imagen del Producto</CardTitle>
-          <CardDescription>Sube una imagen personalizada para mostrar en tu tienda</CardDescription>
+          <CardTitle>Imágenes del Producto</CardTitle>
+          <CardDescription>Gestiona múltiples imágenes para mostrar en tu tienda</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {customImage && (
-              <div className="relative w-48 h-48 mx-auto">
-                <Image
-                  src={customImage || "/placeholder.svg"}
-                  alt="Imagen del producto"
-                  fill
-                  className="object-cover rounded-lg"
-                />
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={() => setCustomImage("")}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
+          <div className="space-y-6">
+            {/* Current Images */}
+            {productImages.length > 0 && (
+              <div>
+                <Label className="text-sm font-medium mb-3 block">Imágenes actuales</Label>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {productImages.map((image, index) => (
+                    <div key={image.id} className="relative group">
+                      <div className="relative w-full h-32">
+                        <Image
+                          src={image.image_url || "/placeholder.svg"}
+                          alt={image.alt_text}
+                          fill
+                          className="object-cover rounded-lg"
+                        />
+                        {image.is_primary && <Badge className="absolute top-2 left-2 text-xs">Principal</Badge>}
+                      </div>
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                        {!image.is_primary && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setPrimaryImage(image.id)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <span className="text-xs">★</span>
+                          </Button>
+                        )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeImage(image.id)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
+            {/* Upload New Image */}
             <div>
               <Label htmlFor="image-upload" className="cursor-pointer">
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
                   <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    {uploading ? "Subiendo imagen..." : "Haz clic para subir imagen"}
+                    {uploading ? "Subiendo imagen..." : "Haz clic para agregar nueva imagen"}
                   </p>
                 </div>
               </Label>

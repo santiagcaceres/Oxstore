@@ -38,7 +38,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     })
 
     const body = await request.json()
-    const { custom_name, local_description, local_price, local_images, is_featured, brand, category } = body
+    const {
+      custom_name,
+      local_description,
+      local_price,
+      local_images,
+      is_featured,
+      brand,
+      category,
+      sale_price,
+      discount_percentage,
+    } = body
 
     const updateData: any = {}
 
@@ -49,6 +59,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (is_featured !== undefined) updateData.is_featured = is_featured
     if (brand !== undefined) updateData.brand = brand
     if (category !== undefined) updateData.category = category
+    if (sale_price !== undefined) updateData.sale_price = sale_price
+    if (discount_percentage !== undefined) updateData.discount_percentage = discount_percentage
 
     updateData.updated_at = new Date().toISOString()
 

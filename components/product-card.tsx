@@ -61,16 +61,6 @@ export function ProductCard({ product, className = "", index = 0 }: ProductCardP
               -{discountPercentage}%
             </Badge>
           )}
-          {product.is_featured && (
-            <Badge variant="secondary" className="text-xs animate-float">
-              Destacado
-            </Badge>
-          )}
-          {product.stock_quantity <= 5 && product.stock_quantity > 0 && (
-            <Badge variant="outline" className="text-xs">
-              Últimas unidades
-            </Badge>
-          )}
           {product.stock_quantity === 0 && (
             <Badge variant="outline" className="text-xs bg-muted">
               Agotado

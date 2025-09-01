@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Package, ShoppingCart, Settings, ImageIcon } from "lucide-react"
+import { LayoutDashboard, Package, ShoppingCart, Settings, ImageIcon, MessageSquare } from "lucide-react"
 
 const navigation = [
   {
@@ -25,6 +25,11 @@ const navigation = [
     name: "Banners",
     href: "/admin/banners",
     icon: ImageIcon,
+  },
+  {
+    name: "Popups",
+    href: "/admin/popups",
+    icon: MessageSquare,
   },
   {
     name: "Configuración Zureo",

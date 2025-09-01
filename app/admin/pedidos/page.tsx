@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, RefreshCw, Package, Eye, Download } from "lucide-react"
+import { Search, RefreshCw, Package, Eye, Download, Truck } from "lucide-react"
+import Link from "next/link"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
@@ -93,6 +94,96 @@ export default function AdminOrdersPage() {
       order.order_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.notes?.toLowerCase().includes(searchTerm.toLowerCase()),
   )
+
+  const generateInvoice = (order: any) => {
+    const invoiceContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Factura ${order.order_number}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; margin-bottom: 30px; }
+          .order-info { margin-bottom: 20px; }
+          .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+          .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          .items-table th { background-color: #f2f2f2; }
+          .total { text-align: right; font-weight: bold; font-size: 18px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>OXSTORE</h1>
+          <h2>Factura</h2>
+        </div>
+        
+        <div class="order-info">
+          <p><strong>Número de Orden:</strong> ${order.order_number}</p>
+          <p><strong>Fecha:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+          <p><strong>Cliente:</strong> ${order.customer_name || "N/A"}</p>
+          <p><strong>Email:</strong> ${order.customer_email || "N/A"}</p>
+          <p><strong>Teléfono:</strong> ${order.customer_phone || "N/A"}</p>
+          <p><strong>Dirección:</strong> ${order.shipping_address || "N/A"}</p>
+          <p><strong>Método de Pago:</strong> ${order.payment_method || "N/A"}</p>
+          <p><strong>Método de Envío:</strong> ${order.shipping_method === "pickup" ? "Retiro en sucursal" : "Envío a domicilio"}</p>
+        </div>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Cantidad</th>
+              <th>Precio Unitario</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${
+              order.order_items
+                ?.map(
+                  (item: any) => `
+              <tr>
+                <td>${item.product_name || "Producto"}</td>
+                <td>${item.quantity}</td>
+                <td>$${item.unit_price}</td>
+                <td>$${item.total_price}</td>
+              </tr>
+            `,
+                )
+                .join("") || ""
+            }
+            ${
+              order.shipping_cost > 0
+                ? `
+              <tr>
+                <td>Envío</td>
+                <td>1</td>
+                <td>$${order.shipping_cost}</td>
+                <td>$${order.shipping_cost}</td>
+              </tr>
+            `
+                : ""
+            }
+          </tbody>
+        </table>
+
+        <div class="total">
+          <p>Total: $${order.total_amount}</p>
+        </div>
+      </body>
+      </html>
+    `
+
+    const blob = new Blob([invoiceContent], { type: "text/html" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `factura-${order.order_number}.html`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="space-y-6">
@@ -190,9 +281,13 @@ export default function AdminOrdersPage() {
                       <p className="text-sm text-muted-foreground">
                         {new Date(order.created_at).toLocaleDateString()} - ${order.total_amount}
                       </p>
+                      <p className="text-sm text-muted-foreground">
+                        {order.shipping_method === "pickup" ? "Retiro en sucursal" : "Envío a domicilio"}
+                        {order.shipping_cost > 0 && ` (+$${order.shipping_cost})`}
+                      </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {getStatusBadge(order.status)}
+                      {getStatusBadge(order.order_status || order.status)}
                       {getPaymentStatusBadge(order.payment_status)}
                     </div>
                   </div>
@@ -240,10 +335,18 @@ export default function AdminOrdersPage() {
                       <Eye className="h-4 w-4 mr-2" />
                       Ver Detalles
                     </Button>
-                    <Button size="sm" variant="outline">
+                    <Button size="sm" variant="outline" onClick={() => generateInvoice(order)}>
                       <Download className="h-4 w-4 mr-2" />
                       Factura
                     </Button>
+                    {order.shipping_method === "delivery" && (
+                      <Link href={`/admin/pedidos/${order.id}/etiqueta`}>
+                        <Button size="sm" variant="outline">
+                          <Truck className="h-4 w-4 mr-2" />
+                          Etiqueta de Envío
+                        </Button>
+                      </Link>
+                    )}
                   </div>
                 </Card>
               ))}
