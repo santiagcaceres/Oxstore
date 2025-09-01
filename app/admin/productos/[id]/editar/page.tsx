@@ -76,7 +76,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const loadProduct = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/products/${params.id}`)
+      const response = await fetch(`/api/admin/products/${params.id}`)
 
       if (!response.ok) {
         throw new Error("Producto no encontrado")
@@ -154,7 +154,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSaving(true)
       setError(null)
 
-      const response = await fetch(`/api/products/${params.id}`, {
+      const response = await fetch(`/api/admin/products/${params.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
