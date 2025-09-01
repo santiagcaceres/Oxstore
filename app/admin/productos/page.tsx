@@ -57,7 +57,9 @@ export default function AdminProductsPage() {
       setError(null)
       setSyncStatus("Verificando productos en cache...")
 
-      const response = await fetch("/api/zureo/products/sync")
+      const response = await fetch("/api/zureo/sync-products-simple", {
+        method: "POST",
+      })
 
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`)
@@ -69,16 +71,12 @@ export default function AdminProductsPage() {
         throw new Error(data.error || "Error al sincronizar productos")
       }
 
-      setFromCache(data.fromCache)
-      if (data.fromCache) {
-        setSyncStatus("Productos cargados desde cache (sincronización reciente)")
-        setProducts(data.products || [])
-        setLastSync(data.lastSync)
-      } else {
-        setSyncStatus(`Sincronizados ${data.summary.totalInserted} productos con stock`)
-        await loadLocalProducts()
-        setLastSync(data.summary.syncTime)
-      }
+      setSyncStatus(
+        `Sincronizados ${data.savedProducts} productos con stock de ${data.totalProducts} productos totales`,
+      )
+      await loadLocalProducts()
+      setLastSync(data.timestamp)
+      setFromCache(false)
 
       // Limpiar mensaje después de 3 segundos
       setTimeout(() => setSyncStatus(null), 3000)
@@ -114,10 +112,9 @@ export default function AdminProductsPage() {
       setError(null)
       setSyncStatus("Forzando sincronización...")
 
-      const supabase = createClient()
-      await supabase.from("sync_status").delete().eq("type", "products")
-
-      const response = await fetch("/api/zureo/products/sync")
+      const response = await fetch("/api/zureo/sync-products-simple", {
+        method: "POST",
+      })
 
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`)
@@ -129,9 +126,11 @@ export default function AdminProductsPage() {
         throw new Error(data.error || "Error al sincronizar productos")
       }
 
-      setSyncStatus(`Sincronizados ${data.summary.totalInserted} productos con stock`)
+      setSyncStatus(
+        `Sincronizados ${data.savedProducts} productos con stock de ${data.totalProducts} productos totales`,
+      )
       await loadLocalProducts()
-      setLastSync(data.summary.syncTime)
+      setLastSync(data.timestamp)
       setFromCache(false)
 
       setTimeout(() => setSyncStatus(null), 3000)

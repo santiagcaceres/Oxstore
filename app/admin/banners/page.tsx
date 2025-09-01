@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Search, Edit, Upload } from "lucide-react"
+import { Search, Edit, Upload } from 'lucide-react'
 import { createClient } from "@/lib/supabase/client"
 import ImageUpload from "@/components/image-upload"
 
@@ -46,23 +46,25 @@ export default function AdminBannersPage() {
   useEffect(() => {
     const loadBanners = async () => {
       try {
+        console.log("[v0] Starting to load banners from database...")
         const { data, error } = await supabase.from("banners").select("*").order("position", { ascending: true })
 
         if (error) {
-          console.error("Error loading banners:", error)
+          console.error("[v0] Error loading banners:", error)
+          console.error("[v0] Error details:", JSON.stringify(error, null, 2))
         } else {
-          console.log("[v0] Loaded banners from database:", data)
+          console.log("[v0] Successfully loaded banners from database:", data)
           console.log("[v0] Number of banners loaded:", data?.length || 0)
           if (data && data.length > 0) {
-            console.log(
-              "[v0] Banner positions found:",
-              data.map((b) => b.position),
-            )
+            console.log("[v0] Banner positions found:", data.map((b) => b.position))
+            console.log("[v0] Banner details:", data.map((b) => ({ id: b.id, title: b.title, position: b.position, active: b.is_active })))
+          } else {
+            console.log("[v0] No banners found in database")
           }
           setBanners(data || [])
         }
       } catch (error) {
-        console.error("Error loading banners:", error)
+        console.error("[v0] Exception while loading banners:", error)
       } finally {
         setLoading(false)
       }
@@ -90,14 +92,15 @@ export default function AdminBannersPage() {
 
   const displayBanners = filteredBanners.filter((banner) => allowedPositions.includes(banner.position))
 
+  console.log("[v0] Total banners in state:", banners.length)
   console.log("[v0] Filtered banners:", filteredBanners.length)
   console.log("[v0] Display banners after position filter:", displayBanners.length)
   console.log("[v0] Allowed positions:", allowedPositions)
+  if (banners.length > 0) {
+    console.log("[v0] All banner positions in state:", banners.map((b) => b.position))
+  }
   if (filteredBanners.length > 0) {
-    console.log(
-      "[v0] Available positions in filtered banners:",
-      filteredBanners.map((b) => b.position),
-    )
+    console.log("[v0] Available positions in filtered banners:", filteredBanners.map((b) => b.position))
   }
 
   const toggleBannerStatus = async (bannerId: number, isActive: boolean) => {
