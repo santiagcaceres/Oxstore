@@ -48,61 +48,34 @@ export default function AdminProductsPage() {
   const [fromCache, setFromCache] = useState(false)
 
   useEffect(() => {
-    loadProductsAutomatically()
+    loadLocalProducts()
   }, [])
-
-  const loadProductsAutomatically = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      setSyncStatus("Verificando productos en cache...")
-
-      const response = await fetch("/api/zureo/sync-products-simple", {
-        method: "POST",
-      })
-
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      if (!data.success) {
-        throw new Error(data.error || "Error al sincronizar productos")
-      }
-
-      setSyncStatus(
-        `Sincronizados ${data.savedProducts} productos con stock de ${data.totalProducts} productos totales`,
-      )
-      await loadLocalProducts()
-      setLastSync(data.timestamp)
-      setFromCache(false)
-
-      // Limpiar mensaje después de 3 segundos
-      setTimeout(() => setSyncStatus(null), 3000)
-    } catch (error) {
-      console.error("Error loading products:", error)
-      setError(error instanceof Error ? error.message : "Error desconocido")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const loadLocalProducts = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const supabase = createClient()
-      const { data: products } = await supabase
+      const { data: products, error } = await supabase
         .from("products_in_stock")
         .select("*")
         .gt("stock_quantity", 0)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
 
-      console.log("[v0] Loaded products from products_in_stock:", products?.length || 0)
+      if (error) {
+        throw new Error(`Error cargando productos: ${error.message}`)
+      }
+
+      console.log("[v0] Loaded products from database:", products?.length || 0)
       setProducts(products || [])
+      setFromCache(false)
     } catch (error) {
-      console.error("Error loading local products:", error)
+      console.error("Error loading products from database:", error)
+      setError(error instanceof Error ? error.message : "Error cargando productos")
       setProducts([])
+    } finally {
+      setLoading(false)
     }
   }
 

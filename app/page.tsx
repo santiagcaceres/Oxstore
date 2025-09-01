@@ -131,24 +131,26 @@ export default function HomePage() {
       <Header />
 
       <main>
-        <section className="w-full px-4" ref={(el) => (sectionsRef.current[0] = el)}>
-          <div className="container mx-auto max-w-6xl">
-            <div className="relative overflow-hidden rounded-lg">
+        <section className="w-full" ref={(el) => (sectionsRef.current[0] = el)}>
+          <div className="w-full">
+            <div className="relative overflow-hidden">
               {getSlides().length > 0 ? (
                 <div className="flex transition-transform duration-500 ease-in-out">
                   {getSlides().map((slide, index) => (
                     <div key={slide.id} className="w-full flex-shrink-0">
                       <Link href={slide.link_url} className="block">
                         <div
-                          className="h-64 md:h-80 bg-cover bg-center relative"
+                          className="h-64 md:h-96 bg-cover bg-center relative w-full"
                           style={{ backgroundImage: `url(${slide.image_url})` }}
                         >
                           <div className="absolute inset-0 bg-black/30 flex items-center">
                             <div className="container mx-auto px-8">
                               <div className="max-w-md text-white">
-                                <h1 className="text-3xl md:text-4xl font-bold mb-2">{slide.title}</h1>
-                                <p className="text-lg mb-4">{slide.subtitle}</p>
-                                <Button className="bg-white text-black hover:bg-gray-100">COMPRAR AHORA</Button>
+                                <h1 className="text-3xl md:text-5xl font-bold mb-2">{slide.title}</h1>
+                                <p className="text-lg md:text-xl mb-4">{slide.subtitle}</p>
+                                <Button className="bg-white text-black hover:bg-gray-100 text-lg px-8 py-3">
+                                  COMPRAR AHORA
+                                </Button>
                               </div>
                             </div>
                           </div>
