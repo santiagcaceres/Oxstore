@@ -16,7 +16,7 @@ interface Banner {
   description: string
   image_url: string
   link_url: string
-  position: number
+  position: string | number
   is_active: boolean
 }
 
@@ -114,25 +114,25 @@ export default function HomePage() {
   }, [])
 
   const getSlides = () => {
-    const slides = banners.filter((b) => b.position >= 1 && b.position <= 3 && b.is_active)
+    const slides = banners.filter((b) => b.position === "hero" && b.is_active)
     console.log("[v0] Slides principales encontrados:", slides.length, slides)
     return slides
   }
 
   const getCategoryBanners = () => {
-    const categoryBanners = banners.filter((b) => b.position >= 10 && b.position <= 13 && b.is_active)
+    const categoryBanners = banners.filter((b) => b.position.toString().startsWith("category-") && b.is_active)
     console.log("[v0] Banners de categoría encontrados:", categoryBanners.length, categoryBanners)
     return categoryBanners
   }
 
   const getGenderBanners = () => {
-    const genderBanners = banners.filter((b) => b.position >= 20 && b.position <= 21 && b.is_active)
+    const genderBanners = banners.filter((b) => b.position.toString().startsWith("gender-") && b.is_active)
     console.log("[v0] Banners de género encontrados:", genderBanners.length, genderBanners)
     return genderBanners
   }
 
   const getFinalBanner = () => {
-    const finalBanner = banners.find((b) => b.position === 30 && b.is_active)
+    const finalBanner = banners.find((b) => b.position === "final" && b.is_active)
     console.log("[v0] Banner final encontrado:", finalBanner ? "Sí" : "No", finalBanner)
     return finalBanner
   }
@@ -255,17 +255,12 @@ export default function HomePage() {
           <section className="w-full py-4" ref={(el) => (sectionsRef.current[5] = el)}>
             <div className="container mx-auto px-4">
               <Link href={getFinalBanner()!.link_url}>
-                <div
-                  className="h-32 bg-cover bg-center flex items-center justify-center text-white relative overflow-hidden rounded-lg"
-                  style={{ backgroundImage: `url(${getFinalBanner()!.image_url})` }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-orange-400/80 to-orange-500/80" />
-                  <div className="text-center relative z-10">
-                    <div className="inline-block bg-pink-500 text-white px-4 py-1 rounded-full text-lg font-bold mb-2 transform -rotate-3">
-                      {getFinalBanner()!.title}
-                    </div>
-                    <p className="text-lg">{getFinalBanner()!.subtitle}</p>
-                  </div>
+                <div className="w-full">
+                  <img
+                    src={getFinalBanner()!.image_url || "/placeholder.svg"}
+                    alt={getFinalBanner()!.title}
+                    className="w-full h-auto object-cover rounded-lg"
+                  />
                 </div>
               </Link>
             </div>

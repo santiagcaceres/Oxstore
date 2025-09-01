@@ -14,6 +14,10 @@ interface ProductGridProps {
   initialProducts?: Product[]
   className?: string
   limit?: number
+  sortBy?: string
+  filterBrand?: string
+  filterColor?: string
+  filterSize?: string
 }
 
 export function ProductGrid({
@@ -23,6 +27,10 @@ export function ProductGrid({
   initialProducts = [],
   className = "",
   limit = 12,
+  sortBy = "created_at-desc",
+  filterBrand = "",
+  filterColor = "",
+  filterSize = "",
 }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [loading, setLoading] = useState(false)
@@ -32,7 +40,17 @@ export function ProductGrid({
   const loadProducts = async (reset = false) => {
     setLoading(true)
     try {
-      console.log("[v0] Loading products with params:", { category, featured, search, reset, offset })
+      console.log("[v0] Loading products with params:", {
+        category,
+        featured,
+        search,
+        reset,
+        offset,
+        sortBy,
+        filterBrand,
+        filterColor,
+        filterSize,
+      })
 
       const supabase = createClient()
       let query = supabase.from("products_in_stock").select("*").gt("stock_quantity", 0).eq("is_active", true)
@@ -47,6 +65,18 @@ export function ProductGrid({
         query = query.eq("is_featured", true)
       }
 
+      if (filterBrand) {
+        query = query.eq("brand", filterBrand)
+      }
+
+      if (filterColor) {
+        query = query.ilike("description", `%${filterColor}%`)
+      }
+
+      if (filterSize) {
+        query = query.ilike("description", `%${filterSize}%`)
+      }
+
       // Apply search filter
       if (search) {
         const searchTerm = search.toLowerCase()
@@ -55,10 +85,22 @@ export function ProductGrid({
         )
       }
 
+      const [sortField, sortDirection] = sortBy.split("-")
+      const ascending = sortDirection === "asc"
+
+      switch (sortField) {
+        case "price":
+          query = query.order("price", { ascending })
+          break
+        case "name":
+          query = query.order("name", { ascending })
+          break
+        default:
+          query = query.order("created_at", { ascending: false })
+      }
+
       const currentOffset = reset ? 0 : offset
-      const { data: productsData, error } = await query
-        .order("created_at", { ascending: false })
-        .range(currentOffset, currentOffset + limit - 1)
+      const { data: productsData, error } = await query.range(currentOffset, currentOffset + limit - 1)
 
       if (error) {
         console.error("[v0] Error loading products:", error)
@@ -127,10 +169,18 @@ export function ProductGrid({
   }
 
   useEffect(() => {
-    console.log("[v0] useEffect triggered with:", { category, featured, search })
+    console.log("[v0] useEffect triggered with:", {
+      category,
+      featured,
+      search,
+      sortBy,
+      filterBrand,
+      filterColor,
+      filterSize,
+    })
     setOffset(0)
     loadProducts(true)
-  }, [category, featured, search, limit])
+  }, [category, featured, search, limit, sortBy, filterBrand, filterColor, filterSize])
 
   const loadMore = () => {
     loadProducts(false)

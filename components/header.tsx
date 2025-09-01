@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Image from "next/image"
 import { useCart } from "@/contexts/cart-context"
+import { createBrowserClient } from "@supabase/ssr"
 
 interface Brand {
   id: number
-  nombre: string
+  name: string
   slug: string
 }
 
@@ -38,10 +39,17 @@ export function Header() {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
-        const response = await fetch("/api/zureo/brands")
-        if (response.ok) {
-          const data = await response.json()
-          setBrands(data.brands || [])
+        const supabase = createBrowserClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        )
+
+        const { data, error } = await supabase.from("brands").select("id, name, slug").order("name")
+
+        if (error) {
+          console.error("Error fetching brands:", error)
+        } else {
+          setBrands(data || [])
         }
       } catch (error) {
         console.error("Error fetching brands:", error)
@@ -107,16 +115,16 @@ export function Header() {
                           href={`/marca/${brand.slug}`}
                           className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
                         >
-                          {brand.nombre}
+                          {brand.name}
                         </Link>
                       ))}
                     </div>
                   </div>
                   <Link
-                    href="/ofertas"
+                    href="/sale"
                     className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors"
                   >
-                    OFERTAS
+                    SALE
                   </Link>
                 </nav>
               </SheetContent>
@@ -293,7 +301,7 @@ export function Header() {
                           href={`/marca/${brand.slug}`}
                           className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
                         >
-                          {brand.nombre}
+                          {brand.name}
                         </Link>
                       ))}
                     </div>
@@ -305,10 +313,10 @@ export function Header() {
               )}
             </div>
             <Link
-              href="/ofertas"
+              href="/sale"
               className="text-sm font-medium text-destructive hover:text-destructive/80 transition-colors"
             >
-              OFERTAS
+              SALE
             </Link>
           </nav>
 
