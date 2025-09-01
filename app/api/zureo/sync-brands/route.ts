@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST() {
   try {
     console.log("[v0] Iniciando sincronización de marcas")
+
+    const supabase = await createClient()
 
     // Paso 1: Obtener token
     console.log("[v0] Paso 1: Obteniendo token de autenticación")
@@ -62,15 +65,52 @@ export async function POST() {
 
     console.log(`[v0] ${brands.length} marcas obtenidas desde Zureo`)
 
-    // Paso 3: Guardar en base de datos (simulado por ahora)
     let savedBrands = 0
     for (const brand of brands) {
-      // Aquí iría la lógica para guardar en Supabase
-      // Por ahora solo contamos
-      savedBrands++
+      try {
+        const slug =
+          brand.name
+            ?.toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "") || `brand-${brand.id}`
+
+        const { error } = await supabase.from("brands").upsert(
+          {
+            zureo_id: brand.id,
+            name: brand.name || "Sin nombre",
+            slug: slug,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "zureo_id",
+          },
+        )
+
+        if (error) {
+          console.error(`[v0] Error guardando marca ${brand.id}:`, error)
+        } else {
+          savedBrands++
+          console.log(`[v0] Marca guardada: ${brand.name}`)
+        }
+      } catch (error) {
+        console.error(`[v0] Error procesando marca ${brand.id}:`, error)
+      }
     }
 
-    console.log(`[v0] ${savedBrands} marcas procesadas`)
+    await supabase.from("sync_status").upsert(
+      {
+        sync_type: "brands",
+        status: "completed",
+        total_records: savedBrands,
+        last_sync_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "sync_type",
+      },
+    )
+
+    console.log(`[v0] ${savedBrands} marcas guardadas en la base de datos`)
 
     return NextResponse.json({
       success: true,

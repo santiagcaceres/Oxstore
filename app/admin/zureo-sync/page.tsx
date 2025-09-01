@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Download, CheckCircle, XCircle } from "lucide-react"
+import { Loader2, Download, CheckCircle, XCircle, Eye } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 export default function ZureoSyncPage() {
   const [brandsLoading, setBrandsLoading] = useState(false)
@@ -13,6 +14,34 @@ export default function ZureoSyncPage() {
   const [productsResult, setProductsResult] = useState<any>(null)
   const [brandsError, setBrandsError] = useState<string | null>(null)
   const [productsError, setProductsError] = useState<string | null>(null)
+  const [savedProducts, setSavedProducts] = useState<any[]>([])
+  const [savedBrands, setSavedBrands] = useState<any[]>([])
+  const [showProducts, setShowProducts] = useState(false)
+
+  useEffect(() => {
+    loadSavedData()
+  }, [])
+
+  const loadSavedData = async () => {
+    const supabase = createClient()
+
+    // Cargar productos guardados
+    const { data: products } = await supabase
+      .from("products_in_stock")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(10)
+
+    // Cargar marcas guardadas
+    const { data: brands } = await supabase
+      .from("brands")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(10)
+
+    if (products) setSavedProducts(products)
+    if (brands) setSavedBrands(brands)
+  }
 
   const syncBrands = async () => {
     setBrandsLoading(true)
@@ -31,6 +60,7 @@ export default function ZureoSyncPage() {
       }
 
       setBrandsResult(data)
+      await loadSavedData()
     } catch (error) {
       setBrandsError(error instanceof Error ? error.message : "Error desconocido")
     } finally {
@@ -55,6 +85,7 @@ export default function ZureoSyncPage() {
       }
 
       setProductsResult(data)
+      await loadSavedData()
     } catch (error) {
       setProductsError(error instanceof Error ? error.message : "Error desconocido")
     } finally {
@@ -121,6 +152,19 @@ export default function ZureoSyncPage() {
                 </details>
               </div>
             )}
+
+            {savedBrands.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium">Marcas en base de datos ({savedBrands.length})</h4>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {savedBrands.slice(0, 5).map((brand) => (
+                    <div key={brand.id} className="text-xs p-2 bg-muted rounded">
+                      {brand.name} (ID: {brand.zureo_id})
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -163,6 +207,7 @@ export default function ZureoSyncPage() {
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <Badge variant="secondary">{productsResult.totalProducts} productos obtenidos</Badge>
+                  <Badge variant="outline">{productsResult.productsWithStock} con stock</Badge>
                   <Badge variant="outline">{productsResult.savedProducts} guardados</Badge>
                   <Badge variant="outline">{productsResult.requests} requests realizados</Badge>
                 </div>
@@ -172,6 +217,30 @@ export default function ZureoSyncPage() {
                     {JSON.stringify(productsResult, null, 2)}
                   </pre>
                 </details>
+              </div>
+            )}
+
+            {savedProducts.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium">Productos en base de datos ({savedProducts.length})</h4>
+                  <Button variant="outline" size="sm" onClick={() => setShowProducts(!showProducts)}>
+                    <Eye className="h-3 w-3 mr-1" />
+                    {showProducts ? "Ocultar" : "Ver"}
+                  </Button>
+                </div>
+                {showProducts && (
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {savedProducts.map((product) => (
+                      <div key={product.id} className="text-xs p-2 bg-muted rounded">
+                        <div className="font-medium">{product.name}</div>
+                        <div className="text-muted-foreground">
+                          ${product.price} - Stock: {product.stock_quantity} - {product.category}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

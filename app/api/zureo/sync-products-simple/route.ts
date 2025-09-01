@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST() {
   try {
     console.log("[v0] Iniciando sincronización de productos")
+
+    const supabase = await createClient()
 
     // Paso 1: Obtener token
     console.log("[v0] Paso 1: Obteniendo token de autenticación")
@@ -47,7 +50,7 @@ export async function POST() {
 
     let allProducts: any[] = []
     let offset = 0
-    const limit = 1000
+    const limit = 500 // Reducir límite para evitar rate limiting
     let requests = 0
 
     while (true) {
@@ -84,25 +87,88 @@ export async function POST() {
 
       offset += limit
 
-      // Delay para respetar rate limiting
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+      await new Promise((resolve) => setTimeout(resolve, 5000))
     }
 
     console.log(`[v0] Total de productos obtenidos: ${allProducts.length}`)
 
-    // Paso 3: Guardar en base de datos (simulado por ahora)
     let savedProducts = 0
+    let productsWithStock = 0
+
     for (const product of allProducts) {
-      // Aquí iría la lógica para guardar en Supabase
-      // Por ahora solo contamos
-      savedProducts++
+      try {
+        // Verificar si el producto tiene stock
+        const hasStock = product.stock > 0 || (product.varieties && product.varieties.some((v: any) => v.stock > 0))
+
+        if (!hasStock) {
+          continue // Saltar productos sin stock
+        }
+
+        productsWithStock++
+
+        // Crear slug único
+        const slug = `${product.id}-${
+          product.name
+            ?.toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "") || "producto"
+        }`
+
+        // Guardar en la tabla products_in_stock
+        const { error } = await supabase.from("products_in_stock").upsert(
+          {
+            zureo_id: product.id?.toString(),
+            zureo_code: product.codigo || product.code || product.id?.toString(),
+            name: product.name || "Producto sin nombre",
+            description: product.description || product.name || "Sin descripción",
+            price: Number.parseFloat(product.price) || 0,
+            stock_quantity: Number.parseInt(product.stock) || 0,
+            category: product.category || "Sin categoría",
+            brand: product.brand || "Sin marca",
+            image_url: product.image || "/placeholder.svg?height=300&width=300",
+            is_active: true,
+            is_featured: false,
+            zureo_data: product,
+            last_sync_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "zureo_id",
+          },
+        )
+
+        if (error) {
+          console.error(`[v0] Error guardando producto ${product.id}:`, error)
+        } else {
+          savedProducts++
+          if (savedProducts % 50 === 0) {
+            console.log(`[v0] ${savedProducts} productos guardados...`)
+          }
+        }
+      } catch (error) {
+        console.error(`[v0] Error procesando producto ${product.id}:`, error)
+      }
     }
 
-    console.log(`[v0] ${savedProducts} productos procesados`)
+    await supabase.from("sync_status").upsert(
+      {
+        sync_type: "products",
+        status: "completed",
+        total_records: savedProducts,
+        last_sync_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "sync_type",
+      },
+    )
+
+    console.log(`[v0] ${savedProducts} productos con stock guardados en la base de datos`)
 
     return NextResponse.json({
       success: true,
       totalProducts: allProducts.length,
+      productsWithStock,
       savedProducts,
       requests,
       timestamp: new Date().toISOString(),
