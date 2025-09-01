@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -18,9 +20,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Search, Edit, Upload } from 'lucide-react'
+import { Search, Edit, Upload } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import ImageUpload from "@/components/image-upload"
 
 const supabase = createClient()
 
@@ -42,25 +43,18 @@ export default function AdminBannersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   const [linkUrl, setLinkUrl] = useState("")
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     const loadBanners = async () => {
       try {
-        console.log("[v0] Starting to load banners from database...")
+        console.log("[v0] Loading ALL banners from database...")
         const { data, error } = await supabase.from("banners").select("*").order("position", { ascending: true })
 
         if (error) {
           console.error("[v0] Error loading banners:", error)
-          console.error("[v0] Error details:", JSON.stringify(error, null, 2))
         } else {
-          console.log("[v0] Successfully loaded banners from database:", data)
-          console.log("[v0] Number of banners loaded:", data?.length || 0)
-          if (data && data.length > 0) {
-            console.log("[v0] Banner positions found:", data.map((b) => b.position))
-            console.log("[v0] Banner details:", data.map((b) => ({ id: b.id, title: b.title, position: b.position, active: b.is_active })))
-          } else {
-            console.log("[v0] No banners found in database")
-          }
+          console.log("[v0] Successfully loaded banners:", data?.length || 0)
           setBanners(data || [])
         }
       } catch (error) {
@@ -78,30 +72,6 @@ export default function AdminBannersPage() {
       banner.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       banner.position.toLowerCase().includes(searchTerm.toLowerCase()),
   )
-
-  const allowedPositions = [
-    "hero", // Banner principal
-    "category-jeans",
-    "category-canguros",
-    "category-remeras",
-    "category-buzos", // Los 4 medianos
-    "gender-hombre",
-    "gender-mujer", // Hombre y mujer
-    "final", // Banner final
-  ]
-
-  const displayBanners = filteredBanners.filter((banner) => allowedPositions.includes(banner.position))
-
-  console.log("[v0] Total banners in state:", banners.length)
-  console.log("[v0] Filtered banners:", filteredBanners.length)
-  console.log("[v0] Display banners after position filter:", displayBanners.length)
-  console.log("[v0] Allowed positions:", allowedPositions)
-  if (banners.length > 0) {
-    console.log("[v0] All banner positions in state:", banners.map((b) => b.position))
-  }
-  if (filteredBanners.length > 0) {
-    console.log("[v0] Available positions in filtered banners:", filteredBanners.map((b) => b.position))
-  }
 
   const toggleBannerStatus = async (bannerId: number, isActive: boolean) => {
     try {
@@ -127,59 +97,57 @@ export default function AdminBannersPage() {
     setLinkUrl(banner.link_url || "")
   }
 
-  const handleImageUploaded = async (newImageUrl: string) => {
-    if (!editingBanner) return
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!editingBanner || !event.target.files || event.target.files.length === 0) return
+
+    const file = event.target.files[0]
+    setUploading(true)
 
     try {
-      console.log("[v0] Updating banner image:", { bannerId: editingBanner.id, newImageUrl })
+      console.log("[v0] Uploading image for banner:", editingBanner.id)
 
-      const { error } = await supabase
+      // Upload to Supabase Storage
+      const fileName = `banner-${editingBanner.id}-${Date.now()}.${file.name.split(".").pop()}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("banners")
+        .upload(fileName, file, { upsert: true })
+
+      if (uploadError) {
+        console.error("[v0] Upload error:", uploadError)
+        alert("Error subiendo imagen: " + uploadError.message)
+        return
+      }
+
+      // Get public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("banners").getPublicUrl(fileName)
+
+      console.log("[v0] Image uploaded successfully:", publicUrl)
+
+      // Update banner in database
+      const { error: updateError } = await supabase
         .from("banners")
         .update({
-          image_url: newImageUrl,
+          image_url: publicUrl,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingBanner.id)
 
-      if (!error) {
+      if (!updateError) {
         setBanners((prev) =>
-          prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, image_url: newImageUrl } : banner)),
+          prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, image_url: publicUrl } : banner)),
         )
-        console.log("[v0] Banner image updated successfully")
+        alert("Imagen actualizada correctamente!")
       } else {
-        console.error("[v0] Error updating banner image:", error)
+        console.error("[v0] Error updating banner:", updateError)
+        alert("Error actualizando banner: " + updateError.message)
       }
     } catch (error) {
-      console.error("[v0] Error updating banner image:", error)
-    }
-  }
-
-  const handleImageDeleted = async () => {
-    if (!editingBanner) return
-
-    const placeholderUrl = `/placeholder.svg?height=400&width=800&text=${encodeURIComponent(editingBanner.title)}`
-
-    try {
-      console.log("[v0] Resetting banner image to placeholder:", { bannerId: editingBanner.id, placeholderUrl })
-
-      const { error } = await supabase
-        .from("banners")
-        .update({
-          image_url: placeholderUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", editingBanner.id)
-
-      if (!error) {
-        setBanners((prev) =>
-          prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, image_url: placeholderUrl } : banner)),
-        )
-        console.log("[v0] Banner image reset successfully")
-      } else {
-        console.error("[v0] Error resetting banner image:", error)
-      }
-    } catch (error) {
-      console.error("[v0] Error resetting banner image:", error)
+      console.error("[v0] Error uploading image:", error)
+      alert("Error subiendo imagen")
+    } finally {
+      setUploading(false)
     }
   }
 
@@ -201,11 +169,14 @@ export default function AdminBannersPage() {
         )
         setEditingBanner(null)
         setLinkUrl("")
+        alert("Enlace actualizado correctamente!")
       } else {
         console.error("Error updating banner link:", error)
+        alert("Error actualizando enlace")
       }
     } catch (error) {
       console.error("Error updating banner link:", error)
+      alert("Error actualizando enlace")
     }
   }
 
@@ -232,7 +203,7 @@ export default function AdminBannersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Banners Predefinidos</h1>
+          <h1 className="text-3xl font-bold">Configuración de Banners</h1>
           <p className="text-muted-foreground">Sube imágenes desde tu PC y configura enlaces de los banners</p>
         </div>
       </div>
@@ -301,7 +272,7 @@ export default function AdminBannersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayBanners.map((banner) => (
+                {filteredBanners.map((banner) => (
                   <TableRow key={banner.id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -342,7 +313,7 @@ export default function AdminBannersPage() {
                             Editar
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <DialogContent className="max-w-2xl">
                           <DialogHeader>
                             <DialogTitle>Editar Banner: {banner.title}</DialogTitle>
                             <DialogDescription>
@@ -352,13 +323,28 @@ export default function AdminBannersPage() {
                           <div className="grid gap-6 py-4">
                             <div>
                               <Label className="text-sm font-medium mb-3 block">Imagen del Banner</Label>
-                              <ImageUpload
-                                bannerId={banner.id.toString()}
-                                currentImageUrl={banner.image_url}
-                                bannerPosition={banner.position}
-                                onImageUploaded={handleImageUploaded}
-                                onImageDeleted={handleImageDeleted}
-                              />
+                              <div className="space-y-4">
+                                <div className="w-full h-40 relative rounded-lg overflow-hidden bg-muted border-2 border-dashed">
+                                  <Image
+                                    src={editingBanner?.image_url || "/placeholder.svg"}
+                                    alt={editingBanner?.title || "Banner"}
+                                    fill
+                                    className="object-cover"
+                                  />
+                                </div>
+                                <div>
+                                  <Input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageUpload}
+                                    disabled={uploading}
+                                    className="cursor-pointer"
+                                  />
+                                  {uploading && (
+                                    <p className="text-sm text-muted-foreground mt-2">Subiendo imagen...</p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
 
                             <div className="grid grid-cols-4 items-center gap-4">
@@ -375,7 +361,7 @@ export default function AdminBannersPage() {
                             </div>
                           </div>
                           <DialogFooter>
-                            <Button onClick={updateBannerLink}>
+                            <Button onClick={updateBannerLink} disabled={uploading}>
                               <Upload className="h-4 w-4 mr-2" />
                               Guardar Enlace
                             </Button>
@@ -389,9 +375,11 @@ export default function AdminBannersPage() {
             </Table>
           )}
 
-          {displayBanners.length === 0 && !loading && (
+          {filteredBanners.length === 0 && !loading && (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No se encontraron banners.</p>
+              <p className="text-muted-foreground">
+                No se encontraron banners. Ejecuta el script SQL para crear banners predefinidos.
+              </p>
             </div>
           )}
         </CardContent>
