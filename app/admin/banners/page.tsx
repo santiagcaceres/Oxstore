@@ -51,6 +51,14 @@ export default function AdminBannersPage() {
         if (error) {
           console.error("Error loading banners:", error)
         } else {
+          console.log("[v0] Loaded banners from database:", data)
+          console.log("[v0] Number of banners loaded:", data?.length || 0)
+          if (data && data.length > 0) {
+            console.log(
+              "[v0] Banner positions found:",
+              data.map((b) => b.position),
+            )
+          }
           setBanners(data || [])
         }
       } catch (error) {
@@ -81,6 +89,16 @@ export default function AdminBannersPage() {
   ]
 
   const displayBanners = filteredBanners.filter((banner) => allowedPositions.includes(banner.position))
+
+  console.log("[v0] Filtered banners:", filteredBanners.length)
+  console.log("[v0] Display banners after position filter:", displayBanners.length)
+  console.log("[v0] Allowed positions:", allowedPositions)
+  if (filteredBanners.length > 0) {
+    console.log(
+      "[v0] Available positions in filtered banners:",
+      filteredBanners.map((b) => b.position),
+    )
+  }
 
   const toggleBannerStatus = async (bannerId: number, isActive: boolean) => {
     try {

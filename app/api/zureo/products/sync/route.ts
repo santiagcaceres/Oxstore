@@ -99,8 +99,8 @@ export async function GET() {
         console.error("[v0] Products request failed:", productsResponse.status, errorData)
 
         if (productsResponse.status === 429) {
-          console.log("[v0] Rate limit exceeded, waiting 35 seconds before retry...")
-          await new Promise((resolve) => setTimeout(resolve, 35000)) // Esperar 35 segundos
+          console.log("[v0] Rate limit exceeded, waiting 60 seconds before retry...")
+          await new Promise((resolve) => setTimeout(resolve, 60000)) // Esperar 60 segundos
           continue // Reintentar la misma request
         }
 
@@ -125,12 +125,11 @@ export async function GET() {
       offset += limit
       requestCount++
 
-      if (requestCount % 12 === 0) {
-        console.log(`[v0] Completed ${requestCount} requests, waiting 32 seconds to respect rate limits...`)
-        await new Promise((resolve) => setTimeout(resolve, 32000)) // Esperar 32 segundos cada 12 requests
+      if (requestCount % 8 === 0) {
+        console.log(`[v0] Completed ${requestCount} requests, waiting 45 seconds to respect rate limits...`)
+        await new Promise((resolve) => setTimeout(resolve, 45000)) // Esperar 45 segundos cada 8 requests
       } else {
-        // Delay menor entre requests individuales
-        await new Promise((resolve) => setTimeout(resolve, 2500)) // 2.5 segundos entre requests
+        await new Promise((resolve) => setTimeout(resolve, 4000)) // 4 segundos entre requests
       }
     }
 
