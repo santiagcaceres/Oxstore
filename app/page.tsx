@@ -51,6 +51,9 @@ export default function HomePage() {
         return
       }
 
+      console.log("[v0] Total banners cargados:", bannersData?.length || 0)
+      console.log("[v0] Banners data:", bannersData)
+
       setBanners(bannersData || [])
     } catch (error) {
       console.error("Error loading banners:", error)
@@ -110,10 +113,29 @@ export default function HomePage() {
     return () => observer.disconnect()
   }, [])
 
-  const getSlides = () => banners.filter((b) => b.position >= 1 && b.position <= 3 && b.is_active)
-  const getCategoryBanners = () => banners.filter((b) => b.position >= 10 && b.position <= 13 && b.is_active)
-  const getGenderBanners = () => banners.filter((b) => b.position >= 20 && b.position <= 21 && b.is_active)
-  const getFinalBanner = () => banners.find((b) => b.position === 30 && b.is_active)
+  const getSlides = () => {
+    const slides = banners.filter((b) => b.position >= 1 && b.position <= 3 && b.is_active)
+    console.log("[v0] Slides principales encontrados:", slides.length, slides)
+    return slides
+  }
+
+  const getCategoryBanners = () => {
+    const categoryBanners = banners.filter((b) => b.position >= 10 && b.position <= 13 && b.is_active)
+    console.log("[v0] Banners de categoría encontrados:", categoryBanners.length, categoryBanners)
+    return categoryBanners
+  }
+
+  const getGenderBanners = () => {
+    const genderBanners = banners.filter((b) => b.position >= 20 && b.position <= 21 && b.is_active)
+    console.log("[v0] Banners de género encontrados:", genderBanners.length, genderBanners)
+    return genderBanners
+  }
+
+  const getFinalBanner = () => {
+    const finalBanner = banners.find((b) => b.position === 30 && b.is_active)
+    console.log("[v0] Banner final encontrado:", finalBanner ? "Sí" : "No", finalBanner)
+    return finalBanner
+  }
 
   if (loading) {
     return (
