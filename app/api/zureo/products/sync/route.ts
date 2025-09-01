@@ -79,11 +79,12 @@ export async function GET() {
     const allProducts = []
     let offset = 0
     const limit = 1000
+    let requestCount = 0
 
     while (true) {
       const productsUrl = `${apiUrl}/sdk/v1/product/all?emp=${companyId}&from=${offset}&qty=${limit}`
 
-      console.log(`[v0] Fetching products from offset ${offset}`)
+      console.log(`[v0] Fetching products from offset ${offset} (request ${requestCount + 1})`)
 
       const productsResponse = await fetch(productsUrl, {
         method: "GET",
@@ -94,7 +95,15 @@ export async function GET() {
       })
 
       if (!productsResponse.ok) {
-        console.error("[v0] Products request failed:", productsResponse.status)
+        const errorData = await productsResponse.json().catch(() => ({}))
+        console.error("[v0] Products request failed:", productsResponse.status, errorData)
+
+        if (productsResponse.status === 429) {
+          console.log("[v0] Rate limit exceeded, waiting 35 seconds before retry...")
+          await new Promise((resolve) => setTimeout(resolve, 35000)) // Esperar 35 segundos
+          continue // Reintentar la misma request
+        }
+
         break
       }
 
@@ -114,9 +123,15 @@ export async function GET() {
       }
 
       offset += limit
+      requestCount++
 
-      // Rate limiting delay
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+      if (requestCount % 12 === 0) {
+        console.log(`[v0] Completed ${requestCount} requests, waiting 32 seconds to respect rate limits...`)
+        await new Promise((resolve) => setTimeout(resolve, 32000)) // Esperar 32 segundos cada 12 requests
+      } else {
+        // Delay menor entre requests individuales
+        await new Promise((resolve) => setTimeout(resolve, 2500)) // 2.5 segundos entre requests
+      }
     }
 
     console.log(`[v0] Total products fetched: ${allProducts.length}`)
