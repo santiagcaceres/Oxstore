@@ -69,6 +69,19 @@ export default function AdminBannersPage() {
       banner.position.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
+  const allowedPositions = [
+    "hero", // Banner principal
+    "category-jeans",
+    "category-canguros",
+    "category-remeras",
+    "category-buzos", // Los 4 medianos
+    "gender-hombre",
+    "gender-mujer", // Hombre y mujer
+    "final", // Banner final
+  ]
+
+  const displayBanners = filteredBanners.filter((banner) => allowedPositions.includes(banner.position))
+
   const toggleBannerStatus = async (bannerId: number, isActive: boolean) => {
     try {
       const { error } = await supabase
@@ -179,8 +192,6 @@ export default function AdminBannersPage() {
     switch (position) {
       case "hero":
         return <Badge variant="default">Principal</Badge>
-      case "secondary":
-        return <Badge variant="secondary">Secundario</Badge>
       case "category-jeans":
       case "category-canguros":
       case "category-remeras":
@@ -189,8 +200,8 @@ export default function AdminBannersPage() {
       case "gender-mujer":
       case "gender-hombre":
         return <Badge className="bg-blue-100 text-blue-800">Género</Badge>
-      case "offers":
-        return <Badge className="bg-orange-100 text-orange-800">Ofertas</Badge>
+      case "final":
+        return <Badge className="bg-green-100 text-green-800">Final</Badge>
       default:
         return <Badge variant="outline">{position}</Badge>
     }
@@ -269,7 +280,7 @@ export default function AdminBannersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBanners.map((banner) => (
+                {displayBanners.map((banner) => (
                   <TableRow key={banner.id}>
                     <TableCell>
                       <div className="flex items-center space-x-3">
@@ -310,7 +321,7 @@ export default function AdminBannersPage() {
                             Editar
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px]">
+                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                           <DialogHeader>
                             <DialogTitle>Editar Banner: {banner.title}</DialogTitle>
                             <DialogDescription>
@@ -357,7 +368,7 @@ export default function AdminBannersPage() {
             </Table>
           )}
 
-          {filteredBanners.length === 0 && !loading && (
+          {displayBanners.length === 0 && !loading && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No se encontraron banners.</p>
             </div>

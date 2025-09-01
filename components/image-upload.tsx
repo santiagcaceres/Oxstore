@@ -92,10 +92,7 @@ export default function ImageUpload({
         </div>
         <div className="text-xs text-blue-700 space-y-1">
           <div>
-            <strong>Desktop:</strong> {sizeGuide.desktop.width}x{sizeGuide.desktop.height}px ({sizeGuide.desktop.ratio})
-          </div>
-          <div>
-            <strong>Mobile:</strong> {sizeGuide.mobile.width}x{sizeGuide.mobile.height}px ({sizeGuide.mobile.ratio})
+            <strong>PC:</strong> {sizeGuide.desktop.width}x{sizeGuide.desktop.height}px ({sizeGuide.desktop.ratio})
           </div>
           <div>
             <strong>Formato:</strong> JPG, PNG, WebP (máx. 5MB)

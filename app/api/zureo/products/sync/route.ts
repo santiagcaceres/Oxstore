@@ -10,11 +10,11 @@ export async function GET() {
     const { data: syncStatus } = await supabase.from("sync_status").select("*").eq("type", "products").single()
 
     const now = new Date()
-    const twelveHoursAgo = new Date(now.getTime() - 12 * 60 * 60 * 1000)
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
-    // Si hay sincronización reciente (menos de 12 horas), devolver productos existentes
-    if (syncStatus && new Date(syncStatus.last_sync) > twelveHoursAgo) {
-      console.log("[v0] Using cached products (sync within 12 hours)")
+    // Si hay sincronización reciente (menos de 24 horas), devolver productos existentes
+    if (syncStatus && new Date(syncStatus.last_sync) > twentyFourHoursAgo) {
+      console.log("[v0] Using cached products (sync within 24 hours)")
 
       const { data: products } = await supabase
         .from("products")
@@ -29,7 +29,7 @@ export async function GET() {
         products: products || [],
         summary: {
           totalProducts: products?.length || 0,
-          message: "Productos cargados desde cache (sincronización reciente)",
+          message: "Productos cargados desde cache (sincronización diaria)",
         },
       })
     }
@@ -123,9 +123,16 @@ export async function GET() {
 
     // Paso 3: Filtrar solo productos con stock > 0
     const productsWithStock = allProducts.filter((product) => {
-      const hasStock = product.stock > 0
-      const hasVarietyStock = product.variedades && product.variedades.some((v: any) => v.stock > 0)
-      return hasStock || hasVarietyStock
+      // Verificar stock del producto principal
+      const hasMainStock = product.stock > 0
+
+      // Verificar stock en variedades
+      const hasVarietyStock =
+        product.variedades &&
+        Array.isArray(product.variedades) &&
+        product.variedades.some((variety: any) => variety.stock > 0)
+
+      return hasMainStock || hasVarietyStock
     })
 
     console.log(`[v0] Products with stock: ${productsWithStock.length}`)
@@ -136,22 +143,41 @@ export async function GET() {
     // Convertir y guardar productos con stock
     const internalProducts = productsWithStock
       .filter((product) => !product.baja) // Filtrar productos dados de baja
-      .map((product) => ({
-        zureo_id: product.id,
-        zureo_code: product.codigo || `ZUR-${product.id}`,
-        name: product.nombre || "Sin nombre",
-        slug: (product.nombre || "producto").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        description: product.descripcion_larga || product.descripcion_corta || "",
-        price: product.precio || 0,
-        stock_quantity: product.stock || 0,
-        category: product.tipo?.nombre || "Sin categoría",
-        brand: product.marca?.nombre || "Sin marca",
-        image_url: `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.nombre || "producto")}`,
-        is_featured: false,
-        discount_percentage: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }))
+      .map((product) => {
+        // Calcular stock total (producto + variedades)
+        const mainStock = product.stock || 0
+        const varietyStock =
+          product.variedades?.reduce((total: number, variety: any) => total + (variety.stock || 0), 0) || 0
+        const totalStock = Math.max(mainStock, varietyStock)
+
+        // Obtener precio más actualizado
+        const latestPrice =
+          product.variedades && product.variedades.length > 0
+            ? product.variedades[0].precio || product.precio
+            : product.precio
+
+        return {
+          zureo_id: product.id,
+          zureo_code: product.codigo || `ZUR-${product.id}`,
+          name: product.nombre || "Sin nombre",
+          slug: (product.nombre || "producto").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          description: product.descripcionLarga || product.descripcionCorta || "",
+          price: latestPrice || 0,
+          stock_quantity: totalStock,
+          category: product.tipo?.nombre || "Sin categoría",
+          brand: product.marca?.nombre || "Sin marca",
+          image_url: `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.nombre || "producto")}`,
+          is_featured: false,
+          discount_percentage: 0,
+          zureo_data: JSON.stringify({
+            originalProduct: product,
+            varieties: product.variedades || [],
+            lastUpdated: new Date().toISOString(),
+          }),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      })
 
     // Insertar en lotes de 100
     const batchSize = 100
@@ -187,6 +213,10 @@ export async function GET() {
         syncTime: syncTime,
         categories: [...new Set(productsWithStock.map((p) => p.tipo?.nombre).filter(Boolean))],
         brands: [...new Set(productsWithStock.map((p) => p.marca?.nombre).filter(Boolean))],
+        varietiesInfo: {
+          totalVarieties: productsWithStock.reduce((total, p) => total + (p.variedades?.length || 0), 0),
+          productsWithVarieties: productsWithStock.filter((p) => p.variedades && p.variedades.length > 0).length,
+        },
       },
     })
   } catch (error) {

@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server"
-import { zureoAPI } from "@/lib/zureo-api"
+import { createClient } from "@supabase/supabase-js"
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
     console.log(`[v0] GET /api/zureo/products/${params.id} - Starting request`)
 
-    const products = await zureoAPI.getAllProducts()
-    const product = products.find((p) => p.id.toString() === params.id)
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-    if (!product) {
+    const { data: product, error } = await supabase.from("products").select("*").eq("id", params.id).single()
+
+    if (error || !product) {
       console.log(`[v0] GET /api/zureo/products/${params.id} - Product not found`)
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    console.log(`[v0] GET /api/zureo/products/${params.id} - Product found: ${product.nombre}`)
+    console.log(`[v0] GET /api/zureo/products/${params.id} - Product found: ${product.name}`)
 
     return NextResponse.json({
       product,
@@ -34,10 +35,25 @@ export async function GET(request: Request, { params }: { params: { id: string }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
     const body = await request.json()
-    const { local_images, local_description, local_price, is_featured } = body
+    const { local_images, local_description, local_price, is_featured, custom_name } = body
 
-    // Here you would save the local customizations to your database
-    // For now, we'll just return success
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    }
+
+    if (local_images !== undefined) updateData.image_url = local_images[0] || updateData.image_url
+    if (local_description !== undefined) updateData.description = local_description
+    if (local_price !== undefined) updateData.price = local_price
+    if (is_featured !== undefined) updateData.is_featured = is_featured
+    if (custom_name !== undefined) updateData.name = custom_name
+
+    const { error } = await supabase.from("products").update(updateData).eq("id", params.id)
+
+    if (error) {
+      throw new Error(error.message)
+    }
 
     return NextResponse.json({
       success: true,
