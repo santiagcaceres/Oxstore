@@ -28,7 +28,7 @@ interface Product {
   brand: string
   image_url: string
   is_featured: boolean
-  zureo_data: string
+  zureo_data: string | object
   created_at: string
   updated_at: string
 }
@@ -182,7 +182,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
   }
 
-  const zureoData = product?.zureo_data ? JSON.parse(product.zureo_data) : null
+  const zureoData = product?.zureo_data
+    ? typeof product.zureo_data === "string"
+      ? JSON.parse(product.zureo_data)
+      : product.zureo_data
+    : null
   const originalProduct = zureoData?.originalProduct
 
   if (loading) {
