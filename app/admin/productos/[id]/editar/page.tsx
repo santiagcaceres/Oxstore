@@ -70,6 +70,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [selectedGender, setSelectedGender] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("")
   const [selectedSubcategory, setSelectedSubcategory] = useState("")
+  const [selectedSubSubcategory, setSelectedSubSubcategory] = useState("")
   const [isFeatured, setIsFeatured] = useState(false)
   const [uploading, setUploading] = useState(false)
 
@@ -81,31 +82,54 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const genderOptions = [
     { value: "hombre", label: "Hombre" },
     { value: "mujer", label: "Mujer" },
+    { value: "unisex", label: "Unisex" },
   ]
 
   const categoryOptions = [
-    { value: "marca", label: "Marca" },
     { value: "vestimenta", label: "Vestimenta" },
     { value: "accesorios", label: "Accesorios" },
+    { value: "calzado", label: "Calzado" },
   ]
 
   const subcategoryOptions = {
     vestimenta: [
-      { value: "camisetas", label: "Camisetas" },
-      { value: "pantalones", label: "Pantalones" },
+      { value: "medias", label: "Medias" },
+      { value: "boxers", label: "Boxers" },
+      { value: "blusas-camisas", label: "Blusas y camisas" },
+      { value: "vestidos-faldas", label: "Vestidos y faldas" },
+      { value: "shorts-monos", label: "Shorts y monos" },
       { value: "jeans", label: "Jeans" },
-      { value: "buzos", label: "Buzos" },
-      { value: "canguros", label: "Canguros" },
-      { value: "remeras", label: "Remeras" },
-      { value: "vestidos", label: "Vestidos" },
-      { value: "camisas", label: "Camisas" },
+      { value: "pantalones", label: "Pantalones" },
+      { value: "remeras-musculosas", label: "Remeras y musculosas" },
+      { value: "polos", label: "Polos" },
+      { value: "bermudas", label: "Bermudas" },
+      { value: "mayas", label: "Mayas" },
+      { value: "blazers-chaquetas", label: "Blazers y chaquetas" },
+      { value: "sacos", label: "Sacos" },
+      { value: "buzos-canguros", label: "Buzos y canguros" },
+      { value: "camperas-abrigos", label: "Camperas y abrigos" },
     ],
     accesorios: [
+      { value: "collares", label: "Collares" },
+      { value: "panuelos", label: "Pañuelos" },
+      { value: "carvanas", label: "Carvanas" },
+      { value: "billeteras", label: "Billeteras" },
+      { value: "rinoneras", label: "Riñoneras" },
+      { value: "mochilas", label: "Mochilas" },
+    ],
+    calzado: [
       { value: "zapatillas", label: "Zapatillas" },
       { value: "zapatos", label: "Zapatos" },
-      { value: "bolsos", label: "Bolsos" },
-      { value: "cinturones", label: "Cinturones" },
-      { value: "gorros", label: "Gorros" },
+      { value: "botas", label: "Botas" },
+      { value: "sandalias", label: "Sandalias" },
+    ],
+  }
+
+  const subSubcategoryOptions = {
+    pantalones: [
+      { value: "deportivos", label: "Deportivos" },
+      { value: "cargos", label: "Cargos" },
+      { value: "gabardina", label: "Gabardina" },
     ],
   }
 
@@ -155,6 +179,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSelectedGender(categoryParts[0] || "")
       setSelectedCategory(categoryParts[1] || "")
       setSelectedSubcategory(categoryParts[2] || "")
+      setSelectedSubSubcategory(categoryParts[3] || "")
       setIsFeatured(prod.is_featured || false)
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error desconocido")
@@ -244,7 +269,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSaving(true)
       setError(null)
 
-      const categoryString = [selectedGender, selectedCategory, selectedSubcategory].filter(Boolean).join("-")
+      const categoryString = [selectedGender, selectedCategory, selectedSubcategory, selectedSubSubcategory]
+        .filter(Boolean)
+        .join("-")
 
       const response = await fetch(`/api/admin/products/${params.id}`, {
         method: "PATCH",
@@ -431,6 +458,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                   onValueChange={(value) => {
                     setSelectedCategory(value)
                     setSelectedSubcategory("") // Reset subcategory when category changes
+                    setSelectedSubSubcategory("") // Reset sub-subcategory when category changes
                   }}
                 >
                   <SelectTrigger>
@@ -451,7 +479,13 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 subcategoryOptions[selectedCategory as keyof typeof subcategoryOptions] && (
                   <div>
                     <Label htmlFor="subcategory">Subcategoría</Label>
-                    <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
+                    <Select
+                      value={selectedSubcategory}
+                      onValueChange={(value) => {
+                        setSelectedSubcategory(value)
+                        setSelectedSubSubcategory("") // Reset sub-subcategory when subcategory changes
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Seleccionar subcategoría" />
                       </SelectTrigger>
@@ -465,6 +499,24 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                     </Select>
                   </div>
                 )}
+
+              {selectedSubcategory === "pantalones" && (
+                <div>
+                  <Label htmlFor="sub-subcategory">Tipo de Pantalón</Label>
+                  <Select value={selectedSubSubcategory} onValueChange={setSelectedSubSubcategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo de pantalón" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subSubcategoryOptions.pantalones.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <div>
