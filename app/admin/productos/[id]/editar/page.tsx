@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, X, Save, ArrowLeft, AlertCircle } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
-import { loadBrands } from "@/utils/loadBrands" // Import loadBrands function
 
 interface Product {
   id: number
@@ -24,6 +23,8 @@ interface Product {
   name: string
   description: string
   price: number
+  precio_zureo?: number
+  categoria_zureo?: string
   stock_quantity: number
   category: string
   brand: string
@@ -34,12 +35,24 @@ interface Product {
   updated_at: string
   sale_price?: number
   discount_percentage?: number
+  gender?: string
+  subcategory?: string
+  custom_name?: string
+  custom_description?: string
 }
 
 interface Brand {
   id: number
   name: string
   slug: string
+}
+
+interface Category {
+  id: number
+  name: string
+  slug: string
+  parent_id?: number
+  level: number
 }
 
 interface ProductImage {
@@ -55,6 +68,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const router = useRouter()
   const [product, setProduct] = useState<Product | null>(null)
   const [brands, setBrands] = useState<Brand[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [productImages, setProductImages] = useState<ProductImage[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -62,7 +76,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [customName, setCustomName] = useState("")
   const [customDescription, setCustomDescription] = useState("")
   const [customPrice, setCustomPrice] = useState("")
-  const [customImage, setCustomImage] = useState("")
   const [salePrice, setSalePrice] = useState("")
   const [discountPercentage, setDiscountPercentage] = useState("")
   const [isOnSale, setIsOnSale] = useState(false)
@@ -85,59 +98,33 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     { value: "unisex", label: "Unisex" },
   ]
 
-  const categoryOptions = [
-    { value: "vestimenta", label: "Vestimenta" },
-    { value: "accesorios", label: "Accesorios" },
-    { value: "calzado", label: "Calzado" },
-  ]
-
-  const subcategoryOptions = {
-    vestimenta: [
-      { value: "medias", label: "Medias" },
-      { value: "boxers", label: "Boxers" },
-      { value: "blusas-camisas", label: "Blusas y camisas" },
-      { value: "vestidos-faldas", label: "Vestidos y faldas" },
-      { value: "shorts-monos", label: "Shorts y monos" },
-      { value: "jeans", label: "Jeans" },
-      { value: "pantalones", label: "Pantalones" },
-      { value: "remeras-musculosas", label: "Remeras y musculosas" },
-      { value: "polos", label: "Polos" },
-      { value: "bermudas", label: "Bermudas" },
-      { value: "mayas", label: "Mayas" },
-      { value: "blazers-chaquetas", label: "Blazers y chaquetas" },
-      { value: "sacos", label: "Sacos" },
-      { value: "buzos-canguros", label: "Buzos y canguros" },
-      { value: "camperas-abrigos", label: "Camperas y abrigos" },
-    ],
-    accesorios: [
-      { value: "collares", label: "Collares" },
-      { value: "panuelos", label: "Pañuelos" },
-      { value: "carvanas", label: "Carvanas" },
-      { value: "billeteras", label: "Billeteras" },
-      { value: "rinoneras", label: "Riñoneras" },
-      { value: "mochilas", label: "Mochilas" },
-    ],
-    calzado: [
-      { value: "zapatillas", label: "Zapatillas" },
-      { value: "zapatos", label: "Zapatos" },
-      { value: "botas", label: "Botas" },
-      { value: "sandalias", label: "Sandalias" },
-    ],
+  const getMainCategories = () => categories.filter((cat) => cat.level === 1)
+  const getSubcategories = (parentSlug: string) => {
+    const parent = categories.find((cat) => cat.slug === parentSlug && cat.level === 1)
+    return parent ? categories.filter((cat) => cat.parent_id === parent.id && cat.level === 2) : []
   }
-
-  const subSubcategoryOptions = {
-    pantalones: [
-      { value: "deportivos", label: "Deportivos" },
-      { value: "cargos", label: "Cargos" },
-      { value: "gabardina", label: "Gabardina" },
-    ],
+  const getSubSubcategories = (parentSlug: string) => {
+    const parent = categories.find((cat) => cat.slug === parentSlug && cat.level === 2)
+    return parent ? categories.filter((cat) => cat.parent_id === parent.id && cat.level === 3) : []
   }
 
   useEffect(() => {
     loadProduct()
     loadBrandsData()
+    loadCategoriesData()
     loadProductImages()
   }, [params.id])
+
+  const loadCategoriesData = async () => {
+    try {
+      const { data, error } = await supabase.from("categories").select("*").eq("is_active", true).order("sort_order")
+
+      if (error) throw error
+      setCategories(data || [])
+    } catch (error) {
+      console.error("Error cargando categorías:", error)
+    }
+  }
 
   const loadProductImages = async () => {
     try {
@@ -167,19 +154,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       const prod = data.product
 
       setProduct(prod)
-      setCustomName(prod.name || "")
-      setCustomDescription(prod.description || "")
+      setCustomName(prod.custom_name || prod.name || "")
+      setCustomDescription(prod.custom_description || prod.description || "")
       setCustomPrice(prod.price?.toString() || "")
-      setCustomImage(prod.image_url || "")
       setSalePrice(prod.sale_price?.toString() || "")
       setDiscountPercentage(prod.discount_percentage?.toString() || "")
       setIsOnSale(!!prod.sale_price || !!prod.discount_percentage)
       setSelectedBrand(prod.brand || "")
-      const categoryParts = (prod.category || "").split("-")
-      setSelectedGender(categoryParts[0] || "")
-      setSelectedCategory(categoryParts[1] || "")
-      setSelectedSubcategory(categoryParts[2] || "")
-      setSelectedSubSubcategory(categoryParts[3] || "")
+      setSelectedGender(prod.gender || "")
+      setSelectedCategory(prod.category || "")
+      setSelectedSubcategory(prod.subcategory || "")
       setIsFeatured(prod.is_featured || false)
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error desconocido")
@@ -190,8 +174,10 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const loadBrandsData = async () => {
     try {
-      const brandsData = await loadBrands()
-      setBrands(brandsData)
+      const { data, error } = await supabase.from("brands").select("*").order("name")
+
+      if (error) throw error
+      setBrands(data || [])
     } catch (error) {
       console.error("Error cargando marcas:", error)
     }
@@ -214,18 +200,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
       const { data } = supabase.storage.from("banners").getPublicUrl(filePath)
 
-      // Add to product_images table
       const { error: insertError } = await supabase.from("product_images").insert({
         product_id: Number.parseInt(params.id),
         image_url: data.publicUrl,
         alt_text: customName || product?.name || "Imagen del producto",
         sort_order: productImages.length,
-        is_primary: productImages.length === 0, // First image is primary
+        is_primary: productImages.length === 0,
       })
 
       if (insertError) throw insertError
 
-      // Reload images
       await loadProductImages()
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error al subir imagen")
@@ -248,10 +232,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const setPrimaryImage = async (imageId: number) => {
     try {
-      // First, set all images as non-primary
       await supabase.from("product_images").update({ is_primary: false }).eq("product_id", params.id)
-
-      // Then set the selected image as primary
       const { error } = await supabase.from("product_images").update({ is_primary: true }).eq("id", imageId)
 
       if (error) throw error
@@ -269,10 +250,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSaving(true)
       setError(null)
 
-      const categoryString = [selectedGender, selectedCategory, selectedSubcategory, selectedSubSubcategory]
-        .filter(Boolean)
-        .join("-")
-
       const response = await fetch(`/api/admin/products/${params.id}`, {
         method: "PATCH",
         headers: {
@@ -280,14 +257,17 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         },
         body: JSON.stringify({
           custom_name: customName,
-          local_description: customDescription || null,
-          local_price: customPrice ? Number.parseFloat(customPrice) : null,
-          local_images: customImage ? [customImage] : [],
+          custom_description: customDescription,
+          price: customPrice ? Number.parseFloat(customPrice) : product.price,
           is_featured: isFeatured,
           brand: selectedBrand,
-          category: categoryString,
+          gender: selectedGender,
+          category: selectedCategory,
+          subcategory: selectedSubcategory,
           sale_price: isOnSale && salePrice ? Number.parseFloat(salePrice) : null,
           discount_percentage: isOnSale && discountPercentage ? Number.parseInt(discountPercentage) : null,
+          precio_zureo: product.precio_zureo || product.price,
+          categoria_zureo: product.categoria_zureo || product.category,
         }),
       })
 
@@ -301,38 +281,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     } finally {
       setSaving(false)
     }
-  }
-
-  const zureoData = product?.zureo_data
-    ? typeof product.zureo_data === "string"
-      ? JSON.parse(product.zureo_data)
-      : product.zureo_data
-    : null
-  const originalProduct = zureoData?.originalProduct
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Cargando producto...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!product) {
-    return (
-      <div className="text-center py-8">
-        <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-semibold mb-2">Producto no encontrado</h2>
-        <p className="text-muted-foreground mb-4">El producto que buscas no existe o no está disponible.</p>
-        <Button onClick={() => router.push("/admin/productos")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver a productos
-        </Button>
-      </div>
-    )
   }
 
   return (
@@ -371,27 +319,35 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           <CardContent className="space-y-4">
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Código</Label>
-              <p className="font-mono">{product.zureo_code}</p>
+              <p className="font-mono">{product?.zureo_code}</p>
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Nombre Original</Label>
-              <p>{originalProduct?.nombre || product.name}</p>
+              <p>{product?.name}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-sm font-medium text-muted-foreground">Precio Zureo</Label>
-                <p className="text-lg font-semibold">${originalProduct?.precio || product.price}</p>
+                <p className="text-lg font-semibold">${product?.precio_zureo || product?.price}</p>
               </div>
               <div>
-                <Label className="text-sm font-medium text-muted-foreground">Stock</Label>
-                <Badge
-                  variant={
-                    product.stock_quantity > 5 ? "default" : product.stock_quantity > 0 ? "secondary" : "destructive"
-                  }
-                >
-                  {product.stock_quantity} unidades
-                </Badge>
+                <Label className="text-sm font-medium text-muted-foreground">Categoría Zureo</Label>
+                <p className="text-sm">{product?.categoria_zureo || product?.category}</p>
               </div>
+            </div>
+            <div>
+              <Label className="text-sm font-medium text-muted-foreground">Stock</Label>
+              <Badge
+                variant={
+                  (product?.stock_quantity || 0) > 5
+                    ? "default"
+                    : (product?.stock_quantity || 0) > 0
+                      ? "secondary"
+                      : "destructive"
+                }
+              >
+                {product?.stock_quantity || 0} unidades
+              </Badge>
             </div>
           </CardContent>
         </Card>
@@ -428,7 +384,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 id="custom-price"
                 type="number"
                 step="0.01"
-                placeholder={`Precio actual: $${product.price}`}
+                placeholder={`Precio actual: $${product?.price || 0}`}
                 value={customPrice}
                 onChange={(e) => setCustomPrice(e.target.value)}
               />
@@ -452,65 +408,63 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               </div>
 
               <div>
-                <Label htmlFor="category">Categoría</Label>
+                <Label htmlFor="category">Categoría Principal</Label>
                 <Select
                   value={selectedCategory}
                   onValueChange={(value) => {
                     setSelectedCategory(value)
-                    setSelectedSubcategory("") // Reset subcategory when category changes
-                    setSelectedSubSubcategory("") // Reset sub-subcategory when category changes
+                    setSelectedSubcategory("")
+                    setSelectedSubSubcategory("")
                   }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar categoría" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categoryOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                    {getMainCategories().map((category) => (
+                      <SelectItem key={category.id} value={category.slug}>
+                        {category.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              {selectedCategory &&
-                selectedCategory !== "marca" &&
-                subcategoryOptions[selectedCategory as keyof typeof subcategoryOptions] && (
-                  <div>
-                    <Label htmlFor="subcategory">Subcategoría</Label>
-                    <Select
-                      value={selectedSubcategory}
-                      onValueChange={(value) => {
-                        setSelectedSubcategory(value)
-                        setSelectedSubSubcategory("") // Reset sub-subcategory when subcategory changes
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar subcategoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subcategoryOptions[selectedCategory as keyof typeof subcategoryOptions].map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-              {selectedSubcategory === "pantalones" && (
+              {selectedCategory && getSubcategories(selectedCategory).length > 0 && (
                 <div>
-                  <Label htmlFor="sub-subcategory">Tipo de Pantalón</Label>
-                  <Select value={selectedSubSubcategory} onValueChange={setSelectedSubSubcategory}>
+                  <Label htmlFor="subcategory">Subcategoría</Label>
+                  <Select
+                    value={selectedSubcategory}
+                    onValueChange={(value) => {
+                      setSelectedSubcategory(value)
+                      setSelectedSubSubcategory("")
+                    }}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo de pantalón" />
+                      <SelectValue placeholder="Seleccionar subcategoría" />
                     </SelectTrigger>
                     <SelectContent>
-                      {subSubcategoryOptions.pantalones.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
+                      {getSubcategories(selectedCategory).map((subcategory) => (
+                        <SelectItem key={subcategory.id} value={subcategory.slug}>
+                          {subcategory.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {selectedSubcategory && getSubSubcategories(selectedSubcategory).length > 0 && (
+                <div>
+                  <Label htmlFor="sub-subcategory">Tipo Específico</Label>
+                  <Select value={selectedSubSubcategory} onValueChange={setSelectedSubSubcategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar tipo específico" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getSubSubcategories(selectedSubcategory).map((subSubcategory) => (
+                        <SelectItem key={subSubcategory.id} value={subSubcategory.slug}>
+                          {subSubcategory.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -585,12 +539,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* Current Images */}
             {productImages.length > 0 && (
               <div>
                 <Label className="text-sm font-medium mb-3 block">Imágenes actuales</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {productImages.map((image, index) => (
+                  {productImages.map((image) => (
                     <div key={image.id} className="relative group">
                       <div className="relative w-full h-32">
                         <Image
@@ -627,7 +580,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               </div>
             )}
 
-            {/* Upload New Image */}
             <div>
               <Label htmlFor="image-upload" className="cursor-pointer">
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
