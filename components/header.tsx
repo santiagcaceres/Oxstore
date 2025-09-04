@@ -36,10 +36,6 @@ export function Header() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
-  const [isBrandsOpen, setIsBrandsOpen] = useState(false)
-  const [isMujerOpen, setIsMujerOpen] = useState(false)
-  const [isHombreOpen, setIsHombreOpen] = useState(false)
-  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
   const { state } = useCart()
 
   useEffect(() => {
@@ -111,20 +107,6 @@ export function Header() {
     return subcategories.filter((subcat) => subcat.parent_subcategory_id === subcategoryId)
   }
 
-  const handleMouseEnter = (setter: (value: boolean) => void) => {
-    if (hoverTimeout) {
-      clearTimeout(hoverTimeout)
-    }
-    setter(true)
-  }
-
-  const handleMouseLeave = (setter: (value: boolean) => void) => {
-    const timeout = setTimeout(() => {
-      setter(false)
-    }, 800) // Increased hover delay from 300ms to 800ms for better user experience
-    setHoverTimeout(timeout)
-  }
-
   return (
     <header className="sticky top-0 z-[100] w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4">
@@ -178,194 +160,175 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <div
-              className="relative"
-              onMouseEnter={() => handleMouseEnter(setIsMujerOpen)}
-              onMouseLeave={() => handleMouseLeave(setIsMujerOpen)}
-            >
+            <div className="relative group">
               <Link
                 href="/categoria/mujer"
                 className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1"
               >
                 MUJER
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
               </Link>
 
-              {isMujerOpen && (
-                <div className="absolute top-full left-0 mt-2 w-96 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[130]">
-                  <div className="p-6">
-                    <div className="grid grid-cols-3 gap-6">
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 text-primary">VESTIMENTA</h3>
-                        <div className="space-y-2">
-                          {getSubcategoriesForCategory("vestimenta").map((subcat) => (
-                            <div key={subcat.id}>
-                              <Link
-                                href={`/categoria/mujer/vestimenta/${subcat.slug}`}
-                                className="block text-sm hover:text-primary transition-colors"
-                              >
-                                {subcat.name}
-                              </Link>
-                              {subcat.slug === "pantalones" && (
-                                <div className="ml-3 mt-1 space-y-1">
-                                  {getSubSubcategories(subcat.id).map((subSubcat) => (
-                                    <Link
-                                      key={subSubcat.id}
-                                      href={`/categoria/mujer/vestimenta/pantalones/${subSubcat.slug}`}
-                                      className="block text-xs text-muted-foreground hover:text-primary transition-colors"
-                                    >
-                                      {subSubcat.name}
-                                    </Link>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 text-primary">ACCESORIOS</h3>
-                        <div className="space-y-2">
-                          {getSubcategoriesForCategory("accesorios").map((subcat) => (
+              <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-[130]">
+                <div className="p-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-semibold text-sm mb-3 text-primary">VESTIMENTA</h3>
+                      <div className="space-y-2">
+                        {getSubcategoriesForCategory("vestimenta").map((subcat) => (
+                          <div key={subcat.id}>
                             <Link
-                              key={subcat.id}
-                              href={`/categoria/mujer/accesorios/${subcat.slug}`}
+                              href={`/categoria/mujer/vestimenta/${subcat.slug}`}
                               className="block text-sm hover:text-primary transition-colors"
                             >
                               {subcat.name}
                             </Link>
-                          ))}
-                        </div>
+                            {subcat.slug === "pantalones" && (
+                              <div className="ml-3 mt-1 space-y-1">
+                                {getSubSubcategories(subcat.id).map((subSubcat) => (
+                                  <Link
+                                    key={subSubcat.id}
+                                    href={`/categoria/mujer/vestimenta/pantalones/${subSubcat.slug}`}
+                                    className="block text-xs text-muted-foreground hover:text-primary transition-colors"
+                                  >
+                                    {subSubcat.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 text-primary">CALZADO</h3>
-                        <div className="space-y-2">
-                          {getSubcategoriesForCategory("calzado").map((subcat) => (
-                            <Link
-                              key={subcat.id}
-                              href={`/categoria/mujer/calzado/${subcat.slug}`}
-                              className="block text-sm hover:text-primary transition-colors"
-                            >
-                              {subcat.name}
-                            </Link>
-                          ))}
-                        </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm mb-3 text-primary">ACCESORIOS</h3>
+                      <div className="space-y-2">
+                        {getSubcategoriesForCategory("accesorios").map((subcat) => (
+                          <Link
+                            key={subcat.id}
+                            href={`/categoria/mujer/accesorios/${subcat.slug}`}
+                            className="block text-sm hover:text-primary transition-colors"
+                          >
+                            {subcat.name}
+                          </Link>
+                        ))}
+                      </div>
+                      <h3 className="font-semibold text-sm mb-3 mt-6 text-primary">CALZADO</h3>
+                      <div className="space-y-2">
+                        {getSubcategoriesForCategory("calzado").map((subcat) => (
+                          <Link
+                            key={subcat.id}
+                            href={`/categoria/mujer/calzado/${subcat.slug}`}
+                            className="block text-sm hover:text-primary transition-colors"
+                          >
+                            {subcat.name}
+                          </Link>
+                        ))}
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
-            <div
-              className="relative"
-              onMouseEnter={() => handleMouseEnter(setIsHombreOpen)}
-              onMouseLeave={() => handleMouseLeave(setIsHombreOpen)}
-            >
+            <div className="relative group">
               <Link
                 href="/categoria/hombre"
                 className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1"
               >
                 HOMBRE
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
               </Link>
 
-              {isHombreOpen && (
-                <div className="absolute top-full left-0 mt-2 w-96 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[130]">
-                  <div className="p-6">
-                    <div className="grid grid-cols-3 gap-6">
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 text-primary">VESTIMENTA</h3>
-                        <div className="space-y-2">
-                          {getSubcategoriesForCategory("vestimenta").map((subcat) => (
-                            <div key={subcat.id}>
-                              <Link
-                                href={`/categoria/hombre/vestimenta/${subcat.slug}`}
-                                className="block text-sm hover:text-primary transition-colors"
-                              >
-                                {subcat.name}
-                              </Link>
-                              {subcat.slug === "pantalones" && (
-                                <div className="ml-3 mt-1 space-y-1">
-                                  {getSubSubcategories(subcat.id).map((subSubcat) => (
-                                    <Link
-                                      key={subSubcat.id}
-                                      href={`/categoria/hombre/vestimenta/pantalones/${subSubcat.slug}`}
-                                      className="block text-xs text-muted-foreground hover:text-primary transition-colors"
-                                    >
-                                      {subSubcat.name}
-                                    </Link>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 text-primary">ACCESORIOS</h3>
-                        <div className="space-y-2">
-                          {getSubcategoriesForCategory("accesorios").map((subcat) => (
+              <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-[130]">
+                <div className="p-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-semibold text-sm mb-3 text-primary">VESTIMENTA</h3>
+                      <div className="space-y-2">
+                        {getSubcategoriesForCategory("vestimenta").map((subcat) => (
+                          <div key={subcat.id}>
                             <Link
-                              key={subcat.id}
-                              href={`/categoria/hombre/accesorios/${subcat.slug}`}
+                              href={`/categoria/hombre/vestimenta/${subcat.slug}`}
                               className="block text-sm hover:text-primary transition-colors"
                             >
                               {subcat.name}
                             </Link>
-                          ))}
-                        </div>
+                            {subcat.slug === "pantalones" && (
+                              <div className="ml-3 mt-1 space-y-1">
+                                {getSubSubcategories(subcat.id).map((subSubcat) => (
+                                  <Link
+                                    key={subSubcat.id}
+                                    href={`/categoria/hombre/vestimenta/pantalones/${subSubcat.slug}`}
+                                    className="block text-xs text-muted-foreground hover:text-primary transition-colors"
+                                  >
+                                    {subSubcat.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 text-primary">CALZADO</h3>
-                        <div className="space-y-2">
-                          {getSubcategoriesForCategory("calzado").map((subcat) => (
-                            <Link
-                              key={subcat.id}
-                              href={`/categoria/hombre/calzado/${subcat.slug}`}
-                              className="block text-sm hover:text-primary transition-colors"
-                            >
-                              {subcat.name}
-                            </Link>
-                          ))}
-                        </div>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm mb-3 text-primary">ACCESORIOS</h3>
+                      <div className="space-y-2">
+                        {getSubcategoriesForCategory("accesorios").map((subcat) => (
+                          <Link
+                            key={subcat.id}
+                            href={`/categoria/hombre/accesorios/${subcat.slug}`}
+                            className="block text-sm hover:text-primary transition-colors"
+                          >
+                            {subcat.name}
+                          </Link>
+                        ))}
+                      </div>
+                      <h3 className="font-semibold text-sm mb-3 mt-6 text-primary">CALZADO</h3>
+                      <div className="space-y-2">
+                        {getSubcategoriesForCategory("calzado").map((subcat) => (
+                          <Link
+                            key={subcat.id}
+                            href={`/categoria/hombre/calzado/${subcat.slug}`}
+                            className="block text-sm hover:text-primary transition-colors"
+                          >
+                            {subcat.name}
+                          </Link>
+                        ))}
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
-            <div
-              className="relative"
-              onMouseEnter={() => handleMouseEnter(setIsBrandsOpen)}
-              onMouseLeave={() => handleMouseLeave(setIsBrandsOpen)}
-            >
-              <button className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1">
+            <div className="relative group">
+              <Link
+                href="/marcas"
+                className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1"
+              >
                 MARCAS
-                <ChevronDown className="h-3 w-3" />
-              </button>
+                <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
+              </Link>
 
-              {isBrandsOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-background border rounded-lg shadow-lg animate-fade-in-up z-[130]">
-                  <div className="p-4 max-h-96 overflow-y-auto">
-                    <div className="grid grid-cols-2 gap-2">
-                      {brands.map((brand) => (
-                        <Link
-                          key={brand.id}
-                          href={`/marca/${brand.slug}`}
-                          className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
-                        >
-                          {brand.name}
-                        </Link>
-                      ))}
-                    </div>
-                    {brands.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-4">Cargando marcas...</p>
-                    )}
+              <div className="absolute top-full left-0 mt-2 w-64 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-[130]">
+                <div className="p-4 max-h-96 overflow-y-auto">
+                  <div className="grid grid-cols-2 gap-2">
+                    {brands.map((brand) => (
+                      <Link
+                        key={brand.id}
+                        href={`/marca/${brand.slug}`}
+                        className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
+                      >
+                        {brand.name}
+                      </Link>
+                    ))}
                   </div>
+                  {brands.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Cargando marcas...</p>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             <Link href="/nuevo" className="text-sm font-medium hover:text-primary transition-colors">
