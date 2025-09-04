@@ -49,6 +49,7 @@ export async function POST(request: Request) {
         quantity: item.quantity,
         price: Number.parseFloat(item.price),
         total: Number.parseFloat(item.price) * item.quantity,
+        product_image: item.image || item.image_url || "/placeholder.svg?height=100&width=100",
         created_at: new Date().toISOString(),
       }))
 
