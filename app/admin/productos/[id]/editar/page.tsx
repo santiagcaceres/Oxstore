@@ -109,11 +109,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   }
 
   useEffect(() => {
+    console.log("[v0] Edit product page loaded with params:", params)
     loadProduct()
     loadBrandsData()
     loadCategoriesData()
     loadProductImages()
-  }, [params.id])
+  }, [params])
 
   const loadCategoriesData = async () => {
     try {
@@ -144,14 +145,18 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const loadProduct = async () => {
     try {
       setLoading(true)
+      console.log("[v0] Loading product with ID:", params.id)
       const response = await fetch(`/api/admin/products/${params.id}`)
 
       if (!response.ok) {
+        console.error("[v0] Failed to load product:", response.status, response.statusText)
         throw new Error("Producto no encontrado")
       }
 
       const data = await response.json()
       const prod = data.product
+
+      console.log("[v0] Product loaded successfully:", prod)
 
       setProduct(prod)
       setCustomName(prod.custom_name || prod.name || "")

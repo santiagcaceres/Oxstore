@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic"
 
 export async function POST() {
   try {
-    console.log("[v0] Iniciando sincronización de productos")
+    console.log("[v0] Iniciando sincronización inteligente de productos")
 
     const supabase = await createClient()
 
@@ -94,7 +94,25 @@ export async function POST() {
 
     console.log(`[v0] Total de productos obtenidos: ${allProducts.length}`)
 
+    const { data: existingProducts, error: fetchError } = await supabase
+      .from("products_in_stock")
+      .select(
+        "zureo_id, name, description, price, stock_quantity, category, brand, image_url, is_featured, sale_price, discount_percentage, gender, subcategory",
+      )
+
+    if (fetchError) {
+      console.error("[v0] Error obteniendo productos existentes:", fetchError)
+      throw new Error("Error obteniendo productos existentes")
+    }
+
+    const existingProductsMap = new Map(existingProducts?.map((p) => [p.zureo_id, p]) || [])
+    console.log(`[v0] Productos existentes en BD: ${existingProductsMap.size}`)
+
+    const zureoProductIds = new Set<string>()
+
     let savedProducts = 0
+    let updatedProducts = 0
+    let newProducts = 0
     let productsWithStock = 0
 
     for (const product of allProducts) {
@@ -107,6 +125,8 @@ export async function POST() {
         }
 
         productsWithStock++
+        const zureoId = product.id?.toString()
+        zureoProductIds.add(zureoId)
 
         // Crear slug único
         const slug = `${product.id}-${
@@ -116,10 +136,42 @@ export async function POST() {
             .replace(/(^-|-$)/g, "") || "producto"
         }`
 
-        // Guardar en la tabla products_in_stock
-        const { error } = await supabase.from("products_in_stock").upsert(
-          {
-            zureo_id: product.id?.toString(),
+        const existingProduct = existingProductsMap.get(zureoId)
+
+        if (existingProduct) {
+          const { error } = await supabase
+            .from("products_in_stock")
+            .update({
+              // Solo actualizar campos que vienen de Zureo, preservar personalizaciones
+              stock_quantity: Number.parseInt(product.stock) || 0,
+              zureo_data: product,
+              last_sync_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              // Actualizar precio solo si no hay precio personalizado (sale_price)
+              ...(existingProduct.sale_price ? {} : { price: Number.parseFloat(product.price) || 0 }),
+              // Actualizar categoría solo si no hay categoría personalizada
+              ...(existingProduct.category && existingProduct.category !== "Sin categoría"
+                ? {}
+                : { category: product.category || "Sin categoría" }),
+              // Actualizar marca solo si no hay marca personalizada
+              ...(existingProduct.brand && existingProduct.brand !== "Sin marca"
+                ? {}
+                : { brand: product.brand || "Sin marca" }),
+              // Actualizar imagen solo si no hay imagen personalizada
+              ...(existingProduct.image_url && !existingProduct.image_url.includes("placeholder")
+                ? {}
+                : { image_url: product.image || "/placeholder.svg?height=300&width=300" }),
+            })
+            .eq("zureo_id", zureoId)
+
+          if (error) {
+            console.error(`[v0] Error actualizando producto ${product.id}:`, error)
+          } else {
+            updatedProducts++
+          }
+        } else {
+          const { error } = await supabase.from("products_in_stock").insert({
+            zureo_id: zureoId,
             zureo_code: product.codigo || product.code || product.id?.toString(),
             name: product.name || "Producto sin nombre",
             description: product.description || product.name || "Sin descripción",
@@ -133,22 +185,42 @@ export async function POST() {
             zureo_data: product,
             last_sync_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "zureo_id",
-          },
-        )
+          })
 
-        if (error) {
-          console.error(`[v0] Error guardando producto ${product.id}:`, error)
-        } else {
-          savedProducts++
-          if (savedProducts % 50 === 0) {
-            console.log(`[v0] ${savedProducts} productos guardados...`)
+          if (error) {
+            console.error(`[v0] Error insertando producto nuevo ${product.id}:`, error)
+          } else {
+            newProducts++
           }
+        }
+
+        savedProducts++
+        if (savedProducts % 50 === 0) {
+          console.log(`[v0] ${savedProducts} productos procesados...`)
         }
       } catch (error) {
         console.error(`[v0] Error procesando producto ${product.id}:`, error)
+      }
+    }
+
+    const productsToDelete = existingProducts?.filter((p) => !zureoProductIds.has(p.zureo_id)) || []
+    let deletedProducts = 0
+
+    if (productsToDelete.length > 0) {
+      console.log(`[v0] Eliminando ${productsToDelete.length} productos sin stock o inexistentes`)
+
+      const { error: deleteError } = await supabase
+        .from("products_in_stock")
+        .delete()
+        .in(
+          "zureo_id",
+          productsToDelete.map((p) => p.zureo_id),
+        )
+
+      if (deleteError) {
+        console.error("[v0] Error eliminando productos:", deleteError)
+      } else {
+        deletedProducts = productsToDelete.length
       }
     }
 
@@ -165,17 +237,24 @@ export async function POST() {
       },
     )
 
-    console.log(`[v0] ${savedProducts} productos con stock guardados en la base de datos`)
+    console.log(`[v0] Sincronización completada:`)
+    console.log(`[v0] - Productos nuevos: ${newProducts}`)
+    console.log(`[v0] - Productos actualizados: ${updatedProducts}`)
+    console.log(`[v0] - Productos eliminados: ${deletedProducts}`)
+    console.log(`[v0] - Total procesados: ${savedProducts}`)
 
     return NextResponse.json({
       success: true,
       totalProducts: allProducts.length,
       productsWithStock,
-      savedProducts,
+      newProducts,
+      updatedProducts,
+      deletedProducts,
+      totalProcessed: savedProducts,
       requests,
       timestamp: new Date().toISOString(),
       endpoint: `${baseUrl}/sdk/v1/product/all`,
-      sampleProducts: allProducts.slice(0, 3), // Solo los primeros 3 para no saturar la respuesta
+      sampleProducts: allProducts.slice(0, 3),
     })
   } catch (error) {
     console.error("[v0] Error en sincronización de productos:", error)

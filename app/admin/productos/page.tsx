@@ -302,7 +302,16 @@ export default function AdminProductsPage() {
                             </Link>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
-                            <Link href={`/admin/productos/${product.id}/editar`}>
+                            <Link
+                              href={`/admin/productos/${product.id}/editar`}
+                              onClick={() => {
+                                console.log("[v0] Navigating to edit product:", {
+                                  id: product.id,
+                                  name: product.name,
+                                  url: `/admin/productos/${product.id}/editar`,
+                                })
+                              }}
+                            >
                               <Edit className="mr-2 h-4 w-4" />
                               Editar imagen y descripción
                             </Link>
