@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   try {
     const publicKey = process.env.MERCADOPAGO_PUBLIC_KEY

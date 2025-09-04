@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { zureoAPI } from "@/lib/zureo-api"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   try {
     console.log("[v0] GET /api/zureo/products - Starting request")

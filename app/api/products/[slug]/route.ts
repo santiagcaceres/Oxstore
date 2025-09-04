@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: Request, { params }: { params: { slug: string } }) {
   try {
     console.log(`[v0] GET /api/products/${params.slug} - Starting request`)

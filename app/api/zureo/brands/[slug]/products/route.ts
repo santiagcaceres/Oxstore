@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
 import { zureoAPI } from "@/lib/zureo-api"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(request: Request, { params }: { params: { slug: string } }) {
   try {
     const { searchParams } = new URL(request.url)

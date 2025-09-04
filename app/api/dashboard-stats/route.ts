@@ -1,16 +1,25 @@
+export const dynamic = "force-dynamic"
+
 import { NextResponse } from "next/server"
-import { zureoAPI } from "@/lib/api"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET() {
   try {
-    const [products, rubros] = await Promise.all([zureoAPI.getAllProducts(), zureoAPI.getRubros()])
+    const supabase = await createClient()
 
-    const lowStockProducts = products.filter((p) => p.stock <= 5).length
-    const totalValue = products.reduce((sum, p) => sum + p.precio * p.stock, 0)
+    const { data: products } = await supabase
+      .from("products_in_stock")
+      .select("price, stock_quantity")
+      .gt("stock_quantity", 0)
+
+    const { data: categories } = await supabase.from("categories").select("id")
+
+    const lowStockProducts = products?.filter((p) => p.stock_quantity <= 5).length || 0
+    const totalValue = products?.reduce((sum, p) => sum + p.price * p.stock_quantity, 0) || 0
 
     return NextResponse.json({
-      totalProducts: products.length,
-      totalCategories: rubros.length,
+      totalProducts: products?.length || 0,
+      totalCategories: categories?.length || 0,
       lowStockProducts,
       totalValue,
       lastSync: new Date().toISOString(),
