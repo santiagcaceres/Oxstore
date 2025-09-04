@@ -24,6 +24,16 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     loadOrders()
+
+    const handleFocus = () => {
+      loadOrders()
+    }
+
+    window.addEventListener("focus", handleFocus)
+
+    return () => {
+      window.removeEventListener("focus", handleFocus)
+    }
   }, [])
 
   const loadOrders = async () => {

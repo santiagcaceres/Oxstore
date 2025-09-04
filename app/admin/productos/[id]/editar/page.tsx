@@ -211,6 +211,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
     try {
       setUploading(true)
+      setError(null) // Clear any previous errors
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
@@ -218,13 +219,19 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         const fileName = `${Date.now()}-${i}.${fileExt}`
         const filePath = `products/${fileName}`
 
+        console.log("[v0] Uploading file:", fileName) // Added logging
+
         const { error: uploadError } = await supabase.storage
           .from("product-images")
           .upload(filePath, file, { upsert: true })
 
-        if (uploadError) throw uploadError
+        if (uploadError) {
+          console.error("[v0] Upload error:", uploadError) // Added error logging
+          throw uploadError
+        }
 
         const { data } = supabase.storage.from("product-images").getPublicUrl(filePath)
+        console.log("[v0] Public URL:", data.publicUrl) // Added logging
 
         const { error: insertError } = await supabase.from("product_images").insert({
           product_id: Number.parseInt(params.id),
@@ -234,11 +241,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           is_primary: productImages.length === 0 && i === 0,
         })
 
-        if (insertError) throw insertError
+        if (insertError) {
+          console.error("[v0] Insert error:", insertError) // Added error logging
+          throw insertError
+        }
       }
 
       await loadProductImages()
+      console.log("[v0] Images uploaded successfully") // Added success logging
     } catch (error) {
+      console.error("[v0] Image upload error:", error) // Added comprehensive error logging
       setError(error instanceof Error ? error.message : "Error al subir imagen")
     } finally {
       setUploading(false)
@@ -288,13 +300,14 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
       const requestData = {
         custom_name: customName,
-        local_description: customDescription, // Changed from custom_description to local_description
-        local_price: customPrice ? Math.round(Number(customPrice)) : Math.round(product.price), // Changed from price to local_price
-        local_images: productImages.map((img) => img.image_url), // Added local_images array
+        local_description: customDescription,
+        local_price: customPrice ? Math.round(Number(customPrice)) : Math.round(product.price),
+        local_images: productImages.map((img) => img.image_url),
         is_featured: isFeatured,
         brand: selectedBrand,
         category: selectedCategory,
         subcategory: selectedSubcategory,
+        gender: selectedGender, // Added gender field that was missing
         sale_price: isOnSale && salePrice ? Number.parseFloat(salePrice) : null,
         discount_percentage: isOnSale && discountPercentage ? Number.parseInt(discountPercentage) : null,
       }
@@ -320,7 +333,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       const responseData = await response.json()
       console.log("[v0] Response data:", responseData)
 
-      await loadProduct()
+      await Promise.all([loadProduct(), loadProductImages()])
       setError(null)
 
       // Show success message briefly before redirecting
