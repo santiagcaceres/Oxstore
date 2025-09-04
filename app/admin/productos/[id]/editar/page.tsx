@@ -157,11 +157,28 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       const prod = data.product
 
       console.log("[v0] Product loaded successfully:", prod)
+      console.log("[v0] Zureo data:", prod.zureo_data)
+
+      let zureoPrice = prod.price || 0
+      if (prod.zureo_data) {
+        try {
+          const zureoData = typeof prod.zureo_data === "string" ? JSON.parse(prod.zureo_data) : prod.zureo_data
+          console.log("[v0] Parsed zureo data:", zureoData)
+
+          // Extract price from zureo_data and round it (no decimals)
+          if (zureoData.precio || zureoData.price) {
+            zureoPrice = Math.round(Number(zureoData.precio || zureoData.price))
+            console.log("[v0] Extracted and rounded zureo price:", zureoPrice)
+          }
+        } catch (error) {
+          console.error("[v0] Error parsing zureo_data:", error)
+        }
+      }
 
       setProduct(prod)
       setCustomName(prod.custom_name || prod.name || "")
       setCustomDescription(prod.custom_description || prod.description || "")
-      setCustomPrice(prod.price?.toString() || "")
+      setCustomPrice(zureoPrice.toString())
       setSalePrice(prod.sale_price?.toString() || "")
       setDiscountPercentage(prod.discount_percentage?.toString() || "")
       setIsOnSale(!!prod.sale_price || !!prod.discount_percentage)
@@ -269,33 +286,45 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSaving(true)
       setError(null)
 
+      const requestData = {
+        custom_name: customName,
+        custom_description: customDescription,
+        price: customPrice ? Math.round(Number(customPrice)) : Math.round(product.price), // Round to remove decimals
+        is_featured: isFeatured,
+        brand: selectedBrand,
+        gender: selectedGender,
+        category: selectedCategory,
+        subcategory: selectedSubcategory,
+        sale_price: isOnSale && salePrice ? Number.parseFloat(salePrice) : null,
+        discount_percentage: isOnSale && discountPercentage ? Number.parseInt(discountPercentage) : null,
+        precio_zureo: product.precio_zureo || product.price,
+        categoria_zureo: product.categoria_zureo || product.category,
+      }
+
+      console.log("[v0] Sending request data:", requestData)
+
       const response = await fetch(`/api/admin/products/${params.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          custom_name: customName,
-          custom_description: customDescription,
-          price: customPrice ? Number.parseFloat(customPrice) : product.price,
-          is_featured: isFeatured,
-          brand: selectedBrand,
-          gender: selectedGender,
-          category: selectedCategory,
-          subcategory: selectedSubcategory,
-          sale_price: isOnSale && salePrice ? Number.parseFloat(salePrice) : null,
-          discount_percentage: isOnSale && discountPercentage ? Number.parseInt(discountPercentage) : null,
-          precio_zureo: product.precio_zureo || product.price,
-          categoria_zureo: product.categoria_zureo || product.category,
-        }),
+        body: JSON.stringify(requestData),
       })
 
+      console.log("[v0] Response status:", response.status)
+
       if (!response.ok) {
-        throw new Error("Error al guardar cambios")
+        const errorData = await response.text()
+        console.error("[v0] Response error:", errorData)
+        throw new Error(`Error al guardar cambios: ${response.status}`)
       }
+
+      const responseData = await response.json()
+      console.log("[v0] Response data:", responseData)
 
       router.push("/admin/productos")
     } catch (error) {
+      console.error("[v0] Save error:", error)
       setError(error instanceof Error ? error.message : "Error desconocido")
     } finally {
       setSaving(false)
@@ -402,11 +431,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               <Input
                 id="custom-price"
                 type="number"
-                step="0.01"
-                placeholder={`Precio actual: $${product?.price || 0}`}
+                placeholder={`Precio desde Zureo: $${customPrice || product?.price || 0}`}
                 value={customPrice}
                 onChange={(e) => setCustomPrice(e.target.value)}
               />
+              <p className="text-xs text-muted-foreground mt-1">Precio extraído desde Zureo (sin decimales)</p>
             </div>
 
             <div className="space-y-4">

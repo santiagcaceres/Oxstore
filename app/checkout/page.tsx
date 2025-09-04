@@ -50,6 +50,7 @@ export default function CheckoutPage() {
 
     setIsProcessing(true)
     try {
+      console.log("[v0] Processing cash payment...")
       const supabase = createClient()
 
       // Generar número de orden único
@@ -58,6 +59,13 @@ export default function CheckoutPage() {
       // Calcular total con envío
       const shippingCost = shippingMethod === "delivery" ? 250 : 0
       const totalAmount = state.total + shippingCost
+
+      console.log("[v0] Order details:", {
+        orderNumber,
+        totalAmount,
+        shippingCost,
+        itemCount: state.items.length,
+      })
 
       // Crear el pedido
       const { data: order, error: orderError } = await supabase
@@ -82,11 +90,16 @@ export default function CheckoutPage() {
         .select()
         .single()
 
-      if (orderError) throw orderError
+      if (orderError) {
+        console.error("[v0] Error creating order:", orderError)
+        throw orderError
+      }
+
+      console.log("[v0] Order created successfully:", order.id)
 
       // Crear los items del pedido
       for (const item of state.items) {
-        await supabase.from("order_items").insert({
+        const { error: itemError } = await supabase.from("order_items").insert({
           order_id: order.id,
           product_id: item.id,
           product_name: item.name,
@@ -97,13 +110,19 @@ export default function CheckoutPage() {
           size: item.size,
           color: item.color,
         })
+
+        if (itemError) {
+          console.error("[v0] Error creating order item:", itemError)
+          throw itemError
+        }
       }
 
+      console.log("[v0] All order items created successfully")
       clearCart()
       router.push(`/checkout/exito?order_id=${order.id}`)
     } catch (error) {
-      console.error("Error creating cash order:", error)
-      alert("Error al procesar el pedido. Por favor intente nuevamente.")
+      console.error("[v0] Error creating cash order:", error)
+      alert(`Error al procesar el pedido: ${error.message || "Error desconocido"}. Por favor intente nuevamente.`)
     } finally {
       setIsProcessing(false)
     }
