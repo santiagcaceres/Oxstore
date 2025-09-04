@@ -189,31 +189,36 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const files = event.target.files
+    if (!files || files.length === 0) return
 
     try {
       setUploading(true)
 
-      const fileExt = file.name.split(".").pop()
-      const fileName = `${Date.now()}.${fileExt}`
-      const filePath = `products/${fileName}`
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const fileExt = file.name.split(".").pop()
+        const fileName = `${Date.now()}-${i}.${fileExt}`
+        const filePath = `products/${fileName}`
 
-      const { error: uploadError } = await supabase.storage.from("banners").upload(filePath, file, { upsert: true })
+        const { error: uploadError } = await supabase.storage
+          .from("product-images")
+          .upload(filePath, file, { upsert: true })
 
-      if (uploadError) throw uploadError
+        if (uploadError) throw uploadError
 
-      const { data } = supabase.storage.from("banners").getPublicUrl(filePath)
+        const { data } = supabase.storage.from("product-images").getPublicUrl(filePath)
 
-      const { error: insertError } = await supabase.from("product_images").insert({
-        product_id: Number.parseInt(params.id),
-        image_url: data.publicUrl,
-        alt_text: customName || product?.name || "Imagen del producto",
-        sort_order: productImages.length,
-        is_primary: productImages.length === 0,
-      })
+        const { error: insertError } = await supabase.from("product_images").insert({
+          product_id: Number.parseInt(params.id),
+          image_url: data.publicUrl,
+          alt_text: customName || product?.name || "Imagen del producto",
+          sort_order: productImages.length + i,
+          is_primary: productImages.length === 0 && i === 0,
+        })
 
-      if (insertError) throw insertError
+        if (insertError) throw insertError
+      }
 
       await loadProductImages()
     } catch (error) {
@@ -225,9 +230,18 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const removeImage = async (imageId: number) => {
     try {
+      const imageToDelete = productImages.find((img) => img.id === imageId)
+
       const { error } = await supabase.from("product_images").delete().eq("id", imageId)
 
       if (error) throw error
+
+      if (imageToDelete?.image_url) {
+        const path = imageToDelete.image_url.split("/").pop()
+        if (path) {
+          await supabase.storage.from("product-images").remove([`products/${path}`])
+        }
+      }
 
       await loadProductImages()
     } catch (error) {
@@ -592,12 +606,14 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                   <p className="text-sm text-muted-foreground">
                     {uploading ? "Subiendo imagen..." : "Haz clic para agregar nueva imagen"}
                   </p>
+                  <p className="text-xs text-muted-foreground mt-1">Puedes seleccionar múltiples archivos a la vez</p>
                 </div>
               </Label>
               <Input
                 id="image-upload"
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageUpload}
                 disabled={uploading}
                 className="hidden"
