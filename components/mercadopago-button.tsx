@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Wallet } from "@mercadopago/sdk-react"
+import { Wallet, initMercadoPago } from "@mercadopago/sdk-react"
 
 interface MercadoPagoButtonProps {
   items: Array<{
@@ -48,22 +48,27 @@ export function MercadoPagoButton({
         const response = await fetch("/api/mercadopago/init")
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
+          const errorText = await response.text()
+          console.error("[v0] Failed to get public key:", response.status, errorText)
+          throw new Error(`Failed to get public key: ${response.status}`)
         }
 
         const { publicKey } = await response.json()
         console.log("[v0] Public key received:", publicKey ? "✓" : "✗")
 
-        if (typeof window !== "undefined" && window.MercadoPago) {
-          window.MercadoPago.initialize(publicKey)
-          setSdkInitialized(true)
-          console.log("[v0] MercadoPago SDK initialized successfully")
-        } else {
-          throw new Error("MercadoPago SDK not loaded")
+        if (!publicKey) {
+          throw new Error("Public key is empty or undefined")
         }
+
+        initMercadoPago(publicKey, {
+          locale: "es-AR",
+        })
+
+        setSdkInitialized(true)
+        console.log("[v0] MercadoPago SDK initialized successfully")
       } catch (error) {
         console.error("[v0] Error initializing MercadoPago SDK:", error)
-        setError("Error al inicializar MercadoPago")
+        setError(`Error al inicializar MercadoPago: ${error instanceof Error ? error.message : "Unknown error"}`)
       }
     }
 
