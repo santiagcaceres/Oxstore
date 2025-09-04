@@ -288,17 +288,15 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
       const requestData = {
         custom_name: customName,
-        custom_description: customDescription,
-        price: customPrice ? Math.round(Number(customPrice)) : Math.round(product.price), // Round to remove decimals
+        local_description: customDescription, // Changed from custom_description to local_description
+        local_price: customPrice ? Math.round(Number(customPrice)) : Math.round(product.price), // Changed from price to local_price
+        local_images: productImages.map((img) => img.image_url), // Added local_images array
         is_featured: isFeatured,
         brand: selectedBrand,
-        gender: selectedGender,
         category: selectedCategory,
         subcategory: selectedSubcategory,
         sale_price: isOnSale && salePrice ? Number.parseFloat(salePrice) : null,
         discount_percentage: isOnSale && discountPercentage ? Number.parseInt(discountPercentage) : null,
-        precio_zureo: product.precio_zureo || product.price,
-        categoria_zureo: product.categoria_zureo || product.category,
       }
 
       console.log("[v0] Sending request data:", requestData)
@@ -322,7 +320,13 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       const responseData = await response.json()
       console.log("[v0] Response data:", responseData)
 
-      router.push("/admin/productos")
+      await loadProduct()
+      setError(null)
+
+      // Show success message briefly before redirecting
+      setTimeout(() => {
+        router.push("/admin/productos")
+      }, 1000)
     } catch (error) {
       console.error("[v0] Save error:", error)
       setError(error instanceof Error ? error.message : "Error desconocido")

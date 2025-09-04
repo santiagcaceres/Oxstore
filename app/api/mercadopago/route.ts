@@ -28,6 +28,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Customer information is required" }, { status: 400 })
     }
 
+    const invalidItems = items.filter((item: any) => {
+      const price = Number.parseFloat(item.price) || 0
+      return price <= 0
+    })
+
+    if (invalidItems.length > 0) {
+      console.error("[v0] Items with invalid prices:", invalidItems)
+      return NextResponse.json(
+        {
+          error: "Todos los productos deben tener un precio válido mayor a 0",
+          invalidItems: invalidItems.map((item: any) => ({ name: item.name, price: item.price })),
+        },
+        { status: 400 },
+      )
+    }
+
     const orderNumber = `ORD-${Date.now()}`
     const subtotal = items.reduce((sum: number, item: any) => sum + (item.price || 0) * (item.quantity || 1), 0)
     const totalAmount = subtotal + shippingCost
@@ -66,15 +82,21 @@ export async function POST(request: NextRequest) {
 
     console.log("[v0] Order created successfully:", order.id)
 
-    const orderItems = items.map((item: any) => ({
-      order_id: order.id,
-      product_id: item.id,
-      product_name: item.name || "Producto sin nombre",
-      product_image: item.image || "",
-      quantity: item.quantity || 1,
-      price: item.price || 0, // Usar 'price' en lugar de 'unit_price'
-      total: (item.price || 0) * (item.quantity || 1), // Usar 'total' en lugar de 'total_price'
-    }))
+    const orderItems = items.map((item: any) => {
+      const price = Number.parseFloat(item.price) || 0
+      const quantity = Number.parseInt(item.quantity) || 1
+
+      return {
+        order_id: order.id,
+        product_id: item.id,
+        product_name: item.name || "Producto sin nombre",
+        product_image: item.image || "",
+        quantity: quantity,
+        price: price, // Usar 'price' consistentemente
+        total_price: price * quantity, // Agregar total_price que existe en la DB
+        total: price * quantity, // Mantener total también
+      }
+    })
 
     console.log("[v0] Inserting order items:", orderItems)
 
@@ -96,7 +118,7 @@ export async function POST(request: NextRequest) {
       }
       return {
         title: item.name || "Producto",
-        unit_price: price,
+        unit_price: price, // unit_price es correcto para MercadoPago API
         quantity: Number.parseInt(item.quantity) || 1,
       }
     })

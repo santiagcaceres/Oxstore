@@ -43,16 +43,38 @@ export async function POST(request: Request) {
     console.log("[v0] Order created successfully:", order)
 
     if (body.items && body.items.length > 0) {
-      const orderItems = body.items.map((item: any) => ({
-        order_id: order.id,
-        product_id: item.id,
-        product_name: item.name || item.title || "Producto sin nombre", // Agregar product_name
-        quantity: item.quantity,
-        price: Number.parseFloat(item.price),
-        total: Number.parseFloat(item.price) * item.quantity,
-        product_image: item.image || item.image_url || "/placeholder.svg?height=100&width=100",
-        created_at: new Date().toISOString(), // Fixed 'toISOString' error
-      }))
+      const invalidItems = body.items.filter((item: any) => {
+        const price = Number.parseFloat(item.price) || 0
+        return price < 0 // Permitir 0 para productos gratuitos en efectivo
+      })
+
+      if (invalidItems.length > 0) {
+        console.error("[v0] Items with invalid prices:", invalidItems)
+        return NextResponse.json(
+          {
+            error: "Los productos no pueden tener precios negativos",
+            invalidItems: invalidItems.map((item: any) => ({ name: item.name, price: item.price })),
+          },
+          { status: 400 },
+        )
+      }
+
+      const orderItems = body.items.map((item: any) => {
+        const price = Number.parseFloat(item.price) || 0
+        const quantity = Number.parseInt(item.quantity) || 1
+
+        return {
+          order_id: order.id,
+          product_id: item.id,
+          product_name: item.name || item.title || "Producto sin nombre",
+          quantity: quantity,
+          price: price, // Usar 'price' consistentemente
+          total_price: price * quantity, // Agregar total_price que existe en la DB
+          total: price * quantity,
+          product_image: item.image || item.image_url || "/placeholder.svg?height=100&width=100",
+          created_at: new Date().toISOString(),
+        }
+      })
 
       console.log("[v0] Order items to insert:", orderItems)
 
