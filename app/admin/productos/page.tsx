@@ -7,15 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, MoreHorizontal, Edit, Eye, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
+import { Search, Edit, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase/client"
 
@@ -287,37 +280,12 @@ export default function AdminProductsPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/producto/${product.zureo_code}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver en tienda
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link
-                              href={`/admin/productos/${product.id}/editar`}
-                              onClick={() => {
-                                console.log("[v0] Navigating to edit product:", {
-                                  id: product.id,
-                                  name: product.name,
-                                  url: `/admin/productos/${product.id}/editar`,
-                                })
-                              }}
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar imagen y descripción
-                            </Link>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/admin/productos/${product.id}/editar`}>
+                          <Edit className="h-4 w-4 mr-1" />
+                          Editar
+                        </Link>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
