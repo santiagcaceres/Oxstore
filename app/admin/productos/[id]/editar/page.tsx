@@ -108,6 +108,27 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     return parent ? categories.filter((cat) => cat.parent_id === parent.id && cat.level === 3) : []
   }
 
+  const setPrimaryImage = async (imageId: number) => {
+    try {
+      const { error: updateError } = await supabase
+        .from("product_images")
+        .update({ is_primary: true })
+        .eq("id", imageId)
+
+      if (updateError) {
+        console.error("[v0] Database update error:", updateError)
+        throw new Error(`Error al marcar imagen como principal: ${updateError.message}`)
+      }
+
+      await loadProductImages()
+      console.log("[v0] Image marked as primary successfully")
+    } catch (error) {
+      console.error("[v0] Set primary image error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Error al marcar imagen como principal"
+      setError(errorMessage)
+    }
+  }
+
   useEffect(() => {
     console.log("[v0] Edit product page loaded with params:", params)
     loadProduct()
@@ -211,47 +232,75 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
     try {
       setUploading(true)
-      setError(null) // Clear any previous errors
+      setError(null)
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
-        const fileExt = file.name.split(".").pop()
-        const fileName = `${Date.now()}-${i}.${fileExt}`
+
+        if (!file.type.startsWith("image/")) {
+          throw new Error(`El archivo ${file.name} no es una imagen válida`)
+        }
+
+        const fileExt = file.name.split(".").pop()?.toLowerCase()
+        const fileName = `product-${params.id}-${Date.now()}-${i}.${fileExt}`
         const filePath = `products/${fileName}`
 
-        console.log("[v0] Uploading file:", fileName) // Added logging
+        console.log("[v0] Uploading file:", fileName, "Size:", file.size)
 
-        const { error: uploadError } = await supabase.storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from("product-images")
-          .upload(filePath, file, { upsert: true })
+          .upload(filePath, file, {
+            upsert: true,
+            contentType: file.type,
+          })
 
         if (uploadError) {
-          console.error("[v0] Upload error:", uploadError) // Added error logging
-          throw uploadError
+          console.error("[v0] Storage upload error:", uploadError)
+          throw new Error(`Error al subir ${file.name}: ${uploadError.message}`)
         }
 
-        const { data } = supabase.storage.from("product-images").getPublicUrl(filePath)
-        console.log("[v0] Public URL:", data.publicUrl) // Added logging
+        console.log("[v0] Upload successful:", uploadData)
 
-        const { error: insertError } = await supabase.from("product_images").insert({
-          product_id: Number.parseInt(params.id),
-          image_url: data.publicUrl,
+        const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(filePath)
+
+        if (!urlData?.publicUrl) {
+          throw new Error(`No se pudo obtener la URL pública para ${file.name}`)
+        }
+
+        console.log("[v0] Public URL obtained:", urlData.publicUrl)
+
+        const insertData = {
+          product_id: Number.parseInt(params.id, 10),
+          image_url: urlData.publicUrl,
           alt_text: customName || product?.name || "Imagen del producto",
-          sort_order: productImages.length + i,
+          sort_order: productImages.length + i + 1,
           is_primary: productImages.length === 0 && i === 0,
-        })
+        }
+
+        console.log("[v0] Inserting image data:", insertData)
+
+        const { data: insertResult, error: insertError } = await supabase
+          .from("product_images")
+          .insert(insertData)
+          .select()
 
         if (insertError) {
-          console.error("[v0] Insert error:", insertError) // Added error logging
-          throw insertError
+          console.error("[v0] Database insert error:", insertError)
+          await supabase.storage.from("product-images").remove([filePath])
+          throw new Error(`Error al guardar imagen en base de datos: ${insertError.message}`)
         }
+
+        console.log("[v0] Database insert successful:", insertResult)
       }
 
       await loadProductImages()
-      console.log("[v0] Images uploaded successfully") // Added success logging
+      console.log("[v0] All images uploaded and saved successfully")
+
+      event.target.value = ""
     } catch (error) {
-      console.error("[v0] Image upload error:", error) // Added comprehensive error logging
-      setError(error instanceof Error ? error.message : "Error al subir imagen")
+      console.error("[v0] Complete image upload error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido al subir imagen"
+      setError(errorMessage)
     } finally {
       setUploading(false)
     }
@@ -260,34 +309,45 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const removeImage = async (imageId: number) => {
     try {
       const imageToDelete = productImages.find((img) => img.id === imageId)
+      if (!imageToDelete) {
+        throw new Error("Imagen no encontrada")
+      }
 
-      const { error } = await supabase.from("product_images").delete().eq("id", imageId)
+      console.log("[v0] Removing image:", imageToDelete)
 
-      if (error) throw error
+      const { error: dbError } = await supabase.from("product_images").delete().eq("id", imageId)
 
-      if (imageToDelete?.image_url) {
-        const path = imageToDelete.image_url.split("/").pop()
-        if (path) {
-          await supabase.storage.from("product-images").remove([`products/${path}`])
+      if (dbError) {
+        console.error("[v0] Database delete error:", dbError)
+        throw new Error(`Error al eliminar imagen de la base de datos: ${dbError.message}`)
+      }
+
+      if (imageToDelete.image_url) {
+        try {
+          const urlParts = imageToDelete.image_url.split("/")
+          const fileName = urlParts[urlParts.length - 1]
+          const filePath = `products/${fileName}`
+
+          console.log("[v0] Removing from storage:", filePath)
+
+          const { error: storageError } = await supabase.storage.from("product-images").remove([filePath])
+
+          if (storageError) {
+            console.warn("[v0] Storage delete warning:", storageError)
+            // Don't throw error for storage deletion failures
+          }
+        } catch (storageError) {
+          console.warn("[v0] Storage cleanup failed:", storageError)
+          // Continue even if storage cleanup fails
         }
       }
 
       await loadProductImages()
+      console.log("[v0] Image removed successfully")
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Error al eliminar imagen")
-    }
-  }
-
-  const setPrimaryImage = async (imageId: number) => {
-    try {
-      await supabase.from("product_images").update({ is_primary: false }).eq("product_id", params.id)
-      const { error } = await supabase.from("product_images").update({ is_primary: true }).eq("id", imageId)
-
-      if (error) throw error
-
-      await loadProductImages()
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Error al establecer imagen principal")
+      console.error("[v0] Remove image error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Error al eliminar imagen"
+      setError(errorMessage)
     }
   }
 
