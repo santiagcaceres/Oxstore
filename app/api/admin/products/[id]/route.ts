@@ -40,6 +40,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     })
 
     const body = await request.json()
+    console.log("[v0] Received body for product update:", body)
+
     const {
       custom_name,
       local_description,
@@ -48,6 +50,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       is_featured,
       brand,
       category,
+      subcategory,
       sale_price,
       discount_percentage,
     } = body
@@ -61,10 +64,13 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (is_featured !== undefined) updateData.is_featured = is_featured
     if (brand !== undefined) updateData.brand = brand
     if (category !== undefined) updateData.category = category
+    if (subcategory !== undefined) updateData.subcategory = subcategory
     if (sale_price !== undefined) updateData.sale_price = sale_price
     if (discount_percentage !== undefined) updateData.discount_percentage = discount_percentage
 
     updateData.updated_at = new Date().toISOString()
+
+    console.log("[v0] Update data being sent to database:", updateData)
 
     const { data, error } = await supabase
       .from("products_in_stock")
@@ -77,6 +83,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       console.error("Error al actualizar producto:", error)
       return NextResponse.json({ error: "Error al actualizar producto" }, { status: 500 })
     }
+
+    console.log("[v0] Product updated successfully:", data)
 
     return NextResponse.json({ product: data })
   } catch (error) {
