@@ -121,7 +121,7 @@ export function Header() {
   const handleMouseLeave = (setter: (value: boolean) => void) => {
     const timeout = setTimeout(() => {
       setter(false)
-    }, 300)
+    }, 800) // Increased hover delay from 300ms to 800ms for better user experience
     setHoverTimeout(timeout)
   }
 

@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 
+export const dynamic = "force-dynamic"
+
 export async function GET() {
   try {
     console.log("[v0] Starting automatic products sync")
