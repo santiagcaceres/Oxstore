@@ -269,8 +269,25 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
         console.log("[v0] Public URL obtained:", urlData.publicUrl)
 
+        const productId = Number.parseInt(params.id, 10)
+        if (isNaN(productId)) {
+          throw new Error("ID de producto inválido")
+        }
+
+        // Verify product exists in products_in_stock before inserting image
+        const { data: productExists, error: checkError } = await supabase
+          .from("products_in_stock")
+          .select("id")
+          .eq("id", productId)
+          .single()
+
+        if (checkError || !productExists) {
+          console.error("[v0] Product not found in products_in_stock:", checkError)
+          throw new Error("El producto no existe en la base de datos")
+        }
+
         const insertData = {
-          product_id: Number.parseInt(params.id, 10),
+          product_id: productId,
           image_url: urlData.publicUrl,
           alt_text: customName || product?.name || "Imagen del producto",
           sort_order: productImages.length + i + 1,
@@ -286,6 +303,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
         if (insertError) {
           console.error("[v0] Database insert error:", insertError)
+          // Clean up uploaded file if database insert fails
           await supabase.storage.from("product-images").remove([filePath])
           throw new Error(`Error al guardar imagen en base de datos: ${insertError.message}`)
         }
