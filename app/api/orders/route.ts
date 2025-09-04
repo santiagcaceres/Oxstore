@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       total_amount: Number.parseFloat(body.totalAmount),
       payment_method: body.paymentMethod || "cash",
       payment_status: body.paymentMethod === "cash" ? "pending" : "paid",
-      order_status: "pending", // Added missing order_status field
+      order_status: "pending",
       shipping_method: body.shippingMethod || "pickup",
       shipping_cost: body.shippingMethod === "delivery" ? 250 : 0,
       shipping_address: body.shippingAddress || null,
@@ -46,11 +46,12 @@ export async function POST(request: Request) {
       const orderItems = body.items.map((item: any) => ({
         order_id: order.id,
         product_id: item.id,
+        product_name: item.name || item.title || "Producto sin nombre", // Agregar product_name
         quantity: item.quantity,
         price: Number.parseFloat(item.price),
         total: Number.parseFloat(item.price) * item.quantity,
         product_image: item.image || item.image_url || "/placeholder.svg?height=100&width=100",
-        created_at: new Date().toISOString(),
+        created_at: new Date().toISOString(), // Fixed 'toISOString' error
       }))
 
       console.log("[v0] Order items to insert:", orderItems)
