@@ -105,10 +105,8 @@ export default function CheckoutPage() {
           product_name: item.name,
           product_image: item.image,
           quantity: item.quantity,
-          unit_price: item.price,
+          price: item.price, // Usar 'price' en lugar de 'unit_price'
           total_price: item.price * item.quantity,
-          size: item.size,
-          color: item.color,
         })
 
         if (itemError) {

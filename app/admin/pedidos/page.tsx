@@ -145,8 +145,8 @@ export default function AdminOrdersPage() {
               <tr>
                 <td>${item.product_name || "Producto"}</td>
                 <td>${item.quantity}</td>
-                <td>$${item.unit_price}</td>
-                <td>$${item.total_price}</td>
+                <td>$${item.price}</td>
+                <td>$${item.total_price || item.total}</td>
               </tr>
             `,
                 )
@@ -331,10 +331,12 @@ export default function AdminOrdersPage() {
                   )}
 
                   <div className="flex items-center space-x-2">
-                    <Button size="sm" variant="outline">
-                      <Eye className="h-4 w-4 mr-2" />
-                      Ver Detalles
-                    </Button>
+                    <Link href={`/admin/pedidos/${order.id}`}>
+                      <Button size="sm" variant="outline">
+                        <Eye className="h-4 w-4 mr-2" />
+                        Ver Detalles
+                      </Button>
+                    </Link>
                     <Button size="sm" variant="outline" onClick={() => generateInvoice(order)}>
                       <Download className="h-4 w-4 mr-2" />
                       Factura

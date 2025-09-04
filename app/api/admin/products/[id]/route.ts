@@ -53,6 +53,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       subcategory,
       sale_price,
       discount_percentage,
+      gender,
     } = body
 
     const updateData: any = {}
@@ -67,6 +68,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (subcategory !== undefined) updateData.subcategory = subcategory
     if (sale_price !== undefined) updateData.sale_price = sale_price
     if (discount_percentage !== undefined) updateData.discount_percentage = discount_percentage
+    if (gender !== undefined) updateData.gender = gender
 
     updateData.updated_at = new Date().toISOString()
 
@@ -85,6 +87,29 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     }
 
     console.log("[v0] Product updated successfully:", data)
+
+    if (local_images && Array.isArray(local_images) && local_images.length > 0) {
+      // Eliminar imágenes existentes
+      await supabase.from("product_images").delete().eq("product_id", params.id)
+
+      // Insertar nuevas imágenes
+      const imageInserts = local_images.map((imageUrl: string, index: number) => ({
+        product_id: Number.parseInt(params.id),
+        image_url: imageUrl,
+        sort_order: index,
+        is_primary: index === 0, // La primera imagen es la principal
+        alt_text: data.name || "Imagen del producto",
+      }))
+
+      const { error: imagesError } = await supabase.from("product_images").insert(imageInserts)
+
+      if (imagesError) {
+        console.error("Error al actualizar imágenes:", imagesError)
+        // No fallar la actualización del producto por errores de imágenes
+      } else {
+        console.log("[v0] Product images updated successfully")
+      }
+    }
 
     return NextResponse.json({ product: data })
   } catch (error) {
