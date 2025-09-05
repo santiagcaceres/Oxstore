@@ -41,6 +41,7 @@ export function Header() {
   useEffect(() => {
     const fetchBrands = async () => {
       try {
+        console.log("[v0] Fetching brands from database...")
         const supabase = createBrowserClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -49,12 +50,13 @@ export function Header() {
         const { data, error } = await supabase.from("brands").select("id, name, slug").order("name")
 
         if (error) {
-          console.error("Error fetching brands:", error)
+          console.error("[v0] Error fetching brands:", error)
         } else {
+          console.log("[v0] Successfully loaded brands:", data?.length || 0)
           setBrands(data || [])
         }
       } catch (error) {
-        console.error("Error fetching brands:", error)
+        console.error("[v0] Exception while fetching brands:", error)
       }
     }
 

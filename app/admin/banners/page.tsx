@@ -82,6 +82,8 @@ export default function AdminBannersPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [editingBanner, setEditingBanner] = useState<Banner | null>(null)
   const [linkUrl, setLinkUrl] = useState("")
+  const [title, setTitle] = useState("")
+  const [subtitle, setSubtitle] = useState("")
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
@@ -134,6 +136,8 @@ export default function AdminBannersPage() {
   const openEditDialog = (banner: Banner) => {
     setEditingBanner(banner)
     setLinkUrl(banner.link_url || "")
+    setTitle(banner.title || "")
+    setSubtitle(banner.subtitle || "")
   }
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,6 +194,36 @@ export default function AdminBannersPage() {
     }
   }
 
+  const updateBannerTitles = async () => {
+    if (!editingBanner) return
+
+    try {
+      const { error } = await supabase
+        .from("banners")
+        .update({
+          title: title,
+          subtitle: subtitle,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingBanner.id)
+
+      if (!error) {
+        setBanners((prev) =>
+          prev.map((banner) =>
+            banner.id === editingBanner.id ? { ...banner, title: title, subtitle: subtitle } : banner,
+          ),
+        )
+        alert("Títulos actualizados correctamente!")
+      } else {
+        console.error("Error updating banner titles:", error)
+        alert("Error actualizando títulos")
+      }
+    } catch (error) {
+      console.error("Error updating banner titles:", error)
+      alert("Error actualizando títulos")
+    }
+  }
+
   const updateBannerLink = async () => {
     if (!editingBanner) return
 
@@ -198,24 +232,32 @@ export default function AdminBannersPage() {
         .from("banners")
         .update({
           link_url: linkUrl,
+          title: title,
+          subtitle: subtitle,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingBanner.id)
 
       if (!error) {
         setBanners((prev) =>
-          prev.map((banner) => (banner.id === editingBanner.id ? { ...banner, link_url: linkUrl } : banner)),
+          prev.map((banner) =>
+            banner.id === editingBanner.id
+              ? { ...banner, link_url: linkUrl, title: title, subtitle: subtitle }
+              : banner,
+          ),
         )
         setEditingBanner(null)
         setLinkUrl("")
-        alert("Enlace actualizado correctamente!")
+        setTitle("")
+        setSubtitle("")
+        alert("Banner actualizado correctamente!")
       } else {
-        console.error("Error updating banner link:", error)
-        alert("Error actualizando enlace")
+        console.error("Error updating banner:", error)
+        alert("Error actualizando banner")
       }
     } catch (error) {
-      console.error("Error updating banner link:", error)
-      alert("Error actualizando enlace")
+      console.error("Error updating banner:", error)
+      alert("Error actualizando banner")
     }
   }
 
@@ -420,6 +462,33 @@ export default function AdminBannersPage() {
                               </DialogDescription>
                             </DialogHeader>
                             <div className="grid gap-6 py-4">
+                              <div className="space-y-4">
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <Label htmlFor="banner-title" className="text-right">
+                                    Título
+                                  </Label>
+                                  <Input
+                                    id="banner-title"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="col-span-3"
+                                    placeholder="Título del banner"
+                                  />
+                                </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <Label htmlFor="banner-subtitle" className="text-right">
+                                    Subtítulo
+                                  </Label>
+                                  <Input
+                                    id="banner-subtitle"
+                                    value={subtitle}
+                                    onChange={(e) => setSubtitle(e.target.value)}
+                                    className="col-span-3"
+                                    placeholder="Subtítulo del banner (opcional)"
+                                  />
+                                </div>
+                              </div>
+
                               <div>
                                 <Label className="text-sm font-medium mb-3 block">Imagen del Banner</Label>
                                 <div className="space-y-4">
@@ -450,24 +519,14 @@ export default function AdminBannersPage() {
                                   </div>
                                 </div>
                               </div>
-
-                              <div className="grid grid-cols-4 items-center gap-4">
-                                <Label htmlFor="link-url" className="text-right">
-                                  Enlace URL
-                                </Label>
-                                <Input
-                                  id="link-url"
-                                  value={linkUrl}
-                                  onChange={(e) => setLinkUrl(e.target.value)}
-                                  className="col-span-3"
-                                  placeholder="/categoria/mujer"
-                                />
-                              </div>
                             </div>
                             <DialogFooter>
+                              <Button onClick={updateBannerTitles} variant="outline" disabled={uploading}>
+                                Guardar Títulos
+                              </Button>
                               <Button onClick={updateBannerLink} disabled={uploading}>
                                 <Upload className="h-4 w-4 mr-2" />
-                                Guardar Enlace
+                                Guardar Todo
                               </Button>
                             </DialogFooter>
                           </DialogContent>
