@@ -9,6 +9,8 @@ import type { Product } from "@/lib/database"
 
 interface ProductGridProps {
   category?: string
+  subcategory?: string
+  gender?: string
   featured?: boolean
   search?: string
   initialProducts?: Product[]
@@ -18,10 +20,14 @@ interface ProductGridProps {
   filterBrand?: string
   filterColor?: string
   filterSize?: string
+  isNew?: boolean
+  onSale?: boolean
 }
 
 export function ProductGrid({
   category,
+  subcategory,
+  gender,
   featured,
   search,
   initialProducts = [],
@@ -31,6 +37,8 @@ export function ProductGrid({
   filterBrand = "",
   filterColor = "",
   filterSize = "",
+  isNew = false,
+  onSale = false,
 }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [loading, setLoading] = useState(false)
@@ -42,6 +50,8 @@ export function ProductGrid({
     try {
       console.log("[v0] Loading products with params:", {
         category,
+        subcategory,
+        gender,
         featured,
         search,
         reset,
@@ -50,14 +60,23 @@ export function ProductGrid({
         filterBrand,
         filterColor,
         filterSize,
+        isNew,
+        onSale,
       })
 
       const supabase = createClient()
       let query = supabase.from("products_in_stock").select("*").gt("stock_quantity", 0).eq("is_active", true)
 
-      // Apply category filter
+      if (gender && gender !== "unisex") {
+        query = query.or(`gender.eq.${gender},gender.eq.unisex`)
+      }
+
       if (category) {
         query = query.eq("category", category)
+      }
+
+      if (subcategory) {
+        query = query.eq("subcategory", subcategory)
       }
 
       // Apply featured filter
@@ -65,16 +84,26 @@ export function ProductGrid({
         query = query.eq("is_featured", true)
       }
 
-      if (filterBrand) {
+      if (isNew) {
+        const twentyDaysAgo = new Date()
+        twentyDaysAgo.setDate(twentyDaysAgo.getDate() - 20)
+        query = query.gte("created_at", twentyDaysAgo.toISOString())
+      }
+
+      if (onSale) {
+        query = query.not("sale_price", "is", null).gt("discount_percentage", 0)
+      }
+
+      if (filterBrand && filterBrand !== "all-brands") {
         query = query.eq("brand", filterBrand)
       }
 
-      if (filterColor) {
-        query = query.ilike("description", `%${filterColor}%`)
+      if (filterColor && filterColor !== "all-colors") {
+        query = query.eq("color", filterColor)
       }
 
-      if (filterSize) {
-        query = query.ilike("description", `%${filterSize}%`)
+      if (filterSize && filterSize !== "all-sizes") {
+        query = query.eq("size", filterSize)
       }
 
       // Apply search filter
@@ -171,16 +200,33 @@ export function ProductGrid({
   useEffect(() => {
     console.log("[v0] useEffect triggered with:", {
       category,
+      subcategory,
+      gender,
       featured,
       search,
       sortBy,
       filterBrand,
       filterColor,
       filterSize,
+      isNew,
+      onSale,
     })
     setOffset(0)
     loadProducts(true)
-  }, [category, featured, search, limit, sortBy, filterBrand, filterColor, filterSize])
+  }, [
+    category,
+    subcategory,
+    gender,
+    featured,
+    search,
+    limit,
+    sortBy,
+    filterBrand,
+    filterColor,
+    filterSize,
+    isNew,
+    onSale,
+  ])
 
   const loadMore = () => {
     loadProducts(false)

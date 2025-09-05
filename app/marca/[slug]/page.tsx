@@ -104,7 +104,7 @@ export default function BrandPage({ params }: BrandPageProps) {
           </p>
         </div>
 
-        <ProductFilters onFiltersChange={handleFiltersChange} />
+        <ProductFilters onFiltersChange={handleFiltersChange} hideBrandFilter={true} />
 
         <ProductGrid
           products={products}

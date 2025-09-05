@@ -62,15 +62,16 @@ export async function POST(request: Request) {
       const orderItems = body.items.map((item: any) => {
         const price = Number.parseFloat(item.price) || 0
         const quantity = Number.parseInt(item.quantity) || 1
+        const totalCalculated = price * quantity
 
         return {
           order_id: order.id,
           product_id: item.id,
           product_name: item.name || item.title || "Producto sin nombre",
           quantity: quantity,
-          price: price, // Usar 'price' consistentemente
-          total_price: price * quantity, // Agregar total_price que existe en la DB
-          total: price * quantity,
+          price: price,
+          total_price: totalCalculated,
+          total: totalCalculated, // Asegurar que total nunca sea null
           product_image: item.image || item.image_url || "/placeholder.svg?height=100&width=100",
           created_at: new Date().toISOString(),
         }

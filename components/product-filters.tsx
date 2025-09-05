@@ -11,9 +11,10 @@ interface ProductFiltersProps {
     filterColor: string
     filterSize: string
   }) => void
+  hideBrandFilter?: boolean
 }
 
-export function ProductFilters({ onFiltersChange }: ProductFiltersProps) {
+export function ProductFilters({ onFiltersChange, hideBrandFilter = false }: ProductFiltersProps) {
   const [sortBy, setSortBy] = useState<string>("price-asc")
   const [filterBrand, setFilterBrand] = useState<string>("all-brands")
   const [filterColor, setFilterColor] = useState<string>("all-colors")
@@ -82,7 +83,7 @@ export function ProductFilters({ onFiltersChange }: ProductFiltersProps) {
 
   return (
     <div className="mb-8 p-6 bg-gradient-to-r from-muted/20 to-muted/10 rounded-xl border border-muted/30">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className={`grid grid-cols-2 gap-4 ${hideBrandFilter ? "md:grid-cols-4" : "md:grid-cols-5"}`}>
         <Select value={sortBy} onValueChange={(value) => handleFilterChange("sort", value)}>
           <SelectTrigger className="bg-background/80 border-muted/40 hover:border-primary/30 transition-colors">
             <SelectValue placeholder="Ordenar por" />
@@ -95,19 +96,21 @@ export function ProductFilters({ onFiltersChange }: ProductFiltersProps) {
           </SelectContent>
         </Select>
 
-        <Select value={filterBrand} onValueChange={(value) => handleFilterChange("brand", value)}>
-          <SelectTrigger className="bg-background/80 border-muted/40 hover:border-primary/30 transition-colors">
-            <SelectValue placeholder="Marca" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all-brands">Todas las marcas</SelectItem>
-            {brands.map((brand) => (
-              <SelectItem key={brand} value={brand}>
-                {brand}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!hideBrandFilter && (
+          <Select value={filterBrand} onValueChange={(value) => handleFilterChange("brand", value)}>
+            <SelectTrigger className="bg-background/80 border-muted/40 hover:border-primary/30 transition-colors">
+              <SelectValue placeholder="Marca" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all-brands">Todas las marcas</SelectItem>
+              {brands.map((brand) => (
+                <SelectItem key={brand} value={brand}>
+                  {brand}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
         <Select value={filterColor} onValueChange={(value) => handleFilterChange("color", value)}>
           <SelectTrigger className="bg-background/80 border-muted/40 hover:border-primary/30 transition-colors">
