@@ -19,10 +19,8 @@ interface ProductCardProps {
 export function ProductCard({ product, className = "", index = 0 }: ProductCardProps) {
   const { addItem } = useCart()
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0]
-  const hasDiscount = product.compare_price && product.compare_price > product.price
-  const discountPercentage = hasDiscount
-    ? Math.round(((product.compare_price! - product.price) / product.compare_price!) * 100)
-    : 0
+  const hasDiscount = product.sale_price && product.sale_price < product.price && product.discount_percentage > 0
+  const discountPercentage = hasDiscount ? product.discount_percentage : 0
 
   const animationDelay = `stagger-${Math.min(index + 1, 6)}`
 
@@ -95,9 +93,9 @@ export function ProductCard({ product, className = "", index = 0 }: ProductCardP
         {/* Price */}
         <div className="flex items-center gap-2">
           <span className="font-bold text-lg transition-all duration-300 group-hover:text-primary">
-            ${product.price}
+            ${hasDiscount ? product.sale_price : product.price}
           </span>
-          {hasDiscount && <span className="text-sm text-muted-foreground line-through">${product.compare_price}</span>}
+          {hasDiscount && <span className="text-sm text-muted-foreground line-through">${product.price}</span>}
         </div>
 
         {/* Add to Cart Button */}
