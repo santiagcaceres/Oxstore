@@ -20,7 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Search, Edit, Upload } from "lucide-react"
+import { Search, Edit, Upload, Info } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 const supabase = createClient()
@@ -35,6 +35,45 @@ interface Banner {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+const getBannerSizeInfo = (position: string) => {
+  switch (position) {
+    case "hero":
+      return {
+        size: "1920x600px",
+        description: "Banner principal - Tamaño ideal: 1920x600px (Desktop) / 768x400px (Mobile)",
+        aspectRatio: "16:5",
+      }
+    case "category-jeans":
+    case "category-canguros":
+    case "category-remeras":
+    case "category-buzos":
+      return {
+        size: "800x400px",
+        description: "Banner de categoría - Tamaño ideal: 800x400px",
+        aspectRatio: "2:1",
+      }
+    case "gender-mujer":
+    case "gender-hombre":
+      return {
+        size: "600x800px",
+        description: "Banner de género - Tamaño ideal: 600x800px (vertical)",
+        aspectRatio: "3:4",
+      }
+    case "final":
+      return {
+        size: "1200x300px",
+        description: "Banner final - Tamaño ideal: 1200x300px",
+        aspectRatio: "4:1",
+      }
+    default:
+      return {
+        size: "800x400px",
+        description: "Banner genérico - Tamaño ideal: 800x400px",
+        aspectRatio: "2:1",
+      }
+  }
 }
 
 export default function AdminBannersPage() {
@@ -208,6 +247,55 @@ export default function AdminBannersPage() {
         </div>
       </div>
 
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-800">
+            <Info className="h-5 w-5" />
+            Guía de Tamaños Ideales
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-blue-700">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <strong>Banner Principal (Hero):</strong>
+              <br />
+              1920x600px (Desktop)
+              <br />
+              768x400px (Mobile)
+              <br />
+              Ratio: 16:5
+            </div>
+            <div>
+              <strong>Banners de Categoría:</strong>
+              <br />
+              800x400px
+              <br />
+              Ratio: 2:1
+              <br />
+              Formato horizontal
+            </div>
+            <div>
+              <strong>Banners de Género:</strong>
+              <br />
+              600x800px
+              <br />
+              Ratio: 3:4
+              <br />
+              Formato vertical
+            </div>
+            <div>
+              <strong>Banner Final:</strong>
+              <br />
+              1200x300px
+              <br />
+              Ratio: 4:1
+              <br />
+              Formato panorámico
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -266,111 +354,128 @@ export default function AdminBannersPage() {
                 <TableRow>
                   <TableHead>Banner</TableHead>
                   <TableHead>Posición</TableHead>
+                  <TableHead>Tamaño Ideal</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Enlace</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBanners.map((banner) => (
-                  <TableRow key={banner.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-20 h-12 relative rounded-lg overflow-hidden bg-muted">
-                          <Image
-                            src={banner.image_url || "/placeholder.svg"}
-                            alt={banner.title}
-                            fill
-                            className="object-cover"
+                {filteredBanners.map((banner) => {
+                  const sizeInfo = getBannerSizeInfo(banner.position)
+                  return (
+                    <TableRow key={banner.id}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-20 h-12 relative rounded-lg overflow-hidden bg-muted">
+                            <Image
+                              src={banner.image_url || "/placeholder.svg"}
+                              alt={banner.title}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-medium">{banner.title}</p>
+                            {banner.subtitle && (
+                              <p className="text-sm text-muted-foreground line-clamp-1">{banner.subtitle}</p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{getPositionBadge(banner.position)}</TableCell>
+                      <TableCell>
+                        <div className="text-xs">
+                          <div className="font-medium text-blue-600">{sizeInfo.size}</div>
+                          <div className="text-muted-foreground">Ratio {sizeInfo.aspectRatio}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={banner.is_active}
+                            onCheckedChange={(checked) => toggleBannerStatus(banner.id, checked)}
                           />
+                          <span className="text-sm">{banner.is_active ? "Activo" : "Inactivo"}</span>
                         </div>
-                        <div>
-                          <p className="font-medium">{banner.title}</p>
-                          {banner.subtitle && (
-                            <p className="text-sm text-muted-foreground line-clamp-1">{banner.subtitle}</p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getPositionBadge(banner.position)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          checked={banner.is_active}
-                          onCheckedChange={(checked) => toggleBannerStatus(banner.id, checked)}
-                        />
-                        <span className="text-sm">{banner.is_active ? "Activo" : "Inactivo"}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">{banner.link_url || "Sin enlace"}</code>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={() => openEditDialog(banner)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Editar Banner: {banner.title}</DialogTitle>
-                            <DialogDescription>
-                              Sube una imagen desde tu PC y configura el enlace de destino.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="grid gap-6 py-4">
-                            <div>
-                              <Label className="text-sm font-medium mb-3 block">Imagen del Banner</Label>
-                              <div className="space-y-4">
-                                <div className="w-full h-40 relative rounded-lg overflow-hidden bg-muted border-2 border-dashed">
-                                  <Image
-                                    src={editingBanner?.image_url || "/placeholder.svg"}
-                                    alt={editingBanner?.title || "Banner"}
-                                    fill
-                                    className="object-cover"
-                                  />
-                                </div>
-                                <div>
-                                  <Input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleImageUpload}
-                                    disabled={uploading}
-                                    className="cursor-pointer"
-                                  />
-                                  {uploading && (
-                                    <p className="text-sm text-muted-foreground mt-2">Subiendo imagen...</p>
-                                  )}
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-xs bg-muted px-2 py-1 rounded">{banner.link_url || "Sin enlace"}</code>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" onClick={() => openEditDialog(banner)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Editar
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Editar Banner: {banner.title}</DialogTitle>
+                              <DialogDescription>
+                                Sube una imagen desde tu PC y configura el enlace de destino.
+                                <br />
+                                <strong>Tamaño recomendado:</strong> {getBannerSizeInfo(banner.position).description}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-6 py-4">
+                              <div>
+                                <Label className="text-sm font-medium mb-3 block">Imagen del Banner</Label>
+                                <div className="space-y-4">
+                                  <div className="w-full h-40 relative rounded-lg overflow-hidden bg-muted border-2 border-dashed">
+                                    <Image
+                                      src={editingBanner?.image_url || "/placeholder.svg"}
+                                      alt={editingBanner?.title || "Banner"}
+                                      fill
+                                      className="object-cover"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={handleImageUpload}
+                                      disabled={uploading}
+                                      className="cursor-pointer"
+                                    />
+                                    {uploading && (
+                                      <p className="text-sm text-muted-foreground mt-2">Subiendo imagen...</p>
+                                    )}
+                                    {editingBanner && (
+                                      <p className="text-xs text-blue-600 mt-2">
+                                        💡 {getBannerSizeInfo(editingBanner.position).description}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            <div className="grid grid-cols-4 items-center gap-4">
-                              <Label htmlFor="link-url" className="text-right">
-                                Enlace URL
-                              </Label>
-                              <Input
-                                id="link-url"
-                                value={linkUrl}
-                                onChange={(e) => setLinkUrl(e.target.value)}
-                                className="col-span-3"
-                                placeholder="/categoria/mujer"
-                              />
+                              <div className="grid grid-cols-4 items-center gap-4">
+                                <Label htmlFor="link-url" className="text-right">
+                                  Enlace URL
+                                </Label>
+                                <Input
+                                  id="link-url"
+                                  value={linkUrl}
+                                  onChange={(e) => setLinkUrl(e.target.value)}
+                                  className="col-span-3"
+                                  placeholder="/categoria/mujer"
+                                />
+                              </div>
                             </div>
-                          </div>
-                          <DialogFooter>
-                            <Button onClick={updateBannerLink} disabled={uploading}>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Guardar Enlace
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            <DialogFooter>
+                              <Button onClick={updateBannerLink} disabled={uploading}>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Guardar Enlace
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           )}

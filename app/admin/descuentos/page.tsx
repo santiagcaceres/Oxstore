@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Trash2, Plus, Edit } from "lucide-react"
+import { Trash2, Plus, Edit, RefreshCw } from "lucide-react"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 
 interface DiscountRule {
@@ -71,23 +71,51 @@ export default function DescuentosPage() {
     try {
       setLoading(true)
 
+      console.log("[v0] Descuentos - Cargando datos...")
+
       // Cargar reglas de descuento
-      const { data: rules } = await supabase
+      const { data: rules, error: rulesError } = await supabase
         .from("discount_rules")
         .select("*")
         .order("created_at", { ascending: false })
 
+      if (rulesError) {
+        console.error("[v0] Error loading discount rules:", rulesError)
+      }
+
       // Cargar marcas
-      const { data: brandsData } = await supabase.from("brands").select("id, name").order("name")
+      const { data: brandsData, error: brandsError } = await supabase.from("brands").select("id, name").order("name")
+
+      if (brandsError) {
+        console.error("[v0] Error loading brands:", brandsError)
+      }
 
       // Cargar categorías
-      const { data: categoriesData } = await supabase.from("categories").select("id, name").order("name")
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from("categories")
+        .select("id, name")
+        .order("name")
+
+      if (categoriesError) {
+        console.error("[v0] Error loading categories:", categoriesError)
+      }
 
       // Cargar subcategorías
-      const { data: subcategoriesData } = await supabase
+      const { data: subcategoriesData, error: subcategoriesError } = await supabase
         .from("subcategories")
         .select("id, name, category_id")
         .order("name")
+
+      if (subcategoriesError) {
+        console.error("[v0] Error loading subcategories:", subcategoriesError)
+      }
+
+      console.log("[v0] Descuentos - Datos cargados:", {
+        rules: rules?.length || 0,
+        brands: brandsData?.length || 0,
+        categories: categoriesData?.length || 0,
+        subcategories: subcategoriesData?.length || 0,
+      })
 
       setDiscountRules(rules || [])
       setBrands(brandsData || [])
@@ -201,7 +229,17 @@ export default function DescuentosPage() {
   }
 
   if (loading) {
-    return <div className="p-6">Cargando...</div>
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+            <p className="text-lg font-medium">Cargando descuentos...</p>
+            <p className="text-muted-foreground">Obteniendo marcas, categorías y reglas de descuento</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

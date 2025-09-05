@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { DollarSign, Package, ShoppingCart, Users, Eye, RefreshCw } from "lucide-react"
+import { DollarSign, Package, ShoppingCart, Eye, RefreshCw } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 interface DashboardStats {
@@ -13,6 +13,9 @@ interface DashboardStats {
   productsWithStock: number
   totalValue: number
   featuredProducts: number
+  totalOrders: number
+  pendingOrders: number
+  totalRevenue: number
   topProducts: Array<{
     id: number
     name: string
@@ -28,6 +31,9 @@ export default function AdminDashboard() {
     productsWithStock: 0,
     totalValue: 0,
     featuredProducts: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+    totalRevenue: 0,
     topProducts: [],
   })
   const [loading, setLoading] = useState(true)
@@ -42,26 +48,41 @@ export default function AdminDashboard() {
       const supabase = createClient()
 
       const { data: products } = await supabase
-        .from("products")
+        .from("products_in_stock")
         .select("*")
         .order("stock_quantity", { ascending: false })
 
+      const { data: orders } = await supabase.from("orders").select("id, total_amount, status, created_at")
+
+      const { data: brands } = await supabase.from("brands").select("id, name")
+
+      console.log("[v0] Dashboard - Products loaded:", products?.length || 0)
+      console.log("[v0] Dashboard - Orders loaded:", orders?.length || 0)
+      console.log("[v0] Dashboard - Brands loaded:", brands?.length || 0)
+
       if (products) {
         const productsWithStock = products.filter((p) => p.stock_quantity > 0)
-        const totalValue = productsWithStock.reduce((sum, p) => sum + p.price * p.stock_quantity, 0)
+        const totalValue = productsWithStock.reduce((sum, p) => sum + (p.price || 0) * p.stock_quantity, 0)
         const featuredProducts = products.filter((p) => p.is_featured).length
+
+        const totalOrders = orders?.length || 0
+        const pendingOrders = orders?.filter((o) => o.status === "pending").length || 0
+        const totalRevenue = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0
 
         setStats({
           totalProducts: products.length,
           productsWithStock: productsWithStock.length,
           totalValue,
           featuredProducts,
+          totalOrders,
+          pendingOrders,
+          totalRevenue,
           topProducts: productsWithStock.slice(0, 3).map((p) => ({
             id: p.id,
-            name: p.name,
-            price: p.price,
+            name: p.name || "Producto sin nombre",
+            price: p.price || 0,
             stock_quantity: p.stock_quantity,
-            sales_count: 0, // No tenemos datos de ventas aún
+            sales_count: 0,
           })),
         })
       }
@@ -70,6 +91,20 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+            <p className="text-lg font-medium">Cargando dashboard...</p>
+            <p className="text-muted-foreground">Obteniendo datos de productos, órdenes y estadísticas</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -111,23 +146,23 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Productos Destacados</CardTitle>
+            <CardTitle className="text-sm font-medium">Órdenes Totales</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.featuredProducts}</div>
-            <div className="text-xs text-muted-foreground">Productos marcados como destacados</div>
+            <div className="text-2xl font-bold">{stats.totalOrders}</div>
+            <div className="text-xs text-muted-foreground">{stats.pendingOrders} pendientes</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sistema de Pagos</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">MercadoPago</div>
-            <div className="text-xs text-green-600">✓ Configurado y listo</div>
+            <div className="text-2xl font-bold text-green-600">${stats.totalRevenue.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground">Ingresos de todas las órdenes</div>
           </CardContent>
         </Card>
       </div>
