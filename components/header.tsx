@@ -39,6 +39,8 @@ export function Header() {
   const [categories, setCategories] = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [categoriesWithProducts, setCategoriesWithProducts] = useState<string[]>([])
+  const [brandsWithProducts, setBrandsWithProducts] = useState<Brand[]>([])
+  const [subcategoriesWithProducts, setSubcategoriesWithProducts] = useState<number[]>([])
   const { state } = useCart()
 
   useEffect(() => {
@@ -59,6 +61,21 @@ export function Header() {
         } else {
           console.log("[v0] Successfully loaded brands:", brandsData?.length || 0)
           setBrands(brandsData || [])
+
+          const brandsWithProductsData: Brand[] = []
+          for (const brand of brandsData || []) {
+            const { data: productCount } = await supabase
+              .from("products_in_stock")
+              .select("id", { count: "exact" })
+              .eq("brand", brand.name)
+              .limit(1)
+
+            if (productCount && productCount.length > 0) {
+              brandsWithProductsData.push(brand)
+            }
+          }
+          console.log("[v0] Brands with products:", brandsWithProductsData.length)
+          setBrandsWithProducts(brandsWithProductsData)
         }
 
         const { data: categoriesData, error: categoriesError } = await supabase
@@ -98,6 +115,21 @@ export function Header() {
 
         console.log("[v0] Categories with products:", categoriesWithProductsData)
         setCategoriesWithProducts(categoriesWithProductsData)
+
+        const subcategoriesWithProductsData: number[] = []
+        for (const subcategory of subcategoriesData || []) {
+          const { data: productCount } = await supabase
+            .from("products_in_stock")
+            .select("id", { count: "exact" })
+            .eq("subcategory", subcategory.name)
+            .limit(1)
+
+          if (productCount && productCount.length > 0) {
+            subcategoriesWithProductsData.push(subcategory.id)
+          }
+        }
+        console.log("[v0] Subcategories with products:", subcategoriesWithProductsData.length)
+        setSubcategoriesWithProducts(subcategoriesWithProductsData)
       } catch (error) {
         console.error("[v0] Error fetching data:", error)
       }
@@ -120,7 +152,7 @@ export function Header() {
       )
     }
 
-    return filteredSubcategories
+    return filteredSubcategories.filter((subcat) => subcategoriesWithProducts.includes(subcat.id))
   }
 
   const shouldShowCategory = (categorySlug: string) => {
@@ -149,7 +181,7 @@ export function Header() {
                   <div className="border-t pt-4">
                     <h3 className="text-lg font-medium mb-2">MARCAS</h3>
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {brands.map((brand) => (
+                      {brandsWithProducts.map((brand) => (
                         <Link
                           key={brand.id}
                           href={`/marca/${brand.slug}`}
@@ -189,23 +221,23 @@ export function Header() {
                 <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
               </Link>
 
-              <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-[130]">
+              <div className="absolute top-full left-0 mt-2 w-96 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-[130]">
                 <div className="p-6">
-                  <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-4">
                     {shouldShowCategory("vestimenta") && (
                       <div>
                         <Link
                           href="/categoria/mujer/vestimenta"
-                          className="font-semibold text-sm mb-3 text-primary hover:text-primary/80 transition-colors"
+                          className="font-semibold text-sm mb-3 text-primary hover:text-primary/80 transition-colors block"
                         >
                           VESTIMENTA
                         </Link>
-                        <div className="grid grid-cols-2 gap-2 mt-3">
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-1 mt-3">
                           {getSubcategoriesForCategory("vestimenta", "mujer").map((subcat) => (
                             <Link
                               key={subcat.id}
                               href={`/categoria/mujer/vestimenta/${subcat.slug}`}
-                              className="block text-sm hover:text-primary transition-colors py-1"
+                              className="block text-xs hover:text-primary transition-colors py-1 truncate"
                             >
                               {subcat.name}
                             </Link>
@@ -214,21 +246,21 @@ export function Header() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="flex gap-8">
                       {shouldShowCategory("accesorios") && (
-                        <div>
+                        <div className="flex-1">
                           <Link
                             href="/categoria/mujer/accesorios"
-                            className="font-semibold text-sm mb-3 text-primary hover:text-primary/80 transition-colors"
+                            className="font-semibold text-sm mb-3 text-primary hover:text-primary/80 transition-colors block"
                           >
                             ACCESORIOS
                           </Link>
-                          <div className="space-y-2 mt-3">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
                             {getSubcategoriesForCategory("accesorios").map((subcat) => (
                               <Link
                                 key={subcat.id}
                                 href={`/categoria/mujer/accesorios/${subcat.slug}`}
-                                className="block text-sm hover:text-primary transition-colors"
+                                className="block text-xs hover:text-primary transition-colors truncate"
                               >
                                 {subcat.name}
                               </Link>
@@ -238,10 +270,10 @@ export function Header() {
                       )}
 
                       {shouldShowCategory("calzado") && (
-                        <div>
+                        <div className="flex-1">
                           <Link
                             href="/categoria/mujer/calzado"
-                            className="font-semibold text-sm text-primary hover:text-primary/80 transition-colors"
+                            className="font-semibold text-sm text-primary hover:text-primary/80 transition-colors block"
                           >
                             CALZADO
                           </Link>
@@ -262,23 +294,23 @@ export function Header() {
                 <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
               </Link>
 
-              <div className="absolute top-full left-0 mt-2 w-80 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-[130]">
+              <div className="absolute top-full left-0 mt-2 w-96 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-[130]">
                 <div className="p-6">
-                  <div className="grid grid-cols-1 gap-6">
+                  <div className="space-y-4">
                     {shouldShowCategory("vestimenta") && (
                       <div>
                         <Link
                           href="/categoria/hombre/vestimenta"
-                          className="font-semibold text-sm mb-3 text-primary hover:text-primary/80 transition-colors"
+                          className="font-semibold text-sm mb-3 text-primary hover:text-primary/80 transition-colors block"
                         >
                           VESTIMENTA
                         </Link>
-                        <div className="grid grid-cols-2 gap-2 mt-3">
+                        <div className="grid grid-cols-3 gap-x-4 gap-y-1 mt-3">
                           {getSubcategoriesForCategory("vestimenta", "hombre").map((subcat) => (
                             <Link
                               key={subcat.id}
                               href={`/categoria/hombre/vestimenta/${subcat.slug}`}
-                              className="block text-sm hover:text-primary transition-colors py-1"
+                              className="block text-xs hover:text-primary transition-colors py-1 truncate"
                             >
                               {subcat.name}
                             </Link>
@@ -287,21 +319,21 @@ export function Header() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="flex gap-8">
                       {shouldShowCategory("accesorios") && (
-                        <div>
+                        <div className="flex-1">
                           <Link
                             href="/categoria/hombre/accesorios"
-                            className="font-semibold text-sm mb-3 text-primary hover:text-primary/80 transition-colors"
+                            className="font-semibold text-sm mb-3 text-primary hover:text-primary/80 transition-colors block"
                           >
                             ACCESORIOS
                           </Link>
-                          <div className="space-y-2 mt-3">
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
                             {getSubcategoriesForCategory("accesorios").map((subcat) => (
                               <Link
                                 key={subcat.id}
                                 href={`/categoria/hombre/accesorios/${subcat.slug}`}
-                                className="block text-sm hover:text-primary transition-colors"
+                                className="block text-xs hover:text-primary transition-colors truncate"
                               >
                                 {subcat.name}
                               </Link>
@@ -311,10 +343,10 @@ export function Header() {
                       )}
 
                       {shouldShowCategory("calzado") && (
-                        <div>
+                        <div className="flex-1">
                           <Link
                             href="/categoria/hombre/calzado"
-                            className="font-semibold text-sm text-primary hover:text-primary/80 transition-colors"
+                            className="font-semibold text-sm text-primary hover:text-primary/80 transition-colors block"
                           >
                             CALZADO
                           </Link>
@@ -327,18 +359,15 @@ export function Header() {
             </div>
 
             <div className="relative group">
-              <Link
-                href="/marcas"
-                className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1"
-              >
+              <span className="text-sm font-medium hover:text-primary transition-colors flex items-center gap-1 cursor-default">
                 MARCAS
                 <ChevronDown className="h-3 w-3 transition-transform group-hover:rotate-180" />
-              </Link>
+              </span>
 
               <div className="absolute top-full left-0 mt-2 w-64 bg-background border rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 ease-in-out z-[130]">
                 <div className="p-4 max-h-96 overflow-y-auto">
                   <div className="grid grid-cols-2 gap-2">
-                    {brands.map((brand) => (
+                    {brandsWithProducts.map((brand) => (
                       <Link
                         key={brand.id}
                         href={`/marca/${brand.slug}`}
@@ -348,8 +377,8 @@ export function Header() {
                       </Link>
                     ))}
                   </div>
-                  {brands.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">Cargando marcas...</p>
+                  {brandsWithProducts.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">No hay marcas disponibles</p>
                   )}
                 </div>
               </div>
@@ -377,19 +406,16 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex items-center space-x-4">
-            {/* Mobile Search */}
             <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsSearchOpen(!isSearchOpen)}>
               <Search className="h-5 w-5" />
             </Button>
 
-            {/* User Account */}
             <Button variant="ghost" size="icon" asChild>
               <Link href="/cuenta">
                 <User className="h-5 w-5" />
               </Link>
             </Button>
 
-            {/* Shopping Cart */}
             <Button variant="ghost" size="icon" asChild className="relative">
               <Link href="/carrito">
                 <ShoppingBag className="h-5 w-5" />
@@ -403,7 +429,6 @@ export function Header() {
           </div>
         </div>
 
-        {/* Mobile Search Bar */}
         {isSearchOpen && (
           <div className="lg:hidden py-4 border-t animate-fade-in-up">
             <div className="relative">

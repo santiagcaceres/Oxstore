@@ -74,36 +74,20 @@ export async function POST(request: NextRequest) {
 
     console.log(`[v0] Successfully synchronized ${data?.length || 0} products`)
 
-    // Sync brands
-    console.log("[v0] Starting brand synchronization...")
-    const zureoBrands = await zureoAPI.getBrands()
-    console.log(`[v0] Fetched ${zureoBrands.length} brands from Zureo`)
+    // Sync brands - DESHABILITADO
+    console.log("[v0] Brand synchronization disabled - brands are now fixed in database")
 
-    if (zureoBrands.length > 0) {
-      const transformedBrands = zureoBrands.map((brand) => ({
-        zureo_id: brand.id,
-        name: brand.nombre,
-        slug: brand.nombre
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/(^-|-$)/g, ""),
-        updated_at: new Date(brand.fecha_modificado),
-      }))
+    // Las marcas ahora son fijas y no se sincronizan desde ZUREO
+    const { data: existingBrands } = await supabase.from("brands").select("id").limit(1)
 
-      const { error: brandsError } = await supabase.from("brands").upsert(transformedBrands, { onConflict: "zureo_id" })
-
-      if (brandsError) {
-        console.error("[v0] Error syncing brands:", brandsError)
-      } else {
-        console.log(`[v0] Successfully synchronized ${zureoBrands.length} brands`)
-      }
-    }
+    const brandsCount = existingBrands?.length || 0
 
     return NextResponse.json({
       success: true,
       products_synced: data?.length || 0,
-      brands_synced: zureoBrands.length,
-      message: "Synchronization completed successfully",
+      brands_synced: 0, // Siempre 0 porque ya no se sincronizan
+      brands_status: "fixed", // Indicar que las marcas son fijas
+      message: "Product synchronization completed successfully. Brands are fixed and not synchronized.",
       api_info: {
         endpoint: process.env.ZUREO_API_URL || "https://api.zureo.com",
         company_id: process.env.ZUREO_COMPANY_ID || "1",

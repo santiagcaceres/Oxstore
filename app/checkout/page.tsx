@@ -99,14 +99,19 @@ export default function CheckoutPage() {
 
       // Crear los items del pedido
       for (const item of state.items) {
+        const itemPrice = Number.parseFloat(item.price) || 0
+        const itemQuantity = Number.parseInt(item.quantity) || 1
+        const itemTotal = itemPrice * itemQuantity
+
         const { error: itemError } = await supabase.from("order_items").insert({
           order_id: order.id,
           product_id: item.id,
           product_name: item.name,
           product_image: item.image,
-          quantity: item.quantity,
-          price: item.price, // Usar 'price' en lugar de 'unit_price'
-          total_price: item.price * item.quantity,
+          quantity: itemQuantity,
+          price: itemPrice,
+          total_price: itemTotal,
+          total: itemTotal, // Campo requerido por la constraint not-null
         })
 
         if (itemError) {
@@ -124,6 +129,21 @@ export default function CheckoutPage() {
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const handleTransferPayment = () => {
+    if (!isFormValid) return
+
+    // Guardar datos del pedido en localStorage para la página de transferencia
+    const orderData = {
+      items: state.items,
+      total: totalWithShipping,
+      customerInfo: formData,
+      shippingMethod,
+      shippingCost,
+    }
+    localStorage.setItem("transferOrderData", JSON.stringify(orderData))
+    router.push("/checkout/transferencia")
   }
 
   if (state.items.length === 0) {
@@ -298,6 +318,18 @@ export default function CheckoutPage() {
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <RadioGroupItem value="transfer" id="transfer" />
+                      <Label htmlFor="transfer" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          <div>
+                            <div className="font-medium">Transferencia Bancaria</div>
+                            <div className="text-sm text-muted-foreground">Pago por transferencia o depósito</div>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
                       <RadioGroupItem value="cash" id="cash" />
                       <Label htmlFor="cash" className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-2">
@@ -327,6 +359,10 @@ export default function CheckoutPage() {
                           onSuccess={handleMercadoPagoSuccess}
                           onError={handleMercadoPagoError}
                         />
+                      ) : paymentMethod === "transfer" ? (
+                        <Button onClick={handleTransferPayment} className="w-full" size="lg">
+                          Continuar con Transferencia
+                        </Button>
                       ) : (
                         <Button onClick={handleCashPayment} disabled={isProcessing} className="w-full" size="lg">
                           {isProcessing ? "Procesando..." : "Confirmar Pedido"}
