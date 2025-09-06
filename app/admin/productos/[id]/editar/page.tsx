@@ -217,12 +217,19 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const loadBrandsData = async () => {
     try {
+      console.log("[v0] Loading brands data...")
       const { data, error } = await supabase.from("brands").select("*").order("name")
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Error loading brands:", error)
+        throw error
+      }
+
+      console.log("[v0] Successfully loaded brands:", data?.length || 0)
+      console.log("[v0] Brands data:", data)
       setBrands(data || [])
     } catch (error) {
-      console.error("Error cargando marcas:", error)
+      console.error("[v0] Exception loading brands:", error)
     }
   }
 
