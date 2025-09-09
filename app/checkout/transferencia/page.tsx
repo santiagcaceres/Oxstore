@@ -26,10 +26,10 @@ export default function TransferenciaPage() {
     }
   }, [router])
 
-  const accountNumber = "1234567890123456"
-  const bankName = "Banco Ejemplo"
+  const accountNumber = "001518834 00001"
+  const bankName = "Banco República Oriental del Uruguay (BROU)"
   const accountHolder = "OXSTORE ECOMMERCE"
-  const cbu = "1234567890123456789012"
+  const cbu = "001518834000010000000001"
   const alias = "OXSTORE.PAGO"
 
   const copyToClipboard = (text: string) => {

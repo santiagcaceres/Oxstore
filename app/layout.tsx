@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   title: "Oxstore - Tu tienda de confianza",
   description: "Descubre los mejores productos en Oxstore. Calidad, estilo y las mejores marcas.",
   generator: "v0.app",
+  icons: {
+    icon: "/favicon.ico",
+  },
 }
 
 export default function RootLayout({
