@@ -235,17 +235,17 @@ export default function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div className="space-y-4">
-              {getAvailableColors().length > 0 && (
+              {availableVariants.length > 0 && getAvailableColors().length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Color:</label>
+                  <label className="text-sm font-medium uppercase">Color:</label>
                   <Select value={selectedColor} onValueChange={setSelectedColor}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecciona un color" />
+                      <SelectValue placeholder="SELECCIONA UN COLOR" />
                     </SelectTrigger>
                     <SelectContent>
                       {getAvailableColors().map((color) => (
                         <SelectItem key={color} value={color}>
-                          {color}
+                          {color.toUpperCase()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -253,17 +253,17 @@ export default function ProductPage({ params }: ProductPageProps) {
                 </div>
               )}
 
-              {getAvailableSizes().length > 0 && (
+              {availableVariants.length > 0 && getAvailableSizes().length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Talle:</label>
+                  <label className="text-sm font-medium uppercase">Talle:</label>
                   <Select value={selectedSize} onValueChange={setSelectedSize}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecciona un talle" />
+                      <SelectValue placeholder="SELECCIONA UN TALLE" />
                     </SelectTrigger>
                     <SelectContent>
                       {getAvailableSizes().map((size) => (
                         <SelectItem key={size} value={size}>
-                          {size}
+                          {size.toUpperCase()}
                         </SelectItem>
                       ))}
                     </SelectContent>

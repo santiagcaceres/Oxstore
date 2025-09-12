@@ -545,12 +545,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <Label htmlFor="gender">Género</Label>
                 <Select value={selectedGender} onValueChange={setSelectedGender}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar género" />
+                    <SelectValue placeholder="SELECCIONAR GÉNERO" />
                   </SelectTrigger>
                   <SelectContent>
                     {genderOptions.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
-                        {option.label}
+                        {option.label.toUpperCase()}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -568,12 +568,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar categoría" />
+                    <SelectValue placeholder="SELECCIONAR CATEGORÍA" />
                   </SelectTrigger>
                   <SelectContent>
                     {getMainCategories().map((category) => (
                       <SelectItem key={category.id} value={category.slug}>
-                        {category.name}
+                        {category.name.toUpperCase()}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -591,12 +591,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                     }}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar subcategoría" />
+                      <SelectValue placeholder="SELECCIONAR SUBCATEGORÍA" />
                     </SelectTrigger>
                     <SelectContent>
                       {getSubcategories(selectedCategory).map((subcategory) => (
                         <SelectItem key={subcategory.id} value={subcategory.slug}>
-                          {subcategory.name}
+                          {subcategory.name.toUpperCase()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -609,12 +609,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                   <Label htmlFor="sub-subcategory">Tipo Específico</Label>
                   <Select value={selectedSubSubcategory} onValueChange={setSelectedSubSubcategory}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar tipo específico" />
+                      <SelectValue placeholder="SELECCIONAR TIPO ESPECÍFICO" />
                     </SelectTrigger>
                     <SelectContent>
                       {getSubSubcategories(selectedSubcategory).map((subSubcategory) => (
                         <SelectItem key={subSubcategory.id} value={subSubcategory.slug}>
-                          {subSubcategory.name}
+                          {subSubcategory.name.toUpperCase()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -627,12 +627,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               <Label htmlFor="brand">Marca</Label>
               <Select value={selectedBrand} onValueChange={setSelectedBrand}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar marca" />
+                  <SelectValue placeholder="SELECCIONAR MARCA" />
                 </SelectTrigger>
                 <SelectContent>
                   {brands.map((brand) => (
                     <SelectItem key={brand.id} value={brand.name}>
-                      {brand.name}
+                      {brand.name.toUpperCase()}
                     </SelectItem>
                   ))}
                 </SelectContent>

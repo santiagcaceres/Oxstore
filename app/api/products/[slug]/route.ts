@@ -26,7 +26,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
 
     const { data: variants, error: variantsError } = await supabase
       .from("products_in_stock")
-      .select("id, color, size, stock_quantity, price, local_images")
+      .select("id, color, size, stock_quantity, price")
       .eq("zureo_code", product.zureo_code)
       .gt("stock_quantity", 0)
 
@@ -35,6 +35,8 @@ export async function GET(request: Request, { params }: { params: { slug: string
     }
 
     console.log(`[v0] GET /api/products/${params.slug} - Product found: ${product.name}`)
+
+    const productImages = product.product_images // Assuming product_images is the correct field name
 
     const transformedProduct = {
       id: product.id,
@@ -52,20 +54,22 @@ export async function GET(request: Request, { params }: { params: { slug: string
       size: product.size,
       zureo_data: product.zureo_data,
       variants: variants || [],
-      images: product.local_images
-        ? product.local_images.map((url: string, index: number) => ({
-            id: index + 1,
-            image_url: url,
-            alt_text: product.name,
-          }))
-        : [
-            {
-              id: 1,
-              image_url:
-                product.image_url || `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(product.name)}`,
+      images:
+        productImages?.length > 0
+          ? productImages.map((img: any, index: number) => ({
+              id: index + 1,
+              image_url: img.image_url,
               alt_text: product.name,
-            },
-          ],
+            }))
+          : [
+              {
+                id: 1,
+                image_url:
+                  product.image_url ||
+                  `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(product.name)}`,
+                alt_text: product.name,
+              },
+            ],
       weight: product.weight,
       dimensions: product.dimensions,
     }
