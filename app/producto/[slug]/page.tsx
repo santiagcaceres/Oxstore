@@ -8,6 +8,7 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -20,6 +21,7 @@ import { ShoppingCart, Heart, Share2, Minus, Plus } from "lucide-react"
 import type { Product } from "@/lib/database"
 import { useCart } from "@/contexts/cart-context"
 import { ProductCard } from "@/components/product-card"
+import { loadSimilarProducts } from "@/lib/loadSimilarProducts" // Import the loadSimilarProducts function
 
 interface ProductPageProps {
   params: {
@@ -32,6 +34,9 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [selectedSize, setSelectedSize] = useState<string>("")
+  const [selectedColor, setSelectedColor] = useState<string>("")
+  const [availableVariants, setAvailableVariants] = useState<any[]>([])
   const [similarProducts, setSimilarProducts] = useState<Product[]>([])
   const [loadingSimilar, setLoadingSimilar] = useState(false)
   const { addItem } = useCart()
@@ -44,7 +49,13 @@ export default function ProductPage({ params }: ProductPageProps) {
         if (response.ok) {
           const data = await response.json()
           setProduct(data)
-          loadSimilarProducts(data)
+          if (data.variants) {
+            setAvailableVariants(data.variants)
+          }
+          if (data.color) setSelectedColor(data.color)
+          if (data.size) setSelectedSize(data.size)
+
+          loadSimilarProducts(data, setSimilarProducts, setLoadingSimilar)
         } else {
           notFound()
         }
@@ -58,61 +69,20 @@ export default function ProductPage({ params }: ProductPageProps) {
     loadProduct()
   }, [params.slug])
 
-  const loadSimilarProducts = async (currentProduct: Product) => {
-    setLoadingSimilar(true)
-    try {
-      // Buscar productos de la misma categoría o marca, excluyendo el producto actual
-      const response = await fetch(`/api/products?category=${currentProduct.category}&limit=4`)
-      if (response.ok) {
-        const data = await response.json()
-        // Filtrar el producto actual de los resultados
-        const filtered = data.products?.filter((p: Product) => p.id !== currentProduct.id) || []
-        setSimilarProducts(filtered.slice(0, 4))
-      }
-    } catch (error) {
-      console.error("Error loading similar products:", error)
-    } finally {
-      setLoadingSimilar(false)
-    }
+  const getAvailableColors = () => {
+    const colors = availableVariants
+      .map((v) => v.color)
+      .filter((color, index, arr) => color && arr.indexOf(color) === index)
+    return colors
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto px-4 py-8">
-          <div className="animate-pulse">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="aspect-square bg-muted rounded-lg" />
-              <div className="space-y-4">
-                <div className="h-8 bg-muted rounded w-3/4" />
-                <div className="h-6 bg-muted rounded w-1/2" />
-                <div className="h-12 bg-muted rounded w-1/3" />
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    )
+  const getAvailableSizes = () => {
+    const sizes = availableVariants.map((v) => v.size).filter((size, index, arr) => size && arr.indexOf(size) === index)
+    return sizes
   }
-
-  if (!product) {
-    notFound()
-  }
-
-  // const hasDiscount = product.compare_price && product.compare_price > product.price
-  // const discountPercentage = hasDiscount
-  //   ? Math.round(((product.compare_price! - product.price) / product.compare_price!) * 100)
-  //   : 0
-
-  const hasRealDiscount = product.compare_price && product.compare_price > product.price && product.compare_price > 0
-  const discountPercentage = hasRealDiscount
-    ? Math.round(((product.compare_price! - product.price) / product.compare_price!) * 100)
-    : 0
 
   const increaseQuantity = () => {
-    if (quantity < product.stock_quantity) {
+    if (product && quantity < product.stock_quantity) {
       setQuantity((prev) => prev + 1)
     }
   }
@@ -134,13 +104,40 @@ export default function ProductPage({ params }: ProductPageProps) {
         image: product.images?.[0]?.image_url || "/placeholder.svg",
         slug: params.slug,
         quantity: quantity,
+        size: selectedSize,
+        color: selectedColor,
       })
 
-      // Animation feedback
       setTimeout(() => {
         setIsAddingToCart(false)
       }, 1000)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-muted rounded w-1/3 mb-6" />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="aspect-square bg-muted rounded-lg" />
+              <div className="space-y-4">
+                <div className="h-8 bg-muted rounded w-3/4" />
+                <div className="h-6 bg-muted rounded w-1/2" />
+                <div className="h-4 bg-muted rounded w-full" />
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  if (!product) {
+    return notFound()
   }
 
   return (
@@ -148,7 +145,6 @@ export default function ProductPage({ params }: ProductPageProps) {
       <Header />
 
       <main className="container mx-auto px-4 py-8">
-        {/* Breadcrumb */}
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
             <BreadcrumbItem>
@@ -166,7 +162,6 @@ export default function ProductPage({ params }: ProductPageProps) {
         </Breadcrumb>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-          {/* Product Images */}
           <div className="space-y-4">
             <div className="aspect-square relative overflow-hidden rounded-lg bg-muted">
               <Image
@@ -177,14 +172,16 @@ export default function ProductPage({ params }: ProductPageProps) {
                 priority
               />
 
-              {/* Badges - Solo mostrar descuento si realmente existe */}
               <div className="absolute top-4 left-4 flex flex-col gap-2">
-                {hasRealDiscount && <Badge variant="destructive">-{discountPercentage}%</Badge>}
+                {product.compare_price && product.compare_price > product.price && product.compare_price > 0 && (
+                  <Badge variant="destructive">
+                    -{Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
+                  </Badge>
+                )}
                 {product.is_featured && <Badge variant="secondary">Destacado</Badge>}
               </div>
             </div>
 
-            {/* Thumbnail Images */}
             {product.images && product.images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto">
                 {product.images.map((image, index) => (
@@ -208,21 +205,18 @@ export default function ProductPage({ params }: ProductPageProps) {
             )}
           </div>
 
-          {/* Product Info */}
           <div className="space-y-6">
             <div>
               <p className="text-sm text-muted-foreground uppercase tracking-wide mb-2">{product.brand}</p>
               <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
 
-              {/* Price - Solo mostrar precio tachado si hay descuento real */}
               <div className="flex items-center gap-3 mb-6">
                 <span className="text-3xl font-bold">${product.price}</span>
-                {hasRealDiscount && (
+                {product.compare_price && product.compare_price > product.price && product.compare_price > 0 && (
                   <span className="text-xl text-muted-foreground line-through">${product.compare_price}</span>
                 )}
               </div>
 
-              {/* Stock Status */}
               <div className="mb-6">
                 {product.stock_quantity > 0 ? (
                   <div className="flex items-center gap-2">
@@ -240,7 +234,44 @@ export default function ProductPage({ params }: ProductPageProps) {
               </div>
             </div>
 
-            {/* Quantity Selector */}
+            <div className="space-y-4">
+              {getAvailableColors().length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Color:</label>
+                  <Select value={selectedColor} onValueChange={setSelectedColor}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecciona un color" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableColors().map((color) => (
+                        <SelectItem key={color} value={color}>
+                          {color}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {getAvailableSizes().length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Talle:</label>
+                  <Select value={selectedSize} onValueChange={setSelectedSize}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecciona un talle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getAvailableSizes().map((size) => (
+                        <SelectItem key={size} value={size}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <span className="font-medium">Cantidad:</span>
@@ -267,7 +298,6 @@ export default function ProductPage({ params }: ProductPageProps) {
                 </div>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex gap-3">
                 <Button
                   size="lg"
@@ -289,7 +319,6 @@ export default function ProductPage({ params }: ProductPageProps) {
               </div>
             </div>
 
-            {/* Product Details Tabs - Eliminando pestaña de reseñas */}
             <Tabs defaultValue="description" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="description">Descripción</TabsTrigger>
@@ -312,6 +341,18 @@ export default function ProductPage({ params }: ProductPageProps) {
                     <span className="font-medium">Marca:</span>
                     <span>{product.brand}</span>
                   </div>
+                  {product.color && (
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="font-medium">Color:</span>
+                      <span>{product.color}</span>
+                    </div>
+                  )}
+                  {product.size && (
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="font-medium">Talle:</span>
+                      <span>{product.size}</span>
+                    </div>
+                  )}
                   {product.weight && (
                     <div className="flex justify-between py-2 border-b">
                       <span className="font-medium">Peso:</span>

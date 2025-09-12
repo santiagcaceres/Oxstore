@@ -21,6 +21,9 @@ export interface Product {
   meta_description?: string
   created_at: string
   updated_at: string
+  color?: string
+  size?: string
+  zureo_data?: any
   category?: Category
   images?: ProductImage[]
 }
@@ -101,6 +104,9 @@ export class Database {
         is_featured: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        color: product.color,
+        size: product.size,
+        zureo_data: product.zureo_data,
       }
     } catch (error) {
       console.error("[v0] Error fetching product by slug:", error)

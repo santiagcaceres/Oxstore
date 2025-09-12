@@ -24,6 +24,16 @@ export async function GET(request: Request, { params }: { params: { slug: string
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
+    const { data: variants, error: variantsError } = await supabase
+      .from("products_in_stock")
+      .select("id, color, size, stock_quantity, price, local_images")
+      .eq("zureo_code", product.zureo_code)
+      .gt("stock_quantity", 0)
+
+    if (variantsError) {
+      console.error(`[v0] Error loading variants:`, variantsError)
+    }
+
     console.log(`[v0] GET /api/products/${params.slug} - Product found: ${product.name}`)
 
     const transformedProduct = {
@@ -38,6 +48,10 @@ export async function GET(request: Request, { params }: { params: { slug: string
       category: product.category,
       is_featured: product.is_featured,
       slug: params.slug,
+      color: product.color,
+      size: product.size,
+      zureo_data: product.zureo_data,
+      variants: variants || [],
       images: product.local_images
         ? product.local_images.map((url: string, index: number) => ({
             id: index + 1,
