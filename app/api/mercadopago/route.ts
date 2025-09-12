@@ -13,12 +13,11 @@ const createOrGetUser = async (email: string, firstName: string, lastName: strin
 
   console.log("[v0] Checking if user exists with email:", email)
 
-  // Verificar si el usuario ya existe
   const { data: existingUser } = await supabase.from("users").select("id").eq("email", email).single()
 
   if (existingUser) {
     console.log("[v0] User already exists:", existingUser.id)
-    return existingUser.id
+    return existingUser.id // Retornar el ID numérico de la tabla users
   }
 
   // Si no existe, crear una cuenta automáticamente
@@ -46,25 +45,29 @@ const createOrGetUser = async (email: string, firstName: string, lastName: strin
 
     console.log("[v0] User created successfully:", newUser.user?.id)
 
-    // Insertar en la tabla users personalizada
     if (newUser.user) {
-      const { error: userInsertError } = await supabase.from("users").insert({
-        id: newUser.user.id,
-        email: email,
-        first_name: firstName,
-        last_name: lastName,
-        role: "customer",
-      })
+      const { data: insertedUser, error: userInsertError } = await supabase
+        .from("users")
+        .insert({
+          email: email,
+          first_name: firstName,
+          last_name: lastName,
+          role: "customer",
+        })
+        .select("id")
+        .single()
 
       if (userInsertError) {
         console.error("[v0] Error inserting user data:", userInsertError)
+        return null
       }
+
+      return insertedUser.id // Retornar el ID numérico generado
     }
 
-    return newUser.user?.id
+    return null
   } catch (error) {
     console.error("[v0] Error in user creation process:", error)
-    // Si falla la creación del usuario, continuamos sin asociar el pedido a un usuario
     return null
   }
 }
@@ -117,7 +120,7 @@ export async function POST(request: NextRequest) {
       .from("orders")
       .insert({
         order_number: orderNumber,
-        user_id: userId, // Asociar el pedido al usuario
+        user_id: userId, // Ahora es un integer válido o null
         customer_email: customerInfo.email,
         customer_name: `${customerInfo.firstName} ${customerInfo.lastName || ""}`.trim(),
         customer_phone: customerInfo.phone || "",
@@ -151,14 +154,14 @@ export async function POST(request: NextRequest) {
       const quantity = Number.parseInt(item.quantity) || 1
 
       return {
-        order_id: order.id,
-        product_id: item.id,
+        order_id: order.id, // Este es un integer SERIAL
+        product_id: Number.parseInt(item.id) || null, // Convertir a integer
         product_name: item.name || "Producto sin nombre",
         product_image: item.image || "",
         quantity: quantity,
-        price: price, // Usar 'price' consistentemente
-        total_price: price * quantity, // Agregar total_price que existe en la DB
-        total: price * quantity, // Mantener total también
+        price: price,
+        total_price: price * quantity,
+        total: price * quantity,
       }
     })
 
@@ -182,12 +185,11 @@ export async function POST(request: NextRequest) {
       }
       return {
         title: item.name || "Producto",
-        unit_price: price, // unit_price es correcto para MercadoPago API
+        unit_price: price,
         quantity: Number.parseInt(item.quantity) || 1,
       }
     })
 
-    // Agregar costo de envío como item separado si aplica
     if (shippingCost > 0) {
       mercadoPagoItems.push({
         title: "Envío a domicilio",

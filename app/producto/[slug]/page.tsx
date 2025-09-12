@@ -8,7 +8,6 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -266,36 +265,50 @@ export default function ProductPage({ params }: ProductPageProps) {
               {availableVariants.length > 0 && getAvailableColors().length > 0 && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium uppercase">Color:</label>
-                  <Select value={selectedColor} onValueChange={setSelectedColor}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="SELECCIONA UN COLOR" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableColors().map((color) => (
-                        <SelectItem key={color} value={color}>
-                          {color.toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex flex-wrap gap-2">
+                    {getAvailableColors().map((color) => (
+                      <Badge
+                        key={color}
+                        variant={selectedColor === color ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedColor(color)}
+                      >
+                        {color.toUpperCase()}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               )}
 
-              {availableVariants.length > 0 && getAvailableSizes().length > 0 && (
+              {availableVariants.length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium uppercase">Talle:</label>
-                  <Select value={selectedSize} onValueChange={setSelectedSize}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="SELECCIONA UN TALLE" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getAvailableSizes().map((size) => (
-                        <SelectItem key={size} value={size}>
-                          {size.toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <label className="text-sm font-medium uppercase">Talles Disponibles:</label>
+                  <div className="flex flex-wrap gap-2">
+                    {getAvailableSizes().map((size) => (
+                      <Badge
+                        key={size}
+                        variant={selectedSize === size ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => setSelectedSize(size)}
+                      >
+                        {size.toUpperCase()}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {availableVariants.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium uppercase">Stock por Talle:</label>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {availableVariants.map((variant, index) => (
+                      <div key={index} className="flex justify-between p-2 bg-muted rounded">
+                        <span>{variant.size ? `Talle ${variant.size.toUpperCase()}` : "Sin talle"}</span>
+                        <span className="font-medium">{variant.stock_quantity} unidades</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

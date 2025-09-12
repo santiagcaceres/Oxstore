@@ -194,6 +194,13 @@ export default function CheckoutPage() {
       console.log("[v0] Processing cash payment...")
       const supabase = createClient()
 
+      let numericUserId = null
+      const { data: userRecord } = await supabase.from("users").select("id").eq("email", user.email).single()
+
+      if (userRecord) {
+        numericUserId = userRecord.id
+      }
+
       // Generar número de orden único
       const orderNumber = `ORD-${Date.now()}`
 
@@ -206,14 +213,14 @@ export default function CheckoutPage() {
         totalAmount,
         shippingCost,
         itemCount: state.items.length,
-        userId: user.id,
+        userId: numericUserId,
       })
 
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
           order_number: orderNumber,
-          user_id: user.id, // Usar el usuario autenticado
+          user_id: numericUserId, // Usar el ID numérico de la tabla users
           customer_email: formData.email,
           customer_name: `${formData.firstName} ${formData.lastName}`,
           customer_phone: formData.phone,
@@ -246,8 +253,8 @@ export default function CheckoutPage() {
         const itemTotal = itemPrice * itemQuantity
 
         const { error: itemError } = await supabase.from("order_items").insert({
-          order_id: order.id,
-          product_id: item.id,
+          order_id: order.id, // Este es un integer SERIAL
+          product_id: Number.parseInt(item.id) || null, // Convertir a integer
           product_name: item.name,
           product_image: item.image,
           quantity: itemQuantity,
@@ -409,8 +416,6 @@ export default function CheckoutPage() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* ... existing shipping and payment sections ... */}
 
               {/* Método de Entrega */}
               <Card>

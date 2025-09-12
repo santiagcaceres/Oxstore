@@ -12,21 +12,65 @@ export async function GET(request: Request, { params }: { params: { slug: string
     const slugParts = params.slug.split("-")
     const productId = slugParts[0]
 
-    if (!productId || isNaN(Number(productId))) {
-      console.log(`[v0] GET /api/products/${params.slug} - Invalid slug format`)
-      return NextResponse.json({ error: "Formato de slug inválido" }, { status: 400 })
+    let product = null
+    let error = null
+
+    // Primero intentar buscar por ID si es numérico
+    if (productId && !isNaN(Number(productId))) {
+      const result = await supabase.from("products_in_stock").select("*").eq("id", productId).single()
+      product = result.data
+      error = result.error
     }
 
-    const { data: product, error } = await supabase.from("products_in_stock").select("*").eq("id", productId).single()
+    // Si no se encuentra por ID, intentar buscar por nombre similar
+    if (!product) {
+      console.log(`[v0] Product not found by ID, trying name search for: ${params.slug}`)
+
+      // Extraer el nombre del slug (todo después del primer guión)
+      const nameFromSlug = slugParts.slice(1).join("-").replace(/-/g, " ")
+
+      if (nameFromSlug) {
+        const { data: products, error: searchError } = await supabase
+          .from("products_in_stock")
+          .select("*")
+          .or(`custom_name.ilike.%${nameFromSlug}%,name.ilike.%${nameFromSlug}%`)
+          .gt("stock_quantity", 0)
+          .limit(1)
+
+        if (products && products.length > 0) {
+          product = products[0]
+          error = null
+          console.log(`[v0] Found product by name search: ${product.custom_name || product.name}`)
+        } else {
+          error = searchError
+        }
+      }
+    }
+
+    // Si aún no se encuentra, intentar buscar solo por ID numérico sin validar formato
+    if (!product && productId) {
+      const { data: fallbackProduct, error: fallbackError } = await supabase
+        .from("products_in_stock")
+        .select("*")
+        .eq("id", productId)
+        .single()
+
+      if (fallbackProduct) {
+        product = fallbackProduct
+        error = null
+        console.log(`[v0] Found product by fallback ID search: ${fallbackProduct.custom_name || fallbackProduct.name}`)
+      }
+    }
 
     if (error || !product) {
-      console.log(`[v0] GET /api/products/${params.slug} - Product not found`)
+      console.log(`[v0] GET /api/products/${params.slug} - Product not found after all attempts`)
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
     const productName = product.custom_name || product.name
-    if (!productName || productName.trim() === "" || productName === "Producto sin nombre") {
-      console.log(`[v0] GET /api/products/${params.slug} - Product has invalid name: "${productName}"`)
+
+    if (!productName || productName.trim() === "") {
+      console.log(`[v0] GET /api/products/${params.slug} - Product has empty name`)
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
@@ -37,9 +81,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
       .select("id, color, size, stock_quantity, price, custom_name, name, zureo_code")
       .eq("zureo_code", product.zureo_code)
       .gt("stock_quantity", 0)
-      .or("custom_name.neq.Producto sin nombre,name.neq.Producto sin nombre")
-      .not("custom_name", "is", null)
-      .not("name", "is", null)
 
     if (variantsError) {
       console.error(`[v0] Error loading variants:`, variantsError)

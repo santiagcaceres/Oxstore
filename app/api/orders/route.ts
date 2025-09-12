@@ -10,6 +10,18 @@ export async function POST(request: Request) {
 
     console.log("[v0] Creating order with data:", body)
 
+    let userId = null
+    if (body.userId && typeof body.userId === "string") {
+      // Si es un UUID de Supabase auth, buscar el ID numérico en la tabla users
+      const { data: userRecord } = await supabase.from("users").select("id").eq("id", body.userId).single()
+
+      if (userRecord) {
+        userId = userRecord.id
+      }
+    } else if (body.userId && typeof body.userId === "number") {
+      userId = body.userId
+    }
+
     const orderData = {
       order_number: `ORD-${Date.now()}`,
       customer_name: body.customerName,
@@ -25,7 +37,7 @@ export async function POST(request: Request) {
       shipping_address: body.shippingAddress || null,
       billing_address: body.billingAddress || body.shippingAddress || null,
       status: "pending",
-      user_id: 1, // Usuario invitado por defecto
+      user_id: userId, // Usar el userId procesado correctamente
       notes: body.notes || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -65,13 +77,13 @@ export async function POST(request: Request) {
         const totalCalculated = price * quantity
 
         return {
-          order_id: order.id,
-          product_id: item.id,
+          order_id: order.id, // Este es un integer SERIAL, no UUID
+          product_id: Number.parseInt(item.id) || null, // Asegurar que sea integer
           product_name: item.name || item.title || "Producto sin nombre",
           quantity: quantity,
           price: price,
           total_price: totalCalculated,
-          total: totalCalculated, // Asegurar que total nunca sea null
+          total: totalCalculated,
           product_image: item.image || item.image_url || "/placeholder.svg?height=100&width=100",
           created_at: new Date().toISOString(),
         }
