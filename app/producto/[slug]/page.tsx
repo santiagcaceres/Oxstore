@@ -48,9 +48,13 @@ export default function ProductPage({ params }: ProductPageProps) {
         const response = await fetch(`/api/products/${params.slug}`)
         if (response.ok) {
           const data = await response.json()
+          console.log("[v0] Product data received:", data)
+          console.log("[v0] Variants in product data:", data.variants)
+
           setProduct(data)
-          if (data.variants) {
+          if (data.variants && data.variants.length > 0) {
             setAvailableVariants(data.variants)
+            console.log("[v0] Available variants set:", data.variants)
           }
           if (data.color) setSelectedColor(data.color)
           if (data.size) setSelectedSize(data.size)
@@ -73,11 +77,13 @@ export default function ProductPage({ params }: ProductPageProps) {
     const colors = availableVariants
       .map((v) => v.color)
       .filter((color, index, arr) => color && arr.indexOf(color) === index)
+    console.log("[v0] Available colors:", colors)
     return colors
   }
 
   const getAvailableSizes = () => {
     const sizes = availableVariants.map((v) => v.size).filter((size, index, arr) => size && arr.indexOf(size) === index)
+    console.log("[v0] Available sizes:", sizes)
     return sizes
   }
 

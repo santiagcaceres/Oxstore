@@ -17,6 +17,8 @@ export async function GET(request: Request) {
       .select("*")
       .eq("is_active", true)
       .gt("stock_quantity", 0)
+      .neq("name", "Producto sin nombre")
+      .neq("custom_name", "Producto sin nombre")
       .order("created_at", { ascending: false })
 
     if (category) {
@@ -33,8 +35,13 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Error al cargar productos" }, { status: 500 })
     }
 
+    const filteredProducts = products?.filter((product) => {
+      const productName = product.custom_name || product.name
+      return productName !== "Producto sin nombre"
+    })
+
     const transformedProducts =
-      products?.map((product) => ({
+      filteredProducts?.map((product) => ({
         id: product.id,
         name: product.custom_name || product.name,
         description: product.local_description || product.description,

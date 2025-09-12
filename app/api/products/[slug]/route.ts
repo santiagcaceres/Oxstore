@@ -24,23 +24,34 @@ export async function GET(request: Request, { params }: { params: { slug: string
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
+    const productName = product.custom_name || product.name
+    if (productName === "Producto sin nombre") {
+      console.log(`[v0] GET /api/products/${params.slug} - Product has default name, not showing`)
+      return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
+    }
+
+    console.log(`[v0] Loading variants for zureo_code: ${product.zureo_code}`)
+
     const { data: variants, error: variantsError } = await supabase
       .from("products_in_stock")
-      .select("id, color, size, stock_quantity, price")
+      .select("id, color, size, stock_quantity, price, custom_name, name")
       .eq("zureo_code", product.zureo_code)
       .gt("stock_quantity", 0)
 
     if (variantsError) {
       console.error(`[v0] Error loading variants:`, variantsError)
+    } else {
+      console.log(`[v0] Loaded ${variants?.length || 0} variants for product ${product.zureo_code}`)
+      console.log(`[v0] Variants data:`, variants)
     }
 
-    console.log(`[v0] GET /api/products/${params.slug} - Product found: ${product.name}`)
+    console.log(`[v0] GET /api/products/${params.slug} - Product found: ${productName}`)
 
     const productImages = product.product_images // Assuming product_images is the correct field name
 
     const transformedProduct = {
       id: product.id,
-      name: product.custom_name || product.name,
+      name: productName,
       description: product.local_description || product.description,
       price: product.local_price || product.price,
       compare_price: product.compare_price || product.price * 1.2,
@@ -59,15 +70,14 @@ export async function GET(request: Request, { params }: { params: { slug: string
           ? productImages.map((img: any, index: number) => ({
               id: index + 1,
               image_url: img.image_url,
-              alt_text: product.name,
+              alt_text: productName,
             }))
           : [
               {
                 id: 1,
                 image_url:
-                  product.image_url ||
-                  `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(product.name)}`,
-                alt_text: product.name,
+                  product.image_url || `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(productName)}`,
+                alt_text: productName,
               },
             ],
       weight: product.weight,
