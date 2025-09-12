@@ -5,8 +5,11 @@ export const dynamic = "force-dynamic"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
+    console.log("[v0] Generating invoice for order ID:", params.id)
+
     const supabase = createClient()
 
+    // Mejorando la consulta de datos del pedido
     const { data: order, error } = await supabase
       .from("orders")
       .select(`
@@ -24,8 +27,26 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .single()
 
     if (error) {
+      console.error("Error fetching order:", error)
       return NextResponse.json({ error: "Order not found" }, { status: 404 })
     }
+
+    if (!order) {
+      console.error("Order not found for ID:", params.id)
+      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+    }
+
+    console.log("[v0] Order data loaded:", order.order_number)
+    console.log("[v0] Order items count:", order.order_items?.length || 0)
+
+    // Validando datos antes de generar la factura
+    const orderItems = order.order_items || []
+    const subtotal = orderItems.reduce((sum: number, item: any) => {
+      return sum + (Number.parseFloat(item.total_price) || 0)
+    }, 0)
+
+    const shippingCost = Number.parseFloat(order.shipping_cost || 0)
+    const totalAmount = Number.parseFloat(order.total_amount || 0)
 
     const invoiceHTML = `
       <!DOCTYPE html>
@@ -65,13 +86,6 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             padding: 40px;
             text-align: center;
             position: relative;
-          }
-          
-          .logo {
-            width: 150px;
-            height: auto;
-            margin-bottom: 20px;
-            filter: brightness(0) invert(1);
           }
           
           .company-name {
@@ -399,12 +413,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
                 </thead>
                 <tbody>
                   ${
-                    order.order_items
-                      ?.map(
-                        (item: any) => `
+                    orderItems.length > 0
+                      ? orderItems
+                          .map(
+                            (item: any) => `
                     <tr>
                       <td>
-                        <div class="product-name">${item.product_name}</div>
+                        <div class="product-name">${item.product_name || "Producto"}</div>
                         ${
                           item.size || item.color
                             ? `
@@ -417,13 +432,20 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
                             : ""
                         }
                       </td>
-                      <td class="quantity">${item.quantity}</td>
-                      <td class="price">$${Number.parseFloat(item.unit_price).toFixed(2)}</td>
-                      <td class="price">$${Number.parseFloat(item.total_price).toFixed(2)}</td>
+                      <td class="quantity">${item.quantity || 1}</td>
+                      <td class="price">$${(Number.parseFloat(item.unit_price) || 0).toFixed(2)}</td>
+                      <td class="price">$${(Number.parseFloat(item.total_price) || 0).toFixed(2)}</td>
                     </tr>
                   `,
-                      )
-                      .join("") || ""
+                          )
+                          .join("")
+                      : `
+                    <tr>
+                      <td colspan="4" style="text-align: center; padding: 20px; color: #6b7280;">
+                        No hay productos en este pedido
+                      </td>
+                    </tr>
+                  `
                   }
                 </tbody>
               </table>
@@ -432,21 +454,21 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             <div class="total-section">
               <div class="total-row">
                 <span class="total-label">Subtotal:</span>
-                <span class="total-value">$${(Number.parseFloat(order.total_amount) - Number.parseFloat(order.shipping_cost || 0)).toFixed(2)}</span>
+                <span class="total-value">$${subtotal.toFixed(2)}</span>
               </div>
               ${
-                Number.parseFloat(order.shipping_cost || 0) > 0
+                shippingCost > 0
                   ? `
                 <div class="total-row">
                   <span class="total-label">Costo de Envío:</span>
-                  <span class="total-value">$${Number.parseFloat(order.shipping_cost).toFixed(2)}</span>
+                  <span class="total-value">$${shippingCost.toFixed(2)}</span>
                 </div>
               `
                   : ""
               }
               <div class="total-row total-final">
                 <span class="total-label">TOTAL:</span>
-                <span class="total-value">$${Number.parseFloat(order.total_amount).toFixed(2)}</span>
+                <span class="total-value">$${totalAmount.toFixed(2)}</span>
               </div>
             </div>
 
@@ -455,7 +477,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
               <p class="footer-text">Para consultas sobre tu pedido, no dudes en contactarnos:</p>
               <p class="contact-info">📧 info@oxstore.com | 📞 (011) 1234-5678</p>
               <p class="footer-text" style="margin-top: 16px; font-size: 12px;">
-                Esta factura es válida como comprobante de compra. Conservala para garantías y devoluciones.
+                Esta factura es válida como comprobante de compra. Consérvala para garantías y devoluciones.
               </p>
             </div>
           </div>
@@ -463,6 +485,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       </body>
       </html>
     `
+
+    console.log("[v0] Invoice HTML generated successfully")
 
     return new NextResponse(invoiceHTML, {
       headers: {

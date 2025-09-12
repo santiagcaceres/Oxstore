@@ -30,7 +30,7 @@ export default function Page() {
         password,
       })
       if (error) throw error
-      router.push("/perfil")
+      router.push("/cuenta")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")
     } finally {

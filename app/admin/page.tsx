@@ -16,6 +16,9 @@ interface DashboardStats {
   totalOrders: number
   pendingOrders: number
   totalRevenue: number
+  salesToday: number
+  salesThisWeek: number
+  salesThisMonth: number
   topProducts: Array<{
     id: number
     name: string
@@ -34,6 +37,9 @@ export default function AdminDashboard() {
     totalOrders: 0,
     pendingOrders: 0,
     totalRevenue: 0,
+    salesToday: 0,
+    salesThisWeek: 0,
+    salesThisMonth: 0,
     topProducts: [],
   })
   const [loading, setLoading] = useState(true)
@@ -52,13 +58,34 @@ export default function AdminDashboard() {
         .select("*")
         .order("stock_quantity", { ascending: false })
 
-      const { data: orders } = await supabase.from("orders").select("id, total_amount, status, created_at")
+      const { data: orders } = await supabase
+        .from("orders")
+        .select("id, total_amount, status, created_at, payment_status")
 
-      const { data: brands } = await supabase.from("brands").select("id, name")
+      const now = new Date()
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const weekStart = new Date(today.getTime() - today.getDay() * 24 * 60 * 60 * 1000)
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+      const approvedOrders = orders?.filter((o) => o.payment_status === "approved") || []
+
+      const salesToday = approvedOrders
+        .filter((o) => new Date(o.created_at) >= today)
+        .reduce((sum, o) => sum + (Number.parseFloat(o.total_amount) || 0), 0)
+
+      const salesThisWeek = approvedOrders
+        .filter((o) => new Date(o.created_at) >= weekStart)
+        .reduce((sum, o) => sum + (Number.parseFloat(o.total_amount) || 0), 0)
+
+      const salesThisMonth = approvedOrders
+        .filter((o) => new Date(o.created_at) >= monthStart)
+        .reduce((sum, o) => sum + (Number.parseFloat(o.total_amount) || 0), 0)
 
       console.log("[v0] Dashboard - Products loaded:", products?.length || 0)
       console.log("[v0] Dashboard - Orders loaded:", orders?.length || 0)
-      console.log("[v0] Dashboard - Brands loaded:", brands?.length || 0)
+      console.log("[v0] Dashboard - Sales today:", salesToday)
+      console.log("[v0] Dashboard - Sales this week:", salesThisWeek)
+      console.log("[v0] Dashboard - Sales this month:", salesThisMonth)
 
       if (products) {
         const productsWithStock = products.filter((p) => p.stock_quantity > 0)
@@ -67,7 +94,7 @@ export default function AdminDashboard() {
 
         const totalOrders = orders?.length || 0
         const pendingOrders = orders?.filter((o) => o.status === "pending").length || 0
-        const totalRevenue = orders?.reduce((sum, o) => sum + (o.total_amount || 0), 0) || 0
+        const totalRevenue = approvedOrders.reduce((sum, o) => sum + (Number.parseFloat(o.total_amount) || 0), 0)
 
         setStats({
           totalProducts: products.length,
@@ -77,6 +104,9 @@ export default function AdminDashboard() {
           totalOrders,
           pendingOrders,
           totalRevenue,
+          salesToday,
+          salesThisWeek,
+          salesThisMonth,
           topProducts: productsWithStock.slice(0, 3).map((p) => ({
             id: p.id,
             name: p.name || "Producto sin nombre",
@@ -122,6 +152,39 @@ export default function AdminDashboard() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ventas Hoy</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">${stats.salesToday.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground">Ingresos del día actual</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ventas Semana</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">${stats.salesThisWeek.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground">Ingresos de esta semana</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Ventas Mes</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">${stats.salesThisMonth.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground">Ingresos del mes actual</div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Valor Total Stock</CardTitle>

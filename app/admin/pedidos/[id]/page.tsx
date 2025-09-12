@@ -58,16 +58,30 @@ export default function OrderDetailPage() {
     try {
       setUpdating(true)
 
-      const { error } = await supabase.from("orders").update({ order_status: newStatus }).eq("id", params.id)
+      console.log("[v0] Updating order status to:", newStatus)
+
+      const { data, error } = await supabase
+        .from("orders")
+        .update({
+          order_status: newStatus,
+          status: newStatus, // también actualizar el campo status por compatibilidad
+        })
+        .eq("id", params.id)
+        .select()
 
       if (error) {
         console.error("Error updating order status:", error)
+        alert("Error al actualizar el estado del pedido")
         return
       }
 
-      setOrder({ ...order, order_status: newStatus })
+      console.log("[v0] Order status updated successfully:", data)
+
+      setOrder({ ...order, order_status: newStatus, status: newStatus })
+      alert("Estado del pedido actualizado correctamente")
     } catch (error) {
       console.error("Error updating order status:", error)
+      alert("Error al actualizar el estado del pedido")
     } finally {
       setUpdating(false)
     }
@@ -99,7 +113,21 @@ export default function OrderDetailPage() {
   const generateInvoice = () => {
     if (!order) return
 
-    window.open(`/api/orders/${order.id}/invoice`, "_blank")
+    try {
+      console.log("[v0] Generating invoice for order:", order.id)
+      const invoiceUrl = `/api/orders/${order.id}/invoice`
+
+      // Abrir en nueva ventana y manejar posibles errores
+      const newWindow = window.open(invoiceUrl, "_blank")
+
+      if (!newWindow) {
+        // Si el popup fue bloqueado, intentar descarga directa
+        window.location.href = invoiceUrl
+      }
+    } catch (error) {
+      console.error("Error generating invoice:", error)
+      alert("Error al generar la factura. Por favor, intenta nuevamente.")
+    }
   }
 
   if (loading) {

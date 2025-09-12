@@ -58,12 +58,21 @@ export default function CheckoutPage() {
       setUser(user)
       const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
       if (profile) {
+        console.log("[v0] User profile loaded:", profile)
         setFormData((prev) => ({
           ...prev,
-          email: profile.email || "",
-          firstName: profile.first_name || "",
-          lastName: profile.last_name || "",
+          email: profile.email || user.email || "",
+          firstName: profile.first_name || user.user_metadata?.first_name || "",
+          lastName: profile.last_name || user.user_metadata?.last_name || "",
           phone: profile.phone || "",
+        }))
+      } else {
+        console.log("[v0] No profile found, using auth data")
+        setFormData((prev) => ({
+          ...prev,
+          email: user.email || "",
+          firstName: user.user_metadata?.first_name || "",
+          lastName: user.user_metadata?.last_name || "",
         }))
       }
     }
@@ -93,21 +102,27 @@ export default function CheckoutPage() {
         setUser(data.user)
         setShowAuthForm(false)
 
-        // Prellenar formulario con datos del usuario
         const { data: profile } = await supabase.from("users").select("*").eq("id", data.user.id).single()
         if (profile) {
           setFormData((prev) => ({
             ...prev,
-            email: profile.email || "",
+            email: profile.email || data.user.email || "",
             firstName: profile.first_name || "",
             lastName: profile.last_name || "",
             phone: profile.phone || "",
           }))
         }
       } else {
-        // Registro
         if (authData.password !== authData.confirmPassword) {
           alert("Las contraseñas no coinciden")
+          return
+        }
+
+        // Verificar si ya existe el email
+        const { data: existingUser } = await supabase.from("users").select("email").eq("email", authData.email).single()
+
+        if (existingUser) {
+          alert("Ya existe una cuenta con este email")
           return
         }
 
@@ -144,10 +159,9 @@ export default function CheckoutPage() {
             email: authData.email,
             firstName: authData.firstName,
             lastName: authData.lastName,
-            phone: authData.phone,
           }))
 
-          alert("Cuenta creada exitosamente. Revisa tu email para confirmar tu cuenta.")
+          alert("Cuenta creada exitosamente.")
         }
       }
     } catch (error) {
@@ -361,7 +375,6 @@ export default function CheckoutPage() {
                       required
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
-                      disabled={!!user}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -372,7 +385,6 @@ export default function CheckoutPage() {
                         required
                         value={formData.firstName}
                         onChange={(e) => handleInputChange("firstName", e.target.value)}
-                        disabled={!!user}
                       />
                     </div>
                     <div>
@@ -382,7 +394,6 @@ export default function CheckoutPage() {
                         required
                         value={formData.lastName}
                         onChange={(e) => handleInputChange("lastName", e.target.value)}
-                        disabled={!!user}
                       />
                     </div>
                   </div>
@@ -398,6 +409,8 @@ export default function CheckoutPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* ... existing shipping and payment sections ... */}
 
               {/* Método de Entrega */}
               <Card>

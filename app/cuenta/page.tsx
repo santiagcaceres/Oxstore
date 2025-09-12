@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { User, Package, LogOut, Mail, Phone, Calendar, Eye, CheckCircle, AlertCircle } from "lucide-react"
+import { User, Package, LogOut, Mail, Phone, Calendar, Eye, Edit, Save, X } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/client"
@@ -38,7 +40,6 @@ interface UserProfile {
   last_name: string
   phone?: string
   created_at: string
-  email_confirmed_at?: string
 }
 
 export default function CuentaPage() {
@@ -46,7 +47,12 @@ export default function CuentaPage() {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [verificationStatus, setVerificationStatus] = useState<"checking" | "verified" | "unverified">("checking")
+  const [isEditing, setIsEditing] = useState(false)
+  const [editData, setEditData] = useState({
+    first_name: "",
+    last_name: "",
+    phone: "",
+  })
   const router = useRouter()
   const supabase = createClient()
 
@@ -65,15 +71,14 @@ export default function CuentaPage() {
         return
       }
 
-      setVerificationStatus(authUser.email_confirmed_at ? "verified" : "unverified")
-
-      // Obtener datos del perfil
       const { data: profile } = await supabase.from("users").select("*").eq("id", authUser.id).single()
 
       if (profile) {
-        setUser({
-          ...profile,
-          email_confirmed_at: authUser.email_confirmed_at,
+        setUser(profile)
+        setEditData({
+          first_name: profile.first_name || "",
+          last_name: profile.last_name || "",
+          phone: profile.phone || "",
         })
       } else {
         // Si no existe el perfil, crearlo con los datos de auth
@@ -90,9 +95,11 @@ export default function CuentaPage() {
           .single()
 
         if (newProfile) {
-          setUser({
-            ...newProfile,
-            email_confirmed_at: authUser.email_confirmed_at,
+          setUser(newProfile)
+          setEditData({
+            first_name: newProfile.first_name || "",
+            last_name: newProfile.last_name || "",
+            phone: newProfile.phone || "",
           })
         }
       }
@@ -124,21 +131,37 @@ export default function CuentaPage() {
     }
   }
 
-  const checkEmailVerification = async () => {
-    setVerificationStatus("checking")
+  const handleSaveProfile = async () => {
+    if (!user) return
+
     try {
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser()
-      if (authUser) {
-        setVerificationStatus(authUser.email_confirmed_at ? "verified" : "unverified")
-        if (authUser.email_confirmed_at && user) {
-          setUser((prev) => (prev ? { ...prev, email_confirmed_at: authUser.email_confirmed_at } : null))
-        }
-      }
+      const { error } = await supabase
+        .from("users")
+        .update({
+          first_name: editData.first_name,
+          last_name: editData.last_name,
+          phone: editData.phone,
+        })
+        .eq("id", user.id)
+
+      if (error) throw error
+
+      setUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              first_name: editData.first_name,
+              last_name: editData.last_name,
+              phone: editData.phone,
+            }
+          : null,
+      )
+
+      setIsEditing(false)
+      alert("Perfil actualizado correctamente")
     } catch (error) {
-      console.error("Error checking verification:", error)
-      setVerificationStatus("unverified")
+      console.error("Error updating profile:", error)
+      alert("Error al actualizar el perfil")
     }
   }
 
@@ -146,6 +169,8 @@ export default function CuentaPage() {
     await supabase.auth.signOut()
     router.push("/")
   }
+
+  // ... existing helper functions ...
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -246,9 +271,25 @@ export default function CuentaPage() {
             <div className="lg:col-span-1">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Información Personal
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Información Personal
+                    </div>
+                    {!isEditing ? (
+                      <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" onClick={handleSaveProfile}>
+                          <Save className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setIsEditing(false)}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -257,10 +298,41 @@ export default function CuentaPage() {
                       <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">
-                        {user.first_name} {user.last_name}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Cliente</p>
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label htmlFor="firstName" className="text-xs">
+                                Nombre
+                              </Label>
+                              <Input
+                                id="firstName"
+                                value={editData.first_name}
+                                onChange={(e) => setEditData((prev) => ({ ...prev, first_name: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="lastName" className="text-xs">
+                                Apellido
+                              </Label>
+                              <Input
+                                id="lastName"
+                                value={editData.last_name}
+                                onChange={(e) => setEditData((prev) => ({ ...prev, last_name: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium">
+                            {user.first_name} {user.last_name}
+                          </p>
+                          <p className="text-sm text-muted-foreground">Cliente</p>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -270,44 +342,23 @@ export default function CuentaPage() {
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">{user.email}</span>
-                      {verificationStatus === "verified" ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-orange-500" />
-                      )}
                     </div>
 
-                    {verificationStatus === "unverified" && (
-                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
-                        <p className="text-sm text-orange-700 mb-2">
-                          Tu email no está verificado. Revisa tu bandeja de entrada.
-                        </p>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={checkEmailVerification}
-                          disabled={verificationStatus === "checking"}
-                        >
-                          {verificationStatus === "checking" ? "Verificando..." : "Probar Verificación"}
-                        </Button>
-                      </div>
-                    )}
-
-                    {verificationStatus === "verified" && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                        <p className="text-sm text-green-700 flex items-center gap-2">
-                          <CheckCircle className="h-4 w-4" />
-                          Email verificado correctamente
-                        </p>
-                      </div>
-                    )}
-
-                    {user.phone && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{user.phone}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      {isEditing ? (
+                        <div className="flex-1">
+                          <Input
+                            value={editData.phone}
+                            onChange={(e) => setEditData((prev) => ({ ...prev, phone: e.target.value }))}
+                            placeholder="Número de teléfono"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-sm">{user.phone || "No especificado"}</span>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />

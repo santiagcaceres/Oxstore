@@ -33,20 +33,44 @@ export default function Page() {
       return
     }
 
+    const { data: existingUser } = await supabase.from("users").select("email").eq("email", email).single()
+
+    if (existingUser) {
+      setError("Ya existe una cuenta con este email")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/perfil`,
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/cuenta`,
           data: {
             first_name: firstName,
             last_name: lastName,
           },
         },
       })
+
       if (error) throw error
-      router.push("/auth/registro-exitoso")
+
+      if (data.user) {
+        const { error: profileError } = await supabase.from("users").insert({
+          id: data.user.id,
+          email: email,
+          first_name: firstName,
+          last_name: lastName,
+          role: "customer",
+        })
+
+        if (profileError) {
+          console.error("Error creating profile:", profileError)
+        }
+
+        router.push("/cuenta")
+      }
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Ocurrió un error")
     } finally {
