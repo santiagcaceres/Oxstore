@@ -2,10 +2,10 @@ import { updateSession } from "@/lib/supabase/middleware"
 import type { NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  const protectedPaths = ["/admin", "/perfil"]
-  const isProtectedPath = protectedPaths.some((path) => request.nextUrl.pathname.startsWith(path))
+  const supabaseProtectedPaths = ["/perfil"]
+  const isSupabaseProtectedPath = supabaseProtectedPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
-  if (isProtectedPath) {
+  if (isSupabaseProtectedPath) {
     return await updateSession(request)
   }
 

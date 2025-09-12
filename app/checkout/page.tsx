@@ -56,7 +56,6 @@ export default function CheckoutPage() {
 
     if (user) {
       setUser(user)
-      // Si hay usuario, prellenar el formulario con sus datos
       const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
       if (profile) {
         setFormData((prev) => ({
@@ -64,6 +63,7 @@ export default function CheckoutPage() {
           email: profile.email || "",
           firstName: profile.first_name || "",
           lastName: profile.last_name || "",
+          phone: profile.phone || "",
         }))
       }
     }
@@ -101,6 +101,7 @@ export default function CheckoutPage() {
             email: profile.email || "",
             firstName: profile.first_name || "",
             lastName: profile.last_name || "",
+            phone: profile.phone || "",
           }))
         }
       } else {
@@ -143,6 +144,7 @@ export default function CheckoutPage() {
             email: authData.email,
             firstName: authData.firstName,
             lastName: authData.lastName,
+            phone: authData.phone,
           }))
 
           alert("Cuenta creada exitosamente. Revisa tu email para confirmar tu cuenta.")
@@ -163,9 +165,11 @@ export default function CheckoutPage() {
   }
 
   const handleCashPayment = async () => {
-    if (!isFormValid) return
+    if (!isFormValid) {
+      alert("Por favor completa todos los campos requeridos")
+      return
+    }
 
-    // Si no hay usuario autenticado, mostrar formulario de auth
     if (!user) {
       setShowAuthForm(true)
       return

@@ -25,8 +25,8 @@ export async function GET(request: Request, { params }: { params: { slug: string
     }
 
     const productName = product.custom_name || product.name
-    if (productName === "Producto sin nombre") {
-      console.log(`[v0] GET /api/products/${params.slug} - Product has default name, not showing`)
+    if (!productName || productName.trim() === "" || productName === "Producto sin nombre") {
+      console.log(`[v0] GET /api/products/${params.slug} - Product has invalid name: "${productName}"`)
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
@@ -37,8 +37,9 @@ export async function GET(request: Request, { params }: { params: { slug: string
       .select("id, color, size, stock_quantity, price, custom_name, name, zureo_code")
       .eq("zureo_code", product.zureo_code)
       .gt("stock_quantity", 0)
-      .neq("custom_name", "Producto sin nombre")
-      .neq("name", "Producto sin nombre")
+      .or("custom_name.neq.Producto sin nombre,name.neq.Producto sin nombre")
+      .not("custom_name", "is", null)
+      .not("name", "is", null)
 
     if (variantsError) {
       console.error(`[v0] Error loading variants:`, variantsError)

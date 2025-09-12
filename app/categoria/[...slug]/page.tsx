@@ -30,9 +30,9 @@ interface PageProps {
 
 export default function CategoryPage({ params }: PageProps) {
   const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({
-    sortBy: "price-asc",
+    sortBy: "created_at-desc",
     filterBrand: "all-brands",
     filterColor: "all-colors",
     filterSize: "all-sizes",
@@ -126,13 +126,17 @@ export default function CategoryPage({ params }: PageProps) {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">{title}</h1>
-          <p className="text-muted-foreground">{products?.length || 0} productos encontrados</p>
+          <p className="text-muted-foreground">Explora nuestra selección de productos</p>
         </div>
 
         <ProductFilters onFiltersChange={handleFiltersChange} />
 
         <ProductGrid
           products={products}
+          gender={gender === "nuevo" ? undefined : gender}
+          category={category}
+          subcategory={subcategory}
+          isNew={gender === "nuevo"}
           sortBy={filters.sortBy}
           filterBrand={getFilterValue(filters.filterBrand, "brands")}
           filterColor={getFilterValue(filters.filterColor, "colors")}

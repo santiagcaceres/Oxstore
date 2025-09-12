@@ -103,7 +103,23 @@ export function ProductGrid({
       }
 
       if (filterSize && filterSize !== "all-sizes") {
-        query = query.eq("size", filterSize)
+        // Primero obtener todos los zureo_codes que tienen el talle buscado
+        const { data: codesWithSize } = await supabase
+          .from("products_in_stock")
+          .select("zureo_code")
+          .eq("size", filterSize)
+          .gt("stock_quantity", 0)
+
+        if (codesWithSize && codesWithSize.length > 0) {
+          const codes = codesWithSize.map((item) => item.zureo_code)
+          query = query.in("zureo_code", codes)
+        } else {
+          // Si no hay productos con ese talle, devolver array vacío
+          setProducts([])
+          setHasMore(false)
+          setLoading(false)
+          return
+        }
       }
 
       // Apply search filter
@@ -112,6 +128,23 @@ export function ProductGrid({
         query = query.or(
           `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,brand.ilike.%${searchTerm}%,zureo_code.ilike.%${searchTerm}%`,
         )
+      }
+
+      switch (sortBy) {
+        case "price-asc":
+          query = query.order("price", { ascending: true })
+          break
+        case "price-desc":
+          query = query.order("price", { ascending: false })
+          break
+        case "name-asc":
+          query = query.order("name", { ascending: true })
+          break
+        case "name-desc":
+          query = query.order("name", { ascending: false })
+          break
+        default:
+          query = query.order("created_at", { ascending: false })
       }
 
       const currentOffset = reset ? 0 : offset
@@ -127,14 +160,18 @@ export function ProductGrid({
       console.log("[v0] Loaded products from database:", productsData?.length || 0)
 
       const convertedProducts: Product[] = []
+      const processedCodes = new Set()
 
       for (const p of productsData || []) {
-        // Cargar variantes del mismo zureo_code para obtener todos los talles
+        if (processedCodes.has(p.zureo_code)) continue
+        processedCodes.add(p.zureo_code)
+
         const { data: variants } = await supabase
           .from("products_in_stock")
           .select("id, color, size, stock_quantity, price")
           .eq("zureo_code", p.zureo_code)
           .gt("stock_quantity", 0)
+          .order("size")
 
         const product: Product & { variants?: any[] } = {
           id: p.id,
@@ -156,8 +193,8 @@ export function ProductGrid({
           is_featured: p.is_featured,
           created_at: p.created_at,
           updated_at: p.updated_at,
-          size: p.size, // Talle del producto principal
-          variants: variants || [], // Todas las variantes con sus talles
+          size: p.size,
+          variants: variants || [],
           images: [
             {
               id: p.id,

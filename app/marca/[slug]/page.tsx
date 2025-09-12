@@ -16,17 +16,16 @@ interface BrandPageProps {
 
 export default function BrandPage({ params }: BrandPageProps) {
   const [brand, setBrand] = useState<any>(null)
-  const [products, setProducts] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({
-    sortBy: "price-asc",
+    sortBy: "created_at-desc",
     filterBrand: "all-brands",
     filterColor: "all-colors",
     filterSize: "all-sizes",
   })
 
   useEffect(() => {
-    const fetchBrandAndProducts = async () => {
+    const fetchBrand = async () => {
       try {
         const supabase = createBrowserClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,19 +44,6 @@ export default function BrandPage({ params }: BrandPageProps) {
         }
 
         setBrand(brandData)
-
-        const { data: productsData, error: productsError } = await supabase
-          .from("products_in_stock")
-          .select("*")
-          .eq("brand", brandData.name)
-          .gt("stock", 0)
-          .order("created_at", { ascending: false })
-
-        if (productsError) {
-          console.error("Error fetching brand products:", productsError)
-        } else {
-          setProducts(productsData || [])
-        }
       } catch (error) {
         console.error("Error:", error)
       } finally {
@@ -65,7 +51,7 @@ export default function BrandPage({ params }: BrandPageProps) {
       }
     }
 
-    fetchBrandAndProducts()
+    fetchBrand()
   }, [params.slug])
 
   const getFilterValue = (value: string, prefix: string) => {
@@ -99,17 +85,14 @@ export default function BrandPage({ params }: BrandPageProps) {
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">{brand.name}</h1>
-          <p className="text-muted-foreground">
-            Descubre todos los productos de {brand.name} ({products?.length || 0} productos)
-          </p>
+          <p className="text-muted-foreground">Descubre todos los productos de {brand.name}</p>
         </div>
 
         <ProductFilters onFiltersChange={handleFiltersChange} hideBrandFilter={true} />
 
         <ProductGrid
-          products={products}
           sortBy={filters.sortBy}
-          filterBrand={getFilterValue(filters.filterBrand, "brands")}
+          filterBrand={brand.name}
           filterColor={getFilterValue(filters.filterColor, "colors")}
           filterSize={getFilterValue(filters.filterSize, "sizes")}
         />

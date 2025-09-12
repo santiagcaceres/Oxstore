@@ -11,7 +11,6 @@ export async function updateSession(request: NextRequest) {
 
   if (!supabaseUrl || !supabaseAnonKey) {
     console.error("[v0] Missing Supabase environment variables")
-    // Redirigir a página de error si faltan las variables
     const url = request.nextUrl.clone()
     url.pathname = "/auth/error"
     return NextResponse.redirect(url)

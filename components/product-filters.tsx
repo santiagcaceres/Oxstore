@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { createClient } from "@/lib/supabase/client"
 
 interface ProductFiltersProps {
   onFiltersChange: (filters: {
@@ -15,33 +16,55 @@ interface ProductFiltersProps {
 }
 
 export function ProductFilters({ onFiltersChange, hideBrandFilter = false }: ProductFiltersProps) {
-  const [sortBy, setSortBy] = useState<string>("price-asc")
+  const [sortBy, setSortBy] = useState<string>("created_at-desc")
   const [filterBrand, setFilterBrand] = useState<string>("all-brands")
   const [filterColor, setFilterColor] = useState<string>("all-colors")
   const [filterSize, setFilterSize] = useState<string>("all-sizes")
+  const [brands, setBrands] = useState<string[]>([])
+  const [colors, setColors] = useState<string[]>([])
+  const [sizes, setSizes] = useState<string[]>([])
 
-  const brands = [
-    "MISTRAL",
-    "UNIFORM",
-    "LEVI",
-    "XKETZIA",
-    "INDIANA",
-    "KABOA",
-    "EMPATHIA",
-    "ROTUNDA",
-    "LEMON",
-    "GATTO",
-    "PARDO",
-    "MINOT",
-    "MANDAL",
-    "SYMPHORI",
-    "NEUFO",
-    "BROOKSFIELD",
-    "PEGUIN",
-  ]
+  useEffect(() => {
+    const loadFiltersData = async () => {
+      try {
+        const supabase = createClient()
 
-  const colors = ["Negro", "Blanco", "Azul", "Rojo", "Verde", "Gris", "Beige", "Rosa"]
-  const sizes = ["XS", "S", "M", "L", "XL", "XXL"]
+        // Cargar marcas únicas
+        const { data: brandsData } = await supabase
+          .from("products_in_stock")
+          .select("brand")
+          .gt("stock_quantity", 0)
+          .not("brand", "is", null)
+
+        const uniqueBrands = [...new Set(brandsData?.map((item) => item.brand))].sort()
+        setBrands(uniqueBrands)
+
+        // Cargar colores únicos
+        const { data: colorsData } = await supabase
+          .from("products_in_stock")
+          .select("color")
+          .gt("stock_quantity", 0)
+          .not("color", "is", null)
+
+        const uniqueColors = [...new Set(colorsData?.map((item) => item.color))].sort()
+        setColors(uniqueColors)
+
+        // Cargar talles únicos
+        const { data: sizesData } = await supabase
+          .from("products_in_stock")
+          .select("size")
+          .gt("stock_quantity", 0)
+          .not("size", "is", null)
+
+        const uniqueSizes = [...new Set(sizesData?.map((item) => item.size))].sort()
+        setSizes(uniqueSizes)
+      } catch (error) {
+        console.error("Error loading filters data:", error)
+      }
+    }
+
+    loadFiltersData()
+  }, [])
 
   const handleFilterChange = (type: string, value: string) => {
     const newFilters = { sortBy, filterBrand, filterColor, filterSize }
@@ -69,12 +92,12 @@ export function ProductFilters({ onFiltersChange, hideBrandFilter = false }: Pro
   }
 
   const clearFilters = () => {
-    setSortBy("price-asc")
+    setSortBy("created_at-desc")
     setFilterBrand("all-brands")
     setFilterColor("all-colors")
     setFilterSize("all-sizes")
     onFiltersChange({
-      sortBy: "price-asc",
+      sortBy: "created_at-desc",
       filterBrand: "all-brands",
       filterColor: "all-colors",
       filterSize: "all-sizes",
@@ -89,6 +112,7 @@ export function ProductFilters({ onFiltersChange, hideBrandFilter = false }: Pro
             <SelectValue placeholder="Ordenar por" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="created_at-desc">Más recientes</SelectItem>
             <SelectItem value="price-asc">Precio: Menor a Mayor</SelectItem>
             <SelectItem value="price-desc">Precio: Mayor a Menor</SelectItem>
             <SelectItem value="name-asc">Nombre: A-Z</SelectItem>
@@ -134,7 +158,7 @@ export function ProductFilters({ onFiltersChange, hideBrandFilter = false }: Pro
             <SelectItem value="all-sizes">Todos los talles</SelectItem>
             {sizes.map((size) => (
               <SelectItem key={size} value={size}>
-                {size}
+                {size.toUpperCase()}
               </SelectItem>
             ))}
           </SelectContent>
