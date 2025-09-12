@@ -152,7 +152,8 @@ export function Header() {
       )
     }
 
-    return filteredSubcategories.filter((subcat) => subcategoriesWithProducts.includes(subcat.id))
+    // Esto permite que se muestren las subcategorías aunque no tengan productos actualmente
+    return filteredSubcategories
   }
 
   const shouldShowCategory = (categorySlug: string) => {
@@ -211,7 +212,7 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center justify-center space-x-8 flex-1">
             <div className="relative group">
               <Link
                 href="/categoria/mujer"

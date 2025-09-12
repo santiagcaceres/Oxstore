@@ -16,9 +16,10 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { ShoppingCart, Heart, Share2, Minus, Plus, Star } from "lucide-react"
+import { ShoppingCart, Heart, Share2, Minus, Plus } from "lucide-react"
 import type { Product } from "@/lib/database"
 import { useCart } from "@/contexts/cart-context"
+import { ProductCard } from "@/components/product-card"
 
 interface ProductPageProps {
   params: {
@@ -31,6 +32,8 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
+  const [similarProducts, setSimilarProducts] = useState<Product[]>([])
+  const [loadingSimilar, setLoadingSimilar] = useState(false)
   const { addItem } = useCart()
   const [isAddingToCart, setIsAddingToCart] = useState(false)
 
@@ -41,6 +44,7 @@ export default function ProductPage({ params }: ProductPageProps) {
         if (response.ok) {
           const data = await response.json()
           setProduct(data)
+          loadSimilarProducts(data)
         } else {
           notFound()
         }
@@ -53,6 +57,24 @@ export default function ProductPage({ params }: ProductPageProps) {
 
     loadProduct()
   }, [params.slug])
+
+  const loadSimilarProducts = async (currentProduct: Product) => {
+    setLoadingSimilar(true)
+    try {
+      // Buscar productos de la misma categoría o marca, excluyendo el producto actual
+      const response = await fetch(`/api/products?category=${currentProduct.category}&limit=4`)
+      if (response.ok) {
+        const data = await response.json()
+        // Filtrar el producto actual de los resultados
+        const filtered = data.products?.filter((p: Product) => p.id !== currentProduct.id) || []
+        setSimilarProducts(filtered.slice(0, 4))
+      }
+    } catch (error) {
+      console.error("Error loading similar products:", error)
+    } finally {
+      setLoadingSimilar(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -79,8 +101,13 @@ export default function ProductPage({ params }: ProductPageProps) {
     notFound()
   }
 
-  const hasDiscount = product.compare_price && product.compare_price > product.price
-  const discountPercentage = hasDiscount
+  // const hasDiscount = product.compare_price && product.compare_price > product.price
+  // const discountPercentage = hasDiscount
+  //   ? Math.round(((product.compare_price! - product.price) / product.compare_price!) * 100)
+  //   : 0
+
+  const hasRealDiscount = product.compare_price && product.compare_price > product.price && product.compare_price > 0
+  const discountPercentage = hasRealDiscount
     ? Math.round(((product.compare_price! - product.price) / product.compare_price!) * 100)
     : 0
 
@@ -150,9 +177,9 @@ export default function ProductPage({ params }: ProductPageProps) {
                 priority
               />
 
-              {/* Badges */}
+              {/* Badges - Solo mostrar descuento si realmente existe */}
               <div className="absolute top-4 left-4 flex flex-col gap-2">
-                {hasDiscount && <Badge variant="destructive">-{discountPercentage}%</Badge>}
+                {hasRealDiscount && <Badge variant="destructive">-{discountPercentage}%</Badge>}
                 {product.is_featured && <Badge variant="secondary">Destacado</Badge>}
               </div>
             </div>
@@ -187,20 +214,10 @@ export default function ProductPage({ params }: ProductPageProps) {
               <p className="text-sm text-muted-foreground uppercase tracking-wide mb-2">{product.brand}</p>
               <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
 
-              {/* Rating */}
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <span className="text-sm text-muted-foreground">(4.8) 124 reseñas</span>
-              </div>
-
-              {/* Price */}
+              {/* Price - Solo mostrar precio tachado si hay descuento real */}
               <div className="flex items-center gap-3 mb-6">
                 <span className="text-3xl font-bold">${product.price}</span>
-                {hasDiscount && (
+                {hasRealDiscount && (
                   <span className="text-xl text-muted-foreground line-through">${product.compare_price}</span>
                 )}
               </div>
@@ -272,12 +289,11 @@ export default function ProductPage({ params }: ProductPageProps) {
               </div>
             </div>
 
-            {/* Product Details Tabs */}
+            {/* Product Details Tabs - Eliminando pestaña de reseñas */}
             <Tabs defaultValue="description" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="description">Descripción</TabsTrigger>
                 <TabsTrigger value="specifications">Especificaciones</TabsTrigger>
-                <TabsTrigger value="reviews">Reseñas</TabsTrigger>
               </TabsList>
 
               <TabsContent value="description" className="mt-6">
@@ -310,15 +326,36 @@ export default function ProductPage({ params }: ProductPageProps) {
                   )}
                 </div>
               </TabsContent>
-
-              <TabsContent value="reviews" className="mt-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Las reseñas estarán disponibles próximamente.</p>
-                </div>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
+
+        {similarProducts.length > 0 && (
+          <section className="mt-16">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold mb-2">Productos que te pueden gustar</h2>
+              <p className="text-muted-foreground">Descubre otros productos similares que podrían interesarte</p>
+            </div>
+
+            {loadingSimilar ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="aspect-square bg-muted rounded-lg mb-4" />
+                    <div className="h-4 bg-muted rounded w-3/4 mb-2" />
+                    <div className="h-4 bg-muted rounded w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {similarProducts.map((similarProduct) => (
+                  <ProductCard key={similarProduct.id} product={similarProduct} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
       <Footer />

@@ -8,7 +8,7 @@ import { CartProvider } from "@/contexts/cart-context"
 import { FloatingCart } from "@/components/floating-cart"
 
 export const metadata: Metadata = {
-  title: "Oxstore - Tu tienda de confianza",
+  title: "Oxstore",
   description: "Descubre los mejores productos en Oxstore. Calidad, estilo y las mejores marcas.",
   generator: "v0.app",
   icons: {

@@ -132,9 +132,9 @@ Por favor confirmen la recepción del pago.`
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
-          <Button variant="ghost" onClick={() => router.push("/checkout")} className="mb-4">
+          <Button variant="ghost" onClick={() => router.push("/checkout/otros-pagos")} className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al checkout
+            Volver a métodos de pago
           </Button>
 
           <h1 className="text-3xl font-bold mb-8">Pago por Transferencia</h1>
@@ -158,6 +158,16 @@ Por favor confirmen la recepción del pago.`
                       <p className="font-medium">Titular</p>
                       <p className="text-sm text-muted-foreground">{accountHolder}</p>
                     </div>
+                  </div>
+
+                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                    <div>
+                      <p className="font-medium">Número de Cuenta</p>
+                      <p className="text-sm text-muted-foreground font-mono">{accountNumber}</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(accountNumber)}>
+                      <Copy className="h-4 w-4" />
+                    </Button>
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-muted rounded-lg">

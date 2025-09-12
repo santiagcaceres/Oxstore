@@ -146,6 +146,21 @@ export default function CheckoutPage() {
     router.push("/checkout/transferencia")
   }
 
+  const handleOtherPaymentMethods = () => {
+    if (!isFormValid) return
+
+    // Guardar datos del pedido en localStorage para la página de selección
+    const orderData = {
+      items: state.items,
+      total: totalWithShipping,
+      customerInfo: formData,
+      shippingMethod,
+      shippingCost,
+    }
+    localStorage.setItem("orderData", JSON.stringify(orderData))
+    router.push("/checkout/otros-pagos")
+  }
+
   if (state.items.length === 0) {
     router.push("/carrito")
     return null
@@ -318,26 +333,14 @@ export default function CheckoutPage() {
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <RadioGroupItem value="transfer" id="transfer" />
-                      <Label htmlFor="transfer" className="flex-1 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4" />
-                          <div>
-                            <div className="font-medium">Transferencia Bancaria</div>
-                            <div className="text-sm text-muted-foreground">Pago por transferencia o depósito</div>
-                          </div>
-                        </div>
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <RadioGroupItem value="cash" id="cash" />
-                      <Label htmlFor="cash" className="flex-1 cursor-pointer">
+                      <RadioGroupItem value="other" id="other" />
+                      <Label htmlFor="other" className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-2">
                           <Banknote className="h-4 w-4" />
                           <div>
-                            <div className="font-medium">Pago en Efectivo</div>
+                            <div className="font-medium">Efectivo o Transferencia</div>
                             <div className="text-sm text-muted-foreground">
-                              {shippingMethod === "pickup" ? "Paga al retirar" : "Paga al recibir"}
+                              Pago en efectivo o transferencia bancaria
                             </div>
                           </div>
                         </div>
@@ -359,15 +362,11 @@ export default function CheckoutPage() {
                           onSuccess={handleMercadoPagoSuccess}
                           onError={handleMercadoPagoError}
                         />
-                      ) : paymentMethod === "transfer" ? (
-                        <Button onClick={handleTransferPayment} className="w-full" size="lg">
-                          Continuar con Transferencia
+                      ) : paymentMethod === "other" ? (
+                        <Button onClick={handleOtherPaymentMethods} className="w-full" size="lg">
+                          Continuar con Efectivo o Transferencia
                         </Button>
-                      ) : (
-                        <Button onClick={handleCashPayment} disabled={isProcessing} className="w-full" size="lg">
-                          {isProcessing ? "Procesando..." : "Confirmar Pedido"}
-                        </Button>
-                      )}
+                      ) : null}
                     </div>
                   )}
 
