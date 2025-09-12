@@ -17,6 +17,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { MercadoPagoButton } from "@/components/mercadopago-button"
 import { createClient } from "@/lib/supabase/client"
+import { Popup } from "@/components/ui/popup"
 
 export default function CheckoutPage() {
   const { state, clearCart } = useCart()
@@ -522,7 +523,23 @@ export default function CheckoutPage() {
                           <Banknote className="h-4 w-4" />
                           <div>
                             <div className="font-medium">Pago en Efectivo</div>
-                            <div className="text-sm text-muted-foreground">Pago en efectivo al recibir el pedido</div>
+                            <div className="text-sm text-muted-foreground">
+                              {shippingMethod === "pickup"
+                                ? "Paga al retirar en nuestro local"
+                                : "Paga al recibir el pedido"}
+                            </div>
+                          </div>
+                        </div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <RadioGroupItem value="transfer" id="transfer" />
+                      <Label htmlFor="transfer" className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          <div>
+                            <div className="font-medium">Transferencia Bancaria</div>
+                            <div className="text-sm text-muted-foreground">Pago por transferencia o depósito</div>
                           </div>
                         </div>
                       </Label>
@@ -545,7 +562,11 @@ export default function CheckoutPage() {
                         />
                       ) : paymentMethod === "cash" ? (
                         <Button onClick={handleCashPayment} className="w-full" size="lg" disabled={isProcessing}>
-                          {isProcessing ? "Procesando..." : "Confirmar Pedido"}
+                          {isProcessing ? "Procesando..." : "Confirmar Pedido en Efectivo"}
+                        </Button>
+                      ) : paymentMethod === "transfer" ? (
+                        <Button onClick={handleTransferPayment} className="w-full" size="lg">
+                          Continuar con Transferencia
                         </Button>
                       ) : null}
                     </div>
@@ -626,97 +647,93 @@ export default function CheckoutPage() {
         </div>
       </main>
 
-      {showAuthForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader>
-              <CardTitle>{authMode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAuth} className="space-y-4">
+      <Popup
+        isOpen={showAuthForm}
+        onClose={() => setShowAuthForm(false)}
+        title={authMode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div>
+            <Label htmlFor="authEmail">Email</Label>
+            <Input
+              id="authEmail"
+              type="email"
+              required
+              value={authData.email}
+              onChange={(e) => handleAuthInputChange("email", e.target.value)}
+            />
+          </div>
+
+          {authMode === "register" && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="authEmail">Email</Label>
+                  <Label htmlFor="authFirstName">Nombre</Label>
                   <Input
-                    id="authEmail"
-                    type="email"
+                    id="authFirstName"
                     required
-                    value={authData.email}
-                    onChange={(e) => handleAuthInputChange("email", e.target.value)}
+                    value={authData.firstName}
+                    onChange={(e) => handleAuthInputChange("firstName", e.target.value)}
                   />
                 </div>
-
-                {authMode === "register" && (
-                  <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="authFirstName">Nombre</Label>
-                        <Input
-                          id="authFirstName"
-                          required
-                          value={authData.firstName}
-                          onChange={(e) => handleAuthInputChange("firstName", e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="authLastName">Apellido</Label>
-                        <Input
-                          id="authLastName"
-                          required
-                          value={authData.lastName}
-                          onChange={(e) => handleAuthInputChange("lastName", e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
-
                 <div>
-                  <Label htmlFor="authPassword">Contraseña</Label>
+                  <Label htmlFor="authLastName">Apellido</Label>
                   <Input
-                    id="authPassword"
-                    type="password"
+                    id="authLastName"
                     required
-                    value={authData.password}
-                    onChange={(e) => handleAuthInputChange("password", e.target.value)}
+                    value={authData.lastName}
+                    onChange={(e) => handleAuthInputChange("lastName", e.target.value)}
                   />
                 </div>
+              </div>
+            </>
+          )}
 
-                {authMode === "register" && (
-                  <div>
-                    <Label htmlFor="authConfirmPassword">Confirmar Contraseña</Label>
-                    <Input
-                      id="authConfirmPassword"
-                      type="password"
-                      required
-                      value={authData.confirmPassword}
-                      onChange={(e) => handleAuthInputChange("confirmPassword", e.target.value)}
-                    />
-                  </div>
-                )}
+          <div>
+            <Label htmlFor="authPassword">Contraseña</Label>
+            <Input
+              id="authPassword"
+              type="password"
+              required
+              value={authData.password}
+              onChange={(e) => handleAuthInputChange("password", e.target.value)}
+            />
+          </div>
 
-                <div className="flex gap-2">
-                  <Button type="submit" className="flex-1">
-                    {authMode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
-                  </Button>
-                  <Button type="button" variant="outline" onClick={() => setShowAuthForm(false)}>
-                    Cancelar
-                  </Button>
-                </div>
+          {authMode === "register" && (
+            <div>
+              <Label htmlFor="authConfirmPassword">Confirmar Contraseña</Label>
+              <Input
+                id="authConfirmPassword"
+                type="password"
+                required
+                value={authData.confirmPassword}
+                onChange={(e) => handleAuthInputChange("confirmPassword", e.target.value)}
+              />
+            </div>
+          )}
 
-                <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    {authMode === "login" ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
-                  </button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+          <div className="flex gap-2">
+            <Button type="submit" className="flex-1">
+              {authMode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setShowAuthForm(false)}>
+              Cancelar
+            </Button>
+          </div>
+
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}
+              className="text-sm text-primary hover:underline"
+            >
+              {authMode === "login" ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
+            </button>
+          </div>
+        </form>
+      </Popup>
 
       <Footer />
     </div>

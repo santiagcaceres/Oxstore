@@ -9,6 +9,7 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { useCart } from "@/contexts/cart-context"
 import { createClient } from "@/lib/supabase/client"
+import { Popup } from "@/components/ui/popup"
 
 export default function TransferenciaPage() {
   const router = useRouter()
@@ -16,6 +17,7 @@ export default function TransferenciaPage() {
   const [orderData, setOrderData] = useState<any>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [orderCreated, setOrderCreated] = useState(false)
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
 
   useEffect(() => {
     const data = localStorage.getItem("transferOrderData")
@@ -34,7 +36,8 @@ export default function TransferenciaPage() {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
-    alert("Copiado al portapapeles")
+    setShowSuccessPopup(true)
+    setTimeout(() => setShowSuccessPopup(false), 2000)
   }
 
   const sendWhatsApp = () => {
@@ -259,6 +262,11 @@ Por favor confirmen la recepción del pago.`
           </div>
         </div>
       </main>
+
+      <Popup isOpen={showSuccessPopup} onClose={() => setShowSuccessPopup(false)} title="¡Copiado!" maxWidth="max-w-sm">
+        <p className="text-center text-green-600">Datos copiados al portapapeles</p>
+      </Popup>
+
       <Footer />
     </div>
   )

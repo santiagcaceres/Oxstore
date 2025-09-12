@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/client"
+import { Popup } from "@/components/ui/popup"
 
 export default function ExitoEfectivoPage() {
   const router = useRouter()
@@ -17,6 +18,7 @@ export default function ExitoEfectivoPage() {
   const [order, setOrder] = useState(null)
   const [orderItems, setOrderItems] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showDownloadPopup, setShowDownloadPopup] = useState(false)
 
   useEffect(() => {
     if (orderId) {
@@ -99,6 +101,9 @@ ${
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+
+    setShowDownloadPopup(true)
+    setTimeout(() => setShowDownloadPopup(false), 3000)
   }
 
   if (loading) {
@@ -252,6 +257,16 @@ ${
           </Button>
         </div>
       </main>
+
+      <Popup
+        isOpen={showDownloadPopup}
+        onClose={() => setShowDownloadPopup(false)}
+        title="¡Descarga Iniciada!"
+        maxWidth="max-w-sm"
+      >
+        <p className="text-center text-green-600">El comprobante se ha descargado correctamente</p>
+      </Popup>
+
       <Footer />
     </div>
   )

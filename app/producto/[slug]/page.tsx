@@ -270,7 +270,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                       <Badge
                         key={color}
                         variant={selectedColor === color ? "default" : "outline"}
-                        className="cursor-pointer"
+                        className="cursor-pointer hover:bg-primary/10 transition-colors"
                         onClick={() => setSelectedColor(color)}
                       >
                         {color.toUpperCase()}
@@ -280,34 +280,51 @@ export default function ProductPage({ params }: ProductPageProps) {
                 </div>
               )}
 
-              {availableVariants.length > 0 && (
+              {availableVariants.length > 0 && getAvailableSizes().length > 0 && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium uppercase">Talles Disponibles:</label>
                   <div className="flex flex-wrap gap-2">
-                    {getAvailableSizes().map((size) => (
-                      <Badge
-                        key={size}
-                        variant={selectedSize === size ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() => setSelectedSize(size)}
-                      >
-                        {size.toUpperCase()}
-                      </Badge>
-                    ))}
+                    {getAvailableSizes().map((size) => {
+                      const sizeVariant = availableVariants.find((v) => v.size === size)
+                      const stock = sizeVariant?.stock_quantity || 0
+                      return (
+                        <Badge
+                          key={size}
+                          variant={selectedSize === size ? "default" : "outline"}
+                          className={`cursor-pointer hover:bg-primary/10 transition-colors ${
+                            stock === 0 ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                          onClick={() => stock > 0 && setSelectedSize(size)}
+                        >
+                          {size.toUpperCase()} {stock > 0 && `(${stock})`}
+                        </Badge>
+                      )
+                    })}
                   </div>
+                  {selectedSize && (
+                    <p className="text-sm text-muted-foreground">
+                      Talle seleccionado: <span className="font-medium">{selectedSize.toUpperCase()}</span>
+                    </p>
+                  )}
                 </div>
               )}
 
               {availableVariants.length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium uppercase">Stock por Talle:</label>
+                  <label className="text-sm font-medium uppercase">Stock Disponible:</label>
                   <div className="grid grid-cols-2 gap-2 text-sm">
-                    {availableVariants.map((variant, index) => (
-                      <div key={index} className="flex justify-between p-2 bg-muted rounded">
-                        <span>{variant.size ? `Talle ${variant.size.toUpperCase()}` : "Sin talle"}</span>
-                        <span className="font-medium">{variant.stock_quantity} unidades</span>
-                      </div>
-                    ))}
+                    {availableVariants
+                      .filter((variant) => variant.size) // Solo mostrar variantes con talle
+                      .map((variant, index) => (
+                        <div key={index} className="flex justify-between p-2 bg-muted rounded">
+                          <span className="font-medium">Talle {variant.size?.toUpperCase()}</span>
+                          <span
+                            className={`font-medium ${variant.stock_quantity > 0 ? "text-green-600" : "text-red-600"}`}
+                          >
+                            {variant.stock_quantity > 0 ? `${variant.stock_quantity} unidades` : "Agotado"}
+                          </span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
