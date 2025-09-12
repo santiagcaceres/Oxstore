@@ -56,6 +56,15 @@ interface Category {
   level: number
 }
 
+interface Subcategory {
+  id: number
+  name: string
+  slug: string
+  category_id: number
+  gender: string
+  is_active: boolean
+}
+
 interface ProductImage {
   id: number
   product_id: number
@@ -70,6 +79,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [product, setProduct] = useState<Product | null>(null)
   const [brands, setBrands] = useState<Brand[]>([])
   const [categories, setCategories] = useState<Category[]>([])
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
   const [productImages, setProductImages] = useState<ProductImage[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -100,9 +110,19 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   ]
 
   const getMainCategories = () => categories.filter((cat) => cat.level === 1)
-  const getSubcategories = (parentSlug: string) => {
-    const parent = categories.find((cat) => cat.slug === parentSlug && cat.level === 1)
-    return parent ? categories.filter((cat) => cat.parent_id === parent.id && cat.level === 2) : []
+  const getSubcategories = (categorySlug: string) => {
+    console.log(`[v0] Getting subcategories for category: ${categorySlug}`)
+    console.log(`[v0] Available subcategories:`, subcategories)
+
+    // Filtrar subcategorías por categoría y género seleccionado
+    const filtered = subcategories.filter((subcat) => {
+      const matchesCategory = subcat.category_id === categories.find((cat) => cat.slug === categorySlug)?.id
+      const matchesGender = !selectedGender || subcat.gender === selectedGender || subcat.gender === "unisex"
+      return matchesCategory && matchesGender && subcat.is_active
+    })
+
+    console.log(`[v0] Filtered subcategories:`, filtered)
+    return filtered
   }
   const getSubSubcategories = (parentSlug: string) => {
     const parent = categories.find((cat) => cat.slug === parentSlug && cat.level === 2)
@@ -135,6 +155,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     loadProduct()
     loadBrandsData()
     loadCategoriesData()
+    loadSubcategoriesData()
     loadProductImages()
   }, [params])
 
@@ -153,6 +174,26 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setCategories(data || [])
     } catch (error) {
       console.error("[v0] Error loading categories:", error)
+    }
+  }
+
+  const loadSubcategoriesData = async () => {
+    try {
+      console.log("[v0] Loading subcategories data...")
+      const { data, error } = await supabase.from("subcategories").select("*").eq("is_active", true).order("name")
+
+      if (error) throw error
+      console.log("[v0] Successfully loaded subcategories:", data?.length || 0)
+
+      data?.forEach((subcat) => {
+        console.log(
+          `[v0] Subcategory: ${subcat.name} (Category ID: ${subcat.category_id}, Gender: ${subcat.gender}, Slug: ${subcat.slug})`,
+        )
+      })
+
+      setSubcategories(data || [])
+    } catch (error) {
+      console.error("[v0] Error loading subcategories:", error)
     }
   }
 
@@ -588,35 +629,36 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 </Select>
               </div>
 
-              {selectedCategory &&
-                (() => {
-                  const subcats = getSubcategories(selectedCategory)
-                  console.log(`[v0] Subcategories for ${selectedCategory}:`, subcats)
-                  return subcats.length > 0
-                })() && (
-                  <div>
-                    <Label htmlFor="subcategory">Subcategoría</Label>
-                    <Select
-                      value={selectedSubcategory}
-                      onValueChange={(value) => {
-                        console.log(`[v0] Selected subcategory: ${value}`)
-                        setSelectedSubcategory(value)
-                        setSelectedSubSubcategory("")
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="SELECCIONAR SUBCATEGORÍA" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getSubcategories(selectedCategory).map((subcategory) => (
-                          <SelectItem key={subcategory.id} value={subcategory.slug}>
-                            {subcategory.name.toUpperCase()}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+              {selectedCategory && (
+                <div>
+                  <Label htmlFor="subcategory">Subcategoría</Label>
+                  <Select
+                    value={selectedSubcategory}
+                    onValueChange={(value) => {
+                      console.log(`[v0] Selected subcategory: ${value}`)
+                      setSelectedSubcategory(value)
+                      setSelectedSubSubcategory("")
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="SELECCIONAR SUBCATEGORÍA" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getSubcategories(selectedCategory).map((subcategory) => (
+                        <SelectItem key={subcategory.id} value={subcategory.slug}>
+                          {subcategory.name.toUpperCase()}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {getSubcategories(selectedCategory).length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      No hay subcategorías disponibles para esta categoría
+                      {selectedGender ? ` y género (${selectedGender})` : ""}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {selectedSubcategory && getSubSubcategories(selectedSubcategory).length > 0 && (
                 <div>

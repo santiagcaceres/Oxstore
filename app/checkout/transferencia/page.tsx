@@ -244,6 +244,32 @@ Por favor confirmen la recepción del pago.`
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Enviar Comprobante por WhatsApp
               </Button>
+              {orderCreated && (
+                <Button
+                  onClick={() => {
+                    // Necesitamos obtener el ID del pedido creado
+                    const supabase = createClient()
+                    supabase
+                      .from("orders")
+                      .select("id")
+                      .eq("customer_email", orderData.customerInfo.email)
+                      .order("created_at", { ascending: false })
+                      .limit(1)
+                      .single()
+                      .then(({ data }) => {
+                        if (data) {
+                          window.open(`/api/orders/${data.id}/receipt-transfer`, "_blank")
+                        }
+                      })
+                  }}
+                  variant="outline"
+                  className="flex-1"
+                  size="lg"
+                >
+                  <FileText className="h-5 w-5 mr-2" />
+                  Descargar Datos Bancarios
+                </Button>
+              )}
             </div>
 
             {orderCreated && (

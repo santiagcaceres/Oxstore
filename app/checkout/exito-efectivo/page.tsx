@@ -57,50 +57,11 @@ export default function ExitoEfectivoPage() {
   }
 
   const generateInvoice = () => {
-    if (!order || !orderItems.length) return
+    if (!order) return
 
-    const invoiceContent = `
-OXSTORE - FACTURA DE COMPRA
-============================
-
-Número de Pedido: ${order.order_number}
-Fecha: ${new Date(order.created_at).toLocaleDateString()}
-
-DATOS DEL CLIENTE:
-Nombre: ${order.customer_name}
-Email: ${order.customer_email}
-Teléfono: ${order.customer_phone}
-
-PRODUCTOS:
-${orderItems.map((item) => `- ${item.product_name} x${item.quantity} - $${item.total_price.toFixed(2)}`).join("\n")}
-
-RESUMEN:
-Subtotal: $${(order.total_amount - order.shipping_cost).toFixed(2)}
-Envío: ${order.shipping_cost > 0 ? `$${order.shipping_cost.toFixed(2)}` : "Gratis"}
-TOTAL: $${order.total_amount.toFixed(2)}
-
-MÉTODO DE PAGO: Efectivo
-ENTREGA: ${order.shipping_method === "pickup" ? "Retiro en sucursal" : "Envío a domicilio"}
-
-INSTRUCCIONES DE PAGO:
-${
-  order.shipping_method === "pickup"
-    ? "Dirígete a nuestro local en Rivera 488 para retirar y pagar tu pedido."
-    : "Paga en efectivo al recibir tu pedido."
-}
-
-¡Gracias por tu compra!
-    `
-
-    const blob = new Blob([invoiceContent], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `factura-${order.order_number}.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    // Usar la nueva API de comprobante de efectivo
+    const receiptUrl = `/api/orders/${order.id}/receipt-cash`
+    window.open(receiptUrl, "_blank")
 
     setShowDownloadPopup(true)
     setTimeout(() => setShowDownloadPopup(false), 3000)
@@ -251,10 +212,21 @@ ${
           </Card>
 
           {/* Botón de descarga */}
-          <Button onClick={generateInvoice} className="w-full" size="lg">
-            <Download className="h-4 w-4 mr-2" />
-            Descargar Comprobante
-          </Button>
+          <div className="flex gap-4">
+            <Button onClick={generateInvoice} className="flex-1" size="lg">
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Comprobante de Efectivo
+            </Button>
+            <Button
+              onClick={() => window.open(`/api/orders/${order.id}/invoice`, "_blank")}
+              variant="outline"
+              className="flex-1"
+              size="lg"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Factura Completa
+            </Button>
+          </div>
         </div>
       </main>
 

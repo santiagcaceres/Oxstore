@@ -88,6 +88,19 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
             position: relative;
           }
           
+          .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+          }
+          
+          .logo {
+            width: 120px;
+            height: auto;
+            margin-right: 16px;
+          }
+          
           .company-name {
             font-size: 32px;
             font-weight: 700;
@@ -335,6 +348,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       <body>
         <div class="invoice-container">
           <div class="header">
+            <div class="logo-container">
+              <img class="logo" src="/path/to/logo.png" alt="OXSTORE Logo" />
+            </div>
             <div class="company-name">OXSTORE</div>
             <div class="invoice-title">Factura de Venta</div>
           </div>
@@ -476,6 +492,18 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
               <div class="footer-title">¡Gracias por tu compra en OXSTORE!</div>
               <p class="footer-text">Para consultas sobre tu pedido, no dudes en contactarnos:</p>
               <p class="contact-info">📧 info@oxstore.com | 📞 (011) 1234-5678</p>
+              
+              <!-- Agregando horarios de atención -->
+              <div style="margin-top: 20px; padding: 16px; background: #f3f4f6; border-radius: 8px;">
+                <h4 style="color: #1f2937; margin-bottom: 8px; font-weight: 600;">Horarios de Atención</h4>
+                <p style="color: #6b7280; font-size: 14px; margin-bottom: 4px;">
+                  <strong>Lunes a Viernes:</strong> 09:00 - 12:00 y 14:00 - 19:00
+                </p>
+                <p style="color: #6b7280; font-size: 14px;">
+                  <strong>Sábados:</strong> 09:00 - 13:00
+                </p>
+              </div>
+              
               <p class="footer-text" style="margin-top: 16px; font-size: 12px;">
                 Esta factura es válida como comprobante de compra. Consérvala para garantías y devoluciones.
               </p>
