@@ -282,7 +282,7 @@ export default function ProductPage({ params }: ProductPageProps) {
 
               {availableVariants.length > 0 && getAvailableSizes().length > 0 && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium uppercase">Talles Disponibles:</label>
+                  <label className="text-sm font-medium uppercase">Talles:</label>
                   <div className="flex flex-wrap gap-2">
                     {getAvailableSizes().map((size) => {
                       const sizeVariant = availableVariants.find((v) => v.size === size)
@@ -296,7 +296,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                           }`}
                           onClick={() => stock > 0 && setSelectedSize(size)}
                         >
-                          {size.toUpperCase()} {stock > 0 && `(${stock})`}
+                          {size.toUpperCase()}
                         </Badge>
                       )
                     })}
@@ -306,26 +306,6 @@ export default function ProductPage({ params }: ProductPageProps) {
                       Talle seleccionado: <span className="font-medium">{selectedSize.toUpperCase()}</span>
                     </p>
                   )}
-                </div>
-              )}
-
-              {availableVariants.length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium uppercase">Stock Disponible:</label>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {availableVariants
-                      .filter((variant) => variant.size) // Solo mostrar variantes con talle
-                      .map((variant, index) => (
-                        <div key={index} className="flex justify-between p-2 bg-muted rounded">
-                          <span className="font-medium">Talle {variant.size?.toUpperCase()}</span>
-                          <span
-                            className={`font-medium ${variant.stock_quantity > 0 ? "text-green-600" : "text-red-600"}`}
-                          >
-                            {variant.stock_quantity > 0 ? `${variant.stock_quantity} unidades` : "Agotado"}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
                 </div>
               )}
             </div>
