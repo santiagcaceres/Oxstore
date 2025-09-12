@@ -114,20 +114,6 @@ export function ProductGrid({
         )
       }
 
-      const [sortField, sortDirection] = sortBy.split("-")
-      const ascending = sortDirection === "asc"
-
-      switch (sortField) {
-        case "price":
-          query = query.order("price", { ascending })
-          break
-        case "name":
-          query = query.order("name", { ascending })
-          break
-        default:
-          query = query.order("created_at", { ascending: false })
-      }
-
       const currentOffset = reset ? 0 : offset
       const { data: productsData, error } = await query.range(currentOffset, currentOffset + limit - 1)
 
@@ -140,38 +126,53 @@ export function ProductGrid({
 
       console.log("[v0] Loaded products from database:", productsData?.length || 0)
 
-      const convertedProducts: Product[] = (productsData || []).map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        slug: `${p.id}-${p.name
-          .toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, "")
-          .replace(/\s+/g, "-")
-          .trim()}`,
-        description: p.description,
-        short_description: p.description?.substring(0, 100) + "...",
-        price: p.price,
-        compare_price: p.price * 1.2,
-        sku: p.zureo_code,
-        stock_quantity: p.stock_quantity,
-        category_id: 1,
-        brand: p.brand,
-        is_active: p.is_active,
-        is_featured: p.is_featured,
-        created_at: p.created_at,
-        updated_at: p.updated_at,
-        images: [
-          {
-            id: p.id,
-            product_id: p.id,
-            image_url: p.image_url || "/placeholder.svg?height=400&width=400",
-            alt_text: p.name,
-            sort_order: 0,
-            is_primary: true,
-            created_at: p.created_at,
-          },
-        ],
-      }))
+      const convertedProducts: Product[] = []
+
+      for (const p of productsData || []) {
+        // Cargar variantes del mismo zureo_code para obtener todos los talles
+        const { data: variants } = await supabase
+          .from("products_in_stock")
+          .select("id, color, size, stock_quantity, price")
+          .eq("zureo_code", p.zureo_code)
+          .gt("stock_quantity", 0)
+
+        const product: Product & { variants?: any[] } = {
+          id: p.id,
+          name: p.name,
+          slug: `${p.id}-${p.name
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .trim()}`,
+          description: p.description,
+          short_description: p.description?.substring(0, 100) + "...",
+          price: p.price,
+          compare_price: p.price * 1.2,
+          sku: p.zureo_code,
+          stock_quantity: p.stock_quantity,
+          category_id: 1,
+          brand: p.brand,
+          is_active: p.is_active,
+          is_featured: p.is_featured,
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+          size: p.size, // Talle del producto principal
+          variants: variants || [], // Todas las variantes con sus talles
+          images: [
+            {
+              id: p.id,
+              product_id: p.id,
+              image_url: p.image_url || "/placeholder.svg?height=400&width=400",
+              alt_text: p.name,
+              sort_order: 0,
+              is_primary: true,
+              created_at: p.created_at,
+            },
+          ],
+        }
+
+        convertedProducts.push(product)
+      }
 
       if (reset) {
         setProducts(convertedProducts)

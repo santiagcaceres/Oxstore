@@ -139,12 +139,19 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const loadCategoriesData = async () => {
     try {
+      console.log("[v0] Loading categories data...")
       const { data, error } = await supabase.from("categories").select("*").eq("is_active", true).order("sort_order")
 
       if (error) throw error
+      console.log("[v0] Successfully loaded categories:", data?.length || 0)
+
+      data?.forEach((cat) => {
+        console.log(`[v0] Category: ${cat.name} (Level: ${cat.level}, Parent: ${cat.parent_id}, Slug: ${cat.slug})`)
+      })
+
       setCategories(data || [])
     } catch (error) {
-      console.error("Error cargando categorías:", error)
+      console.error("[v0] Error loading categories:", error)
     }
   }
 
@@ -580,29 +587,35 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 </Select>
               </div>
 
-              {selectedCategory && getSubcategories(selectedCategory).length > 0 && (
-                <div>
-                  <Label htmlFor="subcategory">Subcategoría</Label>
-                  <Select
-                    value={selectedSubcategory}
-                    onValueChange={(value) => {
-                      setSelectedSubcategory(value)
-                      setSelectedSubSubcategory("")
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="SELECCIONAR SUBCATEGORÍA" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSubcategories(selectedCategory).map((subcategory) => (
-                        <SelectItem key={subcategory.id} value={subcategory.slug}>
-                          {subcategory.name.toUpperCase()}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              {selectedCategory &&
+                (() => {
+                  const subcats = getSubcategories(selectedCategory)
+                  console.log(`[v0] Subcategories for ${selectedCategory}:`, subcats)
+                  return subcats.length > 0
+                })() && (
+                  <div>
+                    <Label htmlFor="subcategory">Subcategoría</Label>
+                    <Select
+                      value={selectedSubcategory}
+                      onValueChange={(value) => {
+                        console.log(`[v0] Selected subcategory: ${value}`)
+                        setSelectedSubcategory(value)
+                        setSelectedSubSubcategory("")
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="SELECCIONAR SUBCATEGORÍA" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSubcategories(selectedCategory).map((subcategory) => (
+                          <SelectItem key={subcategory.id} value={subcategory.slug}>
+                            {subcategory.name.toUpperCase()}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
               {selectedSubcategory && getSubSubcategories(selectedSubcategory).length > 0 && (
                 <div>

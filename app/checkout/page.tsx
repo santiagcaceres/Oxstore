@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import type React from "react"
+
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { CreditCard, Truck, Shield, MapPin, Banknote } from "lucide-react"
+import { CreditCard, Truck, Shield, MapPin, Banknote, User, LogIn } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,6 +24,16 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState("mercadopago")
   const [shippingMethod, setShippingMethod] = useState("pickup")
+  const [user, setUser] = useState(null)
+  const [showAuthForm, setShowAuthForm] = useState(false)
+  const [authMode, setAuthMode] = useState("login") // "login" or "register"
+  const [authData, setAuthData] = useState({
+    email: "",
+    password: "",
+    confirmPassword: "",
+    firstName: "",
+    lastName: "",
+  })
   const [formData, setFormData] = useState({
     email: "",
     firstName: "",
@@ -32,8 +44,113 @@ export default function CheckoutPage() {
     phone: "",
   })
 
+  useEffect(() => {
+    checkUser()
+  }, [])
+
+  const checkUser = async () => {
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      setUser(user)
+      // Si hay usuario, prellenar el formulario con sus datos
+      const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
+      if (profile) {
+        setFormData((prev) => ({
+          ...prev,
+          email: profile.email || "",
+          firstName: profile.first_name || "",
+          lastName: profile.last_name || "",
+        }))
+      }
+    }
+  }
+
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleAuthInputChange = (field: string, value: string) => {
+    setAuthData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const supabase = createClient()
+
+    try {
+      if (authMode === "login") {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: authData.email,
+          password: authData.password,
+        })
+
+        if (error) throw error
+
+        setUser(data.user)
+        setShowAuthForm(false)
+
+        // Prellenar formulario con datos del usuario
+        const { data: profile } = await supabase.from("users").select("*").eq("id", data.user.id).single()
+        if (profile) {
+          setFormData((prev) => ({
+            ...prev,
+            email: profile.email || "",
+            firstName: profile.first_name || "",
+            lastName: profile.last_name || "",
+          }))
+        }
+      } else {
+        // Registro
+        if (authData.password !== authData.confirmPassword) {
+          alert("Las contraseñas no coinciden")
+          return
+        }
+
+        const { data, error } = await supabase.auth.signUp({
+          email: authData.email,
+          password: authData.password,
+          options: {
+            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/checkout`,
+            data: {
+              first_name: authData.firstName,
+              last_name: authData.lastName,
+            },
+          },
+        })
+
+        if (error) throw error
+
+        // Crear perfil en tabla users
+        if (data.user) {
+          await supabase.from("users").insert({
+            id: data.user.id,
+            email: authData.email,
+            first_name: authData.firstName,
+            last_name: authData.lastName,
+            role: "customer",
+          })
+
+          setUser(data.user)
+          setShowAuthForm(false)
+
+          // Prellenar formulario
+          setFormData((prev) => ({
+            ...prev,
+            email: authData.email,
+            firstName: authData.firstName,
+            lastName: authData.lastName,
+          }))
+
+          alert("Cuenta creada exitosamente. Revisa tu email para confirmar tu cuenta.")
+        }
+      }
+    } catch (error) {
+      alert(`Error: ${error.message}`)
+    }
   }
 
   const handleMercadoPagoSuccess = (orderId: string) => {
@@ -47,6 +164,12 @@ export default function CheckoutPage() {
 
   const handleCashPayment = async () => {
     if (!isFormValid) return
+
+    // Si no hay usuario autenticado, mostrar formulario de auth
+    if (!user) {
+      setShowAuthForm(true)
+      return
+    }
 
     setIsProcessing(true)
     try {
@@ -65,13 +188,14 @@ export default function CheckoutPage() {
         totalAmount,
         shippingCost,
         itemCount: state.items.length,
+        userId: user.id,
       })
 
-      // Crear el pedido
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
           order_number: orderNumber,
+          user_id: user.id, // Usar el usuario autenticado
           customer_email: formData.email,
           customer_name: `${formData.firstName} ${formData.lastName}`,
           customer_phone: formData.phone,
@@ -111,7 +235,7 @@ export default function CheckoutPage() {
           quantity: itemQuantity,
           price: itemPrice,
           total_price: itemTotal,
-          total: itemTotal, // Campo requerido por la constraint not-null
+          total: itemTotal,
         })
 
         if (itemError) {
@@ -122,6 +246,7 @@ export default function CheckoutPage() {
 
       console.log("[v0] All order items created successfully")
       clearCart()
+      alert("¡Pedido creado exitosamente!")
       router.push(`/checkout/exito?order_id=${order.id}`)
     } catch (error) {
       console.error("[v0] Error creating cash order:", error)
@@ -183,6 +308,38 @@ export default function CheckoutPage() {
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">Finalizar Compra</h1>
 
+          {!user && (
+            <Card className="mb-6 border-orange-200 bg-orange-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <User className="h-5 w-5 text-orange-600" />
+                  <div className="flex-1">
+                    <p className="font-medium text-orange-800">Inicia sesión para continuar</p>
+                    <p className="text-sm text-orange-600">Necesitas una cuenta para realizar el pedido</p>
+                  </div>
+                  <Button onClick={() => setShowAuthForm(true)} variant="outline" size="sm">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Iniciar Sesión
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {user && (
+            <Card className="mb-6 border-green-200 bg-green-50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <User className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="font-medium text-green-800">Sesión iniciada como {user.email}</p>
+                    <p className="text-sm text-green-600">Puedes proceder con tu compra</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Checkout Form */}
             <div className="space-y-6">
@@ -200,6 +357,7 @@ export default function CheckoutPage() {
                       required
                       value={formData.email}
                       onChange={(e) => handleInputChange("email", e.target.value)}
+                      disabled={!!user}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -210,6 +368,7 @@ export default function CheckoutPage() {
                         required
                         value={formData.firstName}
                         onChange={(e) => handleInputChange("firstName", e.target.value)}
+                        disabled={!!user}
                       />
                     </div>
                     <div>
@@ -219,6 +378,7 @@ export default function CheckoutPage() {
                         required
                         value={formData.lastName}
                         onChange={(e) => handleInputChange("lastName", e.target.value)}
+                        disabled={!!user}
                       />
                     </div>
                   </div>
@@ -235,6 +395,7 @@ export default function CheckoutPage() {
                 </CardContent>
               </Card>
 
+              {/* Método de Entrega */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -333,22 +494,20 @@ export default function CheckoutPage() {
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2 p-3 border rounded-lg">
-                      <RadioGroupItem value="other" id="other" />
-                      <Label htmlFor="other" className="flex-1 cursor-pointer">
+                      <RadioGroupItem value="cash" id="cash" />
+                      <Label htmlFor="cash" className="flex-1 cursor-pointer">
                         <div className="flex items-center gap-2">
                           <Banknote className="h-4 w-4" />
                           <div>
-                            <div className="font-medium">Efectivo o Transferencia</div>
-                            <div className="text-sm text-muted-foreground">
-                              Pago en efectivo o transferencia bancaria
-                            </div>
+                            <div className="font-medium">Pago en Efectivo</div>
+                            <div className="text-sm text-muted-foreground">Pago en efectivo al recibir el pedido</div>
                           </div>
                         </div>
                       </Label>
                     </div>
                   </RadioGroup>
 
-                  {isFormValid && (
+                  {isFormValid && user && (
                     <div className="mt-4">
                       {paymentMethod === "mercadopago" ? (
                         <MercadoPagoButton
@@ -362,15 +521,17 @@ export default function CheckoutPage() {
                           onSuccess={handleMercadoPagoSuccess}
                           onError={handleMercadoPagoError}
                         />
-                      ) : paymentMethod === "other" ? (
-                        <Button onClick={handleOtherPaymentMethods} className="w-full" size="lg">
-                          Continuar con Efectivo o Transferencia
+                      ) : paymentMethod === "cash" ? (
+                        <Button onClick={handleCashPayment} className="w-full" size="lg" disabled={isProcessing}>
+                          {isProcessing ? "Procesando..." : "Confirmar Pedido"}
                         </Button>
                       ) : null}
                     </div>
                   )}
 
-                  {!isFormValid && (
+                  {!user && <p className="text-muted-foreground text-sm">Inicia sesión para continuar con el pago</p>}
+
+                  {user && !isFormValid && (
                     <p className="text-muted-foreground text-sm">Complete todos los campos para continuar</p>
                   )}
                 </CardContent>
@@ -442,6 +603,99 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
+
+      {showAuthForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader>
+              <CardTitle>{authMode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAuth} className="space-y-4">
+                <div>
+                  <Label htmlFor="authEmail">Email</Label>
+                  <Input
+                    id="authEmail"
+                    type="email"
+                    required
+                    value={authData.email}
+                    onChange={(e) => handleAuthInputChange("email", e.target.value)}
+                  />
+                </div>
+
+                {authMode === "register" && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="authFirstName">Nombre</Label>
+                        <Input
+                          id="authFirstName"
+                          required
+                          value={authData.firstName}
+                          onChange={(e) => handleAuthInputChange("firstName", e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="authLastName">Apellido</Label>
+                        <Input
+                          id="authLastName"
+                          required
+                          value={authData.lastName}
+                          onChange={(e) => handleAuthInputChange("lastName", e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div>
+                  <Label htmlFor="authPassword">Contraseña</Label>
+                  <Input
+                    id="authPassword"
+                    type="password"
+                    required
+                    value={authData.password}
+                    onChange={(e) => handleAuthInputChange("password", e.target.value)}
+                  />
+                </div>
+
+                {authMode === "register" && (
+                  <div>
+                    <Label htmlFor="authConfirmPassword">Confirmar Contraseña</Label>
+                    <Input
+                      id="authConfirmPassword"
+                      type="password"
+                      required
+                      value={authData.confirmPassword}
+                      onChange={(e) => handleAuthInputChange("confirmPassword", e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button type="submit" className="flex-1">
+                    {authMode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
+                  </Button>
+                  <Button type="button" variant="outline" onClick={() => setShowAuthForm(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    {authMode === "login" ? "¿No tienes cuenta? Regístrate" : "¿Ya tienes cuenta? Inicia sesión"}
+                  </button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       <Footer />
     </div>
   )

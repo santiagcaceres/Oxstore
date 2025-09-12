@@ -11,7 +11,15 @@ import type { Product } from "@/lib/database"
 import { useCart } from "@/contexts/cart-context"
 
 interface ProductCardProps {
-  product: Product
+  product: Product & {
+    variants?: Array<{
+      id: number
+      color: string
+      size: string
+      stock_quantity: number
+      price: number
+    }>
+  }
   className?: string
   index?: number
 }
@@ -23,6 +31,21 @@ export function ProductCard({ product, className = "", index = 0 }: ProductCardP
   const discountPercentage = hasDiscount ? product.discount_percentage : 0
 
   const animationDelay = `stagger-${Math.min(index + 1, 6)}`
+
+  const getAvailableSizes = () => {
+    if (!product.variants || product.variants.length === 0) {
+      return product.size ? [product.size] : []
+    }
+
+    const sizes = product.variants
+      .map((v) => v.size)
+      .filter((size, index, arr) => size && arr.indexOf(size) === index)
+      .sort()
+
+    return sizes
+  }
+
+  const availableSizes = getAvailableSizes()
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -89,6 +112,22 @@ export function ProductCard({ product, className = "", index = 0 }: ProductCardP
             </h3>
           </Link>
         </div>
+
+        {availableSizes.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            <span className="text-xs text-muted-foreground">Talles:</span>
+            {availableSizes.slice(0, 4).map((size) => (
+              <Badge key={size} variant="outline" className="text-xs px-1.5 py-0.5 h-auto font-normal">
+                {size.toUpperCase()}
+              </Badge>
+            ))}
+            {availableSizes.length > 4 && (
+              <Badge variant="outline" className="text-xs px-1.5 py-0.5 h-auto font-normal">
+                +{availableSizes.length - 4}
+              </Badge>
+            )}
+          </div>
+        )}
 
         {/* Price */}
         <div className="flex items-center gap-2">

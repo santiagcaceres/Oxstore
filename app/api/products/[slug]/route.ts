@@ -34,20 +34,28 @@ export async function GET(request: Request, { params }: { params: { slug: string
 
     const { data: variants, error: variantsError } = await supabase
       .from("products_in_stock")
-      .select("id, color, size, stock_quantity, price, custom_name, name")
+      .select("id, color, size, stock_quantity, price, custom_name, name, zureo_code")
       .eq("zureo_code", product.zureo_code)
       .gt("stock_quantity", 0)
+      .neq("custom_name", "Producto sin nombre")
+      .neq("name", "Producto sin nombre")
 
     if (variantsError) {
       console.error(`[v0] Error loading variants:`, variantsError)
     } else {
       console.log(`[v0] Loaded ${variants?.length || 0} variants for product ${product.zureo_code}`)
       console.log(`[v0] Variants data:`, variants)
+
+      variants?.forEach((variant, index) => {
+        console.log(
+          `[v0] Variant ${index + 1}: ID=${variant.id}, Color=${variant.color}, Size=${variant.size}, Stock=${variant.stock_quantity}`,
+        )
+      })
     }
 
     console.log(`[v0] GET /api/products/${params.slug} - Product found: ${productName}`)
 
-    const productImages = product.product_images // Assuming product_images is the correct field name
+    const productImages = product.product_images
 
     const transformedProduct = {
       id: product.id,
@@ -83,6 +91,20 @@ export async function GET(request: Request, { params }: { params: { slug: string
       weight: product.weight,
       dimensions: product.dimensions,
     }
+
+    console.log(`[v0] Transformed product variants count: ${transformedProduct.variants.length}`)
+    console.log(
+      `[v0] Available colors: ${transformedProduct.variants
+        .map((v) => v.color)
+        .filter(Boolean)
+        .join(", ")}`,
+    )
+    console.log(
+      `[v0] Available sizes: ${transformedProduct.variants
+        .map((v) => v.size)
+        .filter(Boolean)
+        .join(", ")}`,
+    )
 
     return NextResponse.json(transformedProduct)
   } catch (error) {

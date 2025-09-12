@@ -45,6 +45,7 @@ export default function ProductPage({ params }: ProductPageProps) {
   useEffect(() => {
     const loadProduct = async () => {
       try {
+        console.log(`[v0] Loading product with slug: ${params.slug}`)
         const response = await fetch(`/api/products/${params.slug}`)
         if (response.ok) {
           const data = await response.json()
@@ -55,16 +56,29 @@ export default function ProductPage({ params }: ProductPageProps) {
           if (data.variants && data.variants.length > 0) {
             setAvailableVariants(data.variants)
             console.log("[v0] Available variants set:", data.variants)
+
+            const colors = data.variants
+              .map((v: any) => v.color)
+              .filter((color: string, index: number, arr: string[]) => color && arr.indexOf(color) === index)
+            const sizes = data.variants
+              .map((v: any) => v.size)
+              .filter((size: string, index: number, arr: string[]) => size && arr.indexOf(size) === index)
+
+            console.log("[v0] Processed available colors:", colors)
+            console.log("[v0] Processed available sizes:", sizes)
+          } else {
+            console.log("[v0] No variants found in product data")
           }
           if (data.color) setSelectedColor(data.color)
           if (data.size) setSelectedSize(data.size)
 
           loadSimilarProducts(data, setSimilarProducts, setLoadingSimilar)
         } else {
+          console.error(`[v0] Failed to load product: ${response.status}`)
           notFound()
         }
       } catch (error) {
-        console.error("Error loading product:", error)
+        console.error("[v0] Error loading product:", error)
       } finally {
         setLoading(false)
       }
@@ -77,13 +91,13 @@ export default function ProductPage({ params }: ProductPageProps) {
     const colors = availableVariants
       .map((v) => v.color)
       .filter((color, index, arr) => color && arr.indexOf(color) === index)
-    console.log("[v0] Available colors:", colors)
+    console.log("[v0] Available colors calculated:", colors)
     return colors
   }
 
   const getAvailableSizes = () => {
     const sizes = availableVariants.map((v) => v.size).filter((size, index, arr) => size && arr.indexOf(size) === index)
-    console.log("[v0] Available sizes:", sizes)
+    console.log("[v0] Available sizes calculated:", sizes)
     return sizes
   }
 
@@ -241,6 +255,14 @@ export default function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div className="space-y-4">
+              {(() => {
+                const colors = getAvailableColors()
+                const sizes = getAvailableSizes()
+                console.log("[v0] Rendering selectors - Colors:", colors, "Sizes:", sizes)
+                console.log("[v0] Available variants length:", availableVariants.length)
+                return null
+              })()}
+
               {availableVariants.length > 0 && getAvailableColors().length > 0 && (
                 <div className="space-y-2">
                   <label className="text-sm font-medium uppercase">Color:</label>

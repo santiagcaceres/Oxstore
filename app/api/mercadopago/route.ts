@@ -1,14 +1,73 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { MercadoPagoConfig, Preference } from "mercadopago"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/server"
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN!,
 })
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-
 export const dynamic = "force-dynamic"
+
+const createOrGetUser = async (email: string, firstName: string, lastName: string) => {
+  const supabase = createClient()
+
+  console.log("[v0] Checking if user exists with email:", email)
+
+  // Verificar si el usuario ya existe
+  const { data: existingUser } = await supabase.from("users").select("id").eq("email", email).single()
+
+  if (existingUser) {
+    console.log("[v0] User already exists:", existingUser.id)
+    return existingUser.id
+  }
+
+  // Si no existe, crear una cuenta automáticamente
+  console.log("[v0] Creating new user account for:", email)
+
+  // Generar una contraseña temporal
+  const tempPassword = Math.random().toString(36).slice(-8) + "Temp123!"
+
+  try {
+    const { data: newUser, error: signUpError } = await supabase.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true, // Confirmar email automáticamente
+      user_metadata: {
+        first_name: firstName,
+        last_name: lastName,
+        created_from_checkout: true,
+      },
+    })
+
+    if (signUpError) {
+      console.error("[v0] Error creating user:", signUpError)
+      throw signUpError
+    }
+
+    console.log("[v0] User created successfully:", newUser.user?.id)
+
+    // Insertar en la tabla users personalizada
+    if (newUser.user) {
+      const { error: userInsertError } = await supabase.from("users").insert({
+        id: newUser.user.id,
+        email: email,
+        first_name: firstName,
+        last_name: lastName,
+        role: "customer",
+      })
+
+      if (userInsertError) {
+        console.error("[v0] Error inserting user data:", userInsertError)
+      }
+    }
+
+    return newUser.user?.id
+  } catch (error) {
+    console.error("[v0] Error in user creation process:", error)
+    // Si falla la creación del usuario, continuamos sin asociar el pedido a un usuario
+    return null
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,16 +103,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const userId = await createOrGetUser(customerInfo.email, customerInfo.firstName, customerInfo.lastName)
+
     const orderNumber = `ORD-${Date.now()}`
     const subtotal = items.reduce((sum: number, item: any) => sum + (item.price || 0) * (item.quantity || 1), 0)
     const totalAmount = subtotal + shippingCost
 
-    console.log("[v0] Order details:", { orderNumber, subtotal, totalAmount, shippingCost })
+    console.log("[v0] Order details:", { orderNumber, subtotal, totalAmount, shippingCost, userId })
+
+    const supabase = createClient()
 
     const { data: order, error: orderError } = await supabase
       .from("orders")
       .insert({
         order_number: orderNumber,
+        user_id: userId, // Asociar el pedido al usuario
         customer_email: customerInfo.email,
         customer_name: `${customerInfo.firstName} ${customerInfo.lastName || ""}`.trim(),
         customer_phone: customerInfo.phone || "",
