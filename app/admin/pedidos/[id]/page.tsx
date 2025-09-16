@@ -87,27 +87,67 @@ export default function OrderDetailPage() {
     }
   }
 
+  const updatePaymentStatus = async (newStatus: string) => {
+    try {
+      setUpdating(true)
+
+      console.log("[v0] Updating payment status to:", newStatus)
+
+      const { data, error } = await supabase
+        .from("orders")
+        .update({
+          payment_status: newStatus,
+        })
+        .eq("id", params.id)
+        .select()
+
+      if (error) {
+        console.error("Error updating payment status:", error)
+        alert("Error al actualizar el estado del pago")
+        return
+      }
+
+      console.log("[v0] Payment status updated successfully:", data)
+
+      setOrder({ ...order, payment_status: newStatus })
+      alert("Estado del pago actualizado correctamente")
+    } catch (error) {
+      console.error("Error updating payment status:", error)
+      alert("Error al actualizar el estado del pago")
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: "Pendiente", variant: "secondary" as const },
-      processing: { label: "En Proceso", variant: "default" as const },
-      shipped: { label: "Enviado", variant: "outline" as const },
-      delivered: { label: "Entregado", variant: "default" as const },
+      pending: { label: "Pendiente", variant: "secondary" as const, className: "bg-orange-500 text-white" },
+      processing: { label: "En Proceso", variant: "secondary" as const, className: "bg-orange-500 text-white" },
+      shipped: { label: "Enviado", variant: "default" as const, className: "bg-blue-500 text-white" },
+      delivered: { label: "Entregado", variant: "default" as const, className: "bg-green-500 text-white" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.label}
+      </Badge>
+    )
   }
 
   const getPaymentStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: "Pendiente", variant: "secondary" as const },
-      approved: { label: "Aprobado", variant: "default" as const },
-      rejected: { label: "Rechazado", variant: "destructive" as const },
+      pending: { label: "Pendiente", variant: "secondary" as const, className: "bg-orange-500 text-white" },
+      approved: { label: "Aprobado", variant: "default" as const, className: "bg-green-500 text-white" },
+      rejected: { label: "Rechazado", variant: "destructive" as const, className: "bg-red-500 text-white" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.label}
+      </Badge>
+    )
   }
 
   const generateInvoice = () => {
@@ -210,7 +250,19 @@ export default function OrderDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Estado del Pago</p>
-                  {getPaymentStatusBadge(order.payment_status)}
+                  <div className="flex items-center space-x-2">
+                    {getPaymentStatusBadge(order.payment_status)}
+                    <Select value={order.payment_status} onValueChange={updatePaymentStatus} disabled={updating}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">Pendiente</SelectItem>
+                        <SelectItem value="approved">Aprobado</SelectItem>
+                        <SelectItem value="rejected">Rechazado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </CardContent>

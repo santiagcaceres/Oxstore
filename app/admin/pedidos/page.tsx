@@ -78,25 +78,33 @@ export default function AdminOrdersPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: "Pendiente", variant: "secondary" as const },
-      confirmed: { label: "Confirmado", variant: "default" as const },
-      shipped: { label: "Enviado", variant: "outline" as const },
-      delivered: { label: "Entregado", variant: "default" as const },
+      pending: { label: "Pendiente", variant: "secondary" as const, className: "bg-orange-500 text-white" },
+      confirmed: { label: "Confirmado", variant: "default" as const, className: "bg-blue-500 text-white" },
+      shipped: { label: "Enviado", variant: "outline" as const, className: "bg-blue-600 text-white" },
+      delivered: { label: "Entregado", variant: "default" as const, className: "bg-green-500 text-white" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.label}
+      </Badge>
+    )
   }
 
   const getPaymentStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { label: "Pendiente", variant: "secondary" as const },
-      approved: { label: "Aprobado", variant: "default" as const },
-      rejected: { label: "Rechazado", variant: "destructive" as const },
+      pending: { label: "Pendiente", variant: "secondary" as const, className: "bg-orange-500 text-white" },
+      approved: { label: "Aprobado", variant: "default" as const, className: "bg-green-500 text-white" },
+      rejected: { label: "Rechazado", variant: "destructive" as const, className: "bg-red-500 text-white" },
     }
 
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
-    return <Badge variant={config.variant}>{config.label}</Badge>
+    return (
+      <Badge variant={config.variant} className={config.className}>
+        {config.label}
+      </Badge>
+    )
   }
 
   const filteredOrders = orders.filter(

@@ -132,8 +132,22 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       return matchesCategory && matchesGender && subcat.is_active
     })
 
-    console.log(`[v0] Filtered subcategories:`, filtered)
-    return filtered
+    const uniqueSubcategories = filtered.reduce((acc, current) => {
+      const existingIndex = acc.findIndex((item) => item.name === current.name)
+      if (existingIndex === -1) {
+        acc.push(current)
+      } else {
+        // Si ya existe, mantener el que tenga prioridad (unisex > género específico)
+        const existing = acc[existingIndex]
+        if (current.gender === "unisex" && existing.gender !== "unisex") {
+          acc[existingIndex] = current
+        }
+      }
+      return acc
+    }, [] as Subcategory[])
+
+    console.log(`[v0] Filtered and deduplicated subcategories:`, uniqueSubcategories)
+    return uniqueSubcategories
   }
   const getSubSubcategories = (parentSlug: string) => {
     const parent = categories.find((cat) => cat.slug === parentSlug && cat.level === 2)
@@ -246,10 +260,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           const zureoData = typeof prod.zureo_data === "string" ? JSON.parse(prod.zureo_data) : prod.zureo_data
           console.log("[v0] Parsed zureo data:", zureoData)
 
-          // Extract price from zureo_data and round it (no decimals)
           if (zureoData.precio || zureoData.price) {
-            zureoPrice = Math.round(Number(zureoData.precio || zureoData.price))
-            console.log("[v0] Extracted and rounded zureo price:", zureoPrice)
+            const originalPrice = Number(zureoData.precio || zureoData.price)
+            zureoPrice = Math.round(originalPrice * 1.22) // Multiplicar por 1.22 y redondear
+            console.log("[v0] Original Zureo price:", originalPrice)
+            console.log("[v0] Price with 1.22 multiplier:", zureoPrice)
           }
         } catch (error) {
           console.error("[v0] Error parsing zureo_data:", error)
@@ -597,7 +612,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 value={customPrice}
                 onChange={(e) => setCustomPrice(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground mt-1">Precio extraído desde Zureo (sin decimales)</p>
+              <p className="text-xs text-muted-foreground mt-1">Precio de Zureo multiplicado por 1.22 (editable)</p>
             </div>
 
             <div className="space-y-4">

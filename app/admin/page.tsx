@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { DollarSign, Package, ShoppingCart, Eye, RefreshCw } from "lucide-react"
+import { DollarSign, Package, ShoppingCart, Eye, RefreshCw, AlertTriangle } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 interface DashboardStats {
@@ -19,6 +19,10 @@ interface DashboardStats {
   salesToday: number
   salesThisWeek: number
   salesThisMonth: number
+  newPendingOrders: number
+  ordersToday: number
+  ordersThisWeek: number
+  ordersThisMonth: number
   topProducts: Array<{
     id: number
     name: string
@@ -40,6 +44,10 @@ export default function AdminDashboard() {
     salesToday: 0,
     salesThisWeek: 0,
     salesThisMonth: 0,
+    newPendingOrders: 0,
+    ordersToday: 0,
+    ordersThisWeek: 0,
+    ordersThisMonth: 0,
     topProducts: [],
   })
   const [loading, setLoading] = useState(true)
@@ -60,7 +68,7 @@ export default function AdminDashboard() {
 
       const { data: orders } = await supabase
         .from("orders")
-        .select("id, total_amount, status, created_at, payment_status")
+        .select("id, total_amount, status, created_at, payment_status, order_status")
 
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -81,11 +89,19 @@ export default function AdminDashboard() {
         .filter((o) => new Date(o.created_at) >= monthStart)
         .reduce((sum, o) => sum + (Number.parseFloat(o.total_amount) || 0), 0)
 
+      const newPendingOrders =
+        orders?.filter(
+          (o) => (o.status === "pending" || o.order_status === "pending") && o.payment_status === "pending",
+        ).length || 0
+
+      const ordersToday = orders?.filter((o) => new Date(o.created_at) >= today).length || 0
+      const ordersThisWeek = orders?.filter((o) => new Date(o.created_at) >= weekStart).length || 0
+      const ordersThisMonth = orders?.filter((o) => new Date(o.created_at) >= monthStart).length || 0
+
       console.log("[v0] Dashboard - Products loaded:", products?.length || 0)
       console.log("[v0] Dashboard - Orders loaded:", orders?.length || 0)
-      console.log("[v0] Dashboard - Sales today:", salesToday)
-      console.log("[v0] Dashboard - Sales this week:", salesThisWeek)
-      console.log("[v0] Dashboard - Sales this month:", salesThisMonth)
+      console.log("[v0] Dashboard - New pending orders:", newPendingOrders)
+      console.log("[v0] Dashboard - Orders today:", ordersToday)
 
       if (products) {
         const productsWithStock = products.filter((p) => p.stock_quantity > 0)
@@ -107,6 +123,10 @@ export default function AdminDashboard() {
           salesToday,
           salesThisWeek,
           salesThisMonth,
+          newPendingOrders,
+          ordersToday,
+          ordersThisWeek,
+          ordersThisMonth,
           topProducts: productsWithStock.slice(0, 3).map((p) => ({
             id: p.id,
             name: p.name || "Producto sin nombre",
@@ -150,7 +170,52 @@ export default function AdminDashboard() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pedidos Nuevos Pendientes</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-500">{stats.newPendingOrders}</div>
+            <div className="text-xs text-muted-foreground">Pedidos pendientes de pago</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pedidos del Día</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.ordersToday}</div>
+            <div className="text-xs text-muted-foreground">Pedidos realizados hoy</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pedidos de la Semana</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.ordersThisWeek}</div>
+            <div className="text-xs text-muted-foreground">Pedidos de esta semana</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pedidos del Mes</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.ordersThisMonth}</div>
+            <div className="text-xs text-muted-foreground">Pedidos del mes actual</div>
+          </CardContent>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -187,17 +252,6 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total Stock</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.totalValue.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground">Valor total del inventario disponible</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Productos con Stock</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -206,32 +260,9 @@ export default function AdminDashboard() {
             <div className="text-xs text-muted-foreground">De {stats.totalProducts} productos totales</div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Órdenes Totales</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalOrders}</div>
-            <div className="text-xs text-muted-foreground">{stats.pendingOrders} pendientes</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ingresos Totales</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">${stats.totalRevenue.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground">Ingresos de todas las órdenes</div>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Products by Stock */}
         <Card>
           <CardHeader>
             <CardTitle>Productos con Mayor Stock</CardTitle>
@@ -269,7 +300,6 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* System Status */}
         <Card>
           <CardHeader>
             <CardTitle>Estado del Sistema</CardTitle>
@@ -318,7 +348,6 @@ export default function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle>Acciones Rápidas</CardTitle>
