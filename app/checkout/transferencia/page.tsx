@@ -31,7 +31,6 @@ export default function TransferenciaPage() {
   const accountNumber = "001518834 00001"
   const bankName = "Banco República Oriental del Uruguay (BROU)"
   const accountHolder = "OXSTORE ECOMMERCE"
-  const cbu = "001518834000010000000001"
   const alias = "OXSTORE.PAGO"
 
   const copyToClipboard = (text: string) => {
@@ -126,6 +125,29 @@ Por favor confirmen la recepción del pago.`
     }
   }, [orderData])
 
+  const generateTransferReceiptHTML = (receiptData: any) => {
+    return `
+      <html>
+        <head>
+          <title>Comprobante de Transferencia</title>
+        </head>
+        <body>
+          <h1>Comprobante de Transferencia</h1>
+          <p><strong>Número de Pedido:</strong> ${receiptData.orderNumber}</p>
+          <p><strong>Cliente:</strong> ${receiptData.customerName}</p>
+          <p><strong>Email:</strong> ${receiptData.customerEmail}</p>
+          <p><strong>Total:</strong> $${receiptData.total.toFixed(2)}</p>
+          <p><strong>Costo de Envío:</strong> $${receiptData.shippingCost.toFixed(2)}</p>
+          <h2>Items del Pedido</h2>
+          <ul>
+            ${receiptData.items.map((item: any) => `<li>${item.name} - $${item.price.toFixed(2)} x ${item.quantity}</li>`).join("")}
+          </ul>
+          <p><strong>Fecha de Creación:</strong> ${receiptData.createdAt}</p>
+        </body>
+      </html>
+    `
+  }
+
   if (!orderData) {
     return <div>Cargando...</div>
   }
@@ -173,14 +195,11 @@ Por favor confirmen la recepción del pago.`
                     </Button>
                   </div>
 
-                  <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
+                  <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border-2 border-primary/20">
                     <div>
-                      <p className="font-medium">CBU</p>
-                      <p className="text-sm text-muted-foreground font-mono">{cbu}</p>
+                      <p className="font-medium">Monto a Transferir</p>
+                      <p className="text-lg font-bold text-primary">${orderData.total.toFixed(2)}</p>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => copyToClipboard(cbu)}>
-                      <Copy className="h-4 w-4" />
-                    </Button>
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
@@ -191,13 +210,6 @@ Por favor confirmen la recepción del pago.`
                     <Button variant="outline" size="sm" onClick={() => copyToClipboard(alias)}>
                       <Copy className="h-4 w-4" />
                     </Button>
-                  </div>
-
-                  <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border-2 border-primary/20">
-                    <div>
-                      <p className="font-medium">Monto a Transferir</p>
-                      <p className="text-lg font-bold text-primary">${orderData.total.toFixed(2)}</p>
-                    </div>
                   </div>
                 </div>
               </CardContent>
@@ -244,32 +256,38 @@ Por favor confirmen la recepción del pago.`
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Enviar Comprobante por WhatsApp
               </Button>
-              {orderCreated && (
-                <Button
-                  onClick={() => {
-                    // Necesitamos obtener el ID del pedido creado
-                    const supabase = createClient()
-                    supabase
-                      .from("orders")
-                      .select("id")
-                      .eq("customer_email", orderData.customerInfo.email)
-                      .order("created_at", { ascending: false })
-                      .limit(1)
-                      .single()
-                      .then(({ data }) => {
-                        if (data) {
-                          window.open(`/api/orders/${data.id}/receipt-transfer`, "_blank")
-                        }
-                      })
-                  }}
-                  variant="outline"
-                  className="flex-1"
-                  size="lg"
-                >
-                  <FileText className="h-5 w-5 mr-2" />
-                  Descargar Datos Bancarios
-                </Button>
-              )}
+              <Button
+                onClick={() => {
+                  // Generate receipt with current order data instead of searching database
+                  const receiptData = {
+                    orderNumber: `ORD-${Date.now()}`,
+                    customerName: `${orderData.customerInfo.firstName} ${orderData.customerInfo.lastName}`,
+                    customerEmail: orderData.customerInfo.email,
+                    total: orderData.total,
+                    items: orderData.items,
+                    shippingCost: orderData.shippingCost,
+                    createdAt: new Date().toISOString(),
+                  }
+
+                  // Create and download receipt HTML
+                  const receiptHTML = generateTransferReceiptHTML(receiptData)
+                  const blob = new Blob([receiptHTML], { type: "text/html" })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = `Datos-Transferencia-OXSTORE-${receiptData.orderNumber}.html`
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                }}
+                variant="outline"
+                className="flex-1"
+                size="lg"
+              >
+                <FileText className="h-5 w-5 mr-2" />
+                Descargar Datos Bancarios
+              </Button>
             </div>
 
             {orderCreated && (

@@ -95,6 +95,9 @@ export default function BrandPage({ params }: BrandPageProps) {
           filterBrand={brand.name}
           filterColor={getFilterValue(filters.filterColor, "colors")}
           filterSize={getFilterValue(filters.filterSize, "sizes")}
+          category=""
+          subcategory=""
+          gender=""
         />
       </main>
 

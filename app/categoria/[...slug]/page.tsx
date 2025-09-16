@@ -48,11 +48,22 @@ export default function CategoryPage({ params }: PageProps) {
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         )
 
-        // Build query based on URL structure
-        let query = supabase.from("products_in_stock").select("*").gt("stock", 0)
+        let query = supabase
+          .from("products_in_stock")
+          .select("*")
+          .gt("stock_quantity", 0)
+          .eq("is_active", true)
+          // Solo mostrar productos con información completa
+          .not("category", "is", null)
+          .not("brand", "is", null)
+          .not("gender", "is", null)
 
         if (gender && gender !== "nuevo") {
-          query = query.eq("gender", gender)
+          if (gender === "unisex") {
+            query = query.eq("gender", "unisex")
+          } else {
+            query = query.or(`gender.eq.${gender},gender.eq.unisex`)
+          }
         }
 
         if (category) {

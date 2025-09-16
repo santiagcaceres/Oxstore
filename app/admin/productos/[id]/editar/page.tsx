@@ -114,10 +114,21 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     console.log(`[v0] Getting subcategories for category: ${categorySlug}`)
     console.log(`[v0] Available subcategories:`, subcategories)
 
-    // Filtrar subcategorías por categoría y género seleccionado
     const filtered = subcategories.filter((subcat) => {
       const matchesCategory = subcat.category_id === categories.find((cat) => cat.slug === categorySlug)?.id
-      const matchesGender = !selectedGender || subcat.gender === selectedGender || subcat.gender === "unisex"
+
+      // Si el género seleccionado es unisex, mostrar subcategorías de todos los géneros
+      let matchesGender = true
+      if (selectedGender) {
+        if (selectedGender === "unisex") {
+          // Para unisex, mostrar subcategorías de hombre, mujer y unisex
+          matchesGender = ["hombre", "mujer", "unisex"].includes(subcat.gender)
+        } else {
+          // Para géneros específicos, mostrar ese género y unisex
+          matchesGender = subcat.gender === selectedGender || subcat.gender === "unisex"
+        }
+      }
+
       return matchesCategory && matchesGender && subcat.is_active
     })
 
