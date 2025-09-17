@@ -190,9 +190,6 @@ export default function HomePage() {
 
         <section className="w-full py-8 bg-white" ref={(el) => (sectionsRef.current[1] = el)}>
           <div className="container mx-auto px-4">
-            <div className="text-center mb-8 hidden md:block">
-              <h2 className="text-2xl font-bold mb-2 text-black">- PRODUCTOS DESTACADOS -</h2>
-            </div>
             <div className="relative">
               <ProductGrid featured={true} limit={5} showCarousel={true} />
             </div>
@@ -221,9 +218,6 @@ export default function HomePage() {
 
         <section className="w-full py-8 bg-white" ref={(el) => (sectionsRef.current[3] = el)}>
           <div className="container mx-auto px-4">
-            <div className="text-center mb-8 hidden md:block">
-              <h2 className="text-2xl font-bold mb-2 text-black">- NUEVA COLECCIÓN -</h2>
-            </div>
             <div className="relative">
               <ProductGrid limit={5} showCarousel={true} />
             </div>

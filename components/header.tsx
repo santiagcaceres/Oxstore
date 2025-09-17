@@ -183,7 +183,7 @@ export function Header() {
               <SheetContent side="left" className="w-[300px] sm:w-[400px] overflow-y-auto">
                 <nav className="flex flex-col space-y-4 mt-8">
                   <Collapsible open={expandedMobileMenus.mujer} onOpenChange={() => toggleMobileMenu("mujer")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-2">
                       MUJER
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.mujer ? "rotate-90" : ""}`}
@@ -239,7 +239,7 @@ export function Header() {
                   </Collapsible>
 
                   <Collapsible open={expandedMobileMenus.hombre} onOpenChange={() => toggleMobileMenu("hombre")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-2">
                       HOMBRE
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.hombre ? "rotate-90" : ""}`}
@@ -298,7 +298,7 @@ export function Header() {
                   </Collapsible>
 
                   <Collapsible open={expandedMobileMenus.marcas} onOpenChange={() => toggleMobileMenu("marcas")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-2">
                       MARCAS
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.marcas ? "rotate-90" : ""}`}
@@ -319,12 +319,12 @@ export function Header() {
                     </CollapsibleContent>
                   </Collapsible>
 
-                  <Link href="/nuevo" className="text-lg font-medium hover:text-primary transition-colors">
+                  <Link href="/nuevo" className="text-lg font-medium hover:text-primary transition-colors py-2">
                     NUEVO
                   </Link>
                   <Link
                     href="/sale"
-                    className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors"
+                    className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors py-2"
                   >
                     SALE
                   </Link>

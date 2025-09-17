@@ -351,7 +351,6 @@ export function ProductGrid({
             ))}
           </div>
 
-          {/* Navigation Arrows */}
           {products.length > 1 && (
             <>
               <Button

@@ -113,38 +113,23 @@ export function HeroBanner() {
   return (
     <div className="relative w-screen h-64 md:h-80 bg-gray-100 group -mx-4 md:-mx-6 lg:-mx-8">
       <Link href={currentBanner.link_url || "#"} className="block h-full">
-        <div className="flex h-full">
-          <div className="relative w-1/2 md:w-3/5">
-            {banners.map((banner, index) => (
-              <div
-                key={banner.id}
-                className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-                  index === currentIndex ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                <Image
-                  src={banner.image_url || "/placeholder.svg?height=320&width=600&query=pareja+moderna+ropa+elegante"}
-                  alt={banner.title}
-                  fill
-                  className="object-cover"
-                  priority={index === 0}
-                />
-              </div>
-            ))}
-          </div>
-
-          <div className="w-1/2 md:w-2/5 flex items-center justify-center bg-white p-6 md:p-8">
+        <div className="relative w-full h-full">
+          {banners.map((banner, index) => (
             <div
-              className={`text-center transition-all duration-700 ${
-                isTransitioning ? "opacity-0 transform translate-y-8" : "opacity-100 transform translate-y-0"
+              key={banner.id}
+              className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                index === currentIndex ? "opacity-100" : "opacity-0"
               }`}
             >
-              <h1 className="text-xl md:text-3xl font-bold mb-3 text-gray-900">{currentBanner.title}</h1>
-              {currentBanner.subtitle && (
-                <p className="text-sm md:text-base mb-4 text-gray-600">{currentBanner.subtitle}</p>
-              )}
+              <Image
+                src={banner.image_url || "/placeholder.svg?height=320&width=600&query=pareja+moderna+ropa+elegante"}
+                alt={banner.title}
+                fill
+                className="object-cover"
+                priority={index === 0}
+              />
             </div>
-          </div>
+          ))}
         </div>
       </Link>
 
@@ -175,7 +160,7 @@ export function HeroBanner() {
             <ChevronRight className="h-5 w-5" />
           </Button>
 
-          <div className="absolute bottom-3 left-1/4 -translate-x-1/2 flex space-x-2 z-10">
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
             {banners.map((_, index) => (
               <button
                 key={index}
