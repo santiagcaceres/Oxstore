@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Search, ShoppingBag, User, Menu, ChevronDown } from "lucide-react"
+import { Search, ShoppingBag, User, Menu, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import Image from "next/image"
 import { useCart } from "@/contexts/cart-context"
 import { createBrowserClient } from "@supabase/ssr"
@@ -41,7 +42,15 @@ export function Header() {
   const [categoriesWithProducts, setCategoriesWithProducts] = useState<string[]>([])
   const [brandsWithProducts, setBrandsWithProducts] = useState<Brand[]>([])
   const [subcategoriesWithProducts, setSubcategoriesWithProducts] = useState<number[]>([])
+  const [expandedMobileMenus, setExpandedMobileMenus] = useState<{ [key: string]: boolean }>({})
   const { state } = useCart()
+
+  const toggleMobileMenu = (menuKey: string) => {
+    setExpandedMobileMenus((prev) => ({
+      ...prev,
+      [menuKey]: !prev[menuKey],
+    }))
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -171,28 +180,145 @@ export function Header() {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+              <SheetContent side="left" className="w-[300px] sm:w-[400px] overflow-y-auto">
                 <nav className="flex flex-col space-y-4 mt-8">
-                  <Link href="/categoria/mujer" className="text-lg font-medium hover:text-primary transition-colors">
-                    MUJER
-                  </Link>
-                  <Link href="/categoria/hombre" className="text-lg font-medium hover:text-primary transition-colors">
-                    HOMBRE
-                  </Link>
-                  <div className="border-t pt-4">
-                    <h3 className="text-lg font-medium mb-2">MARCAS</h3>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
-                      {brandsWithProducts.map((brand) => (
-                        <Link
-                          key={brand.id}
-                          href={`/marca/${brand.slug}`}
-                          className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
-                        >
-                          {brand.name}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
+                  <Collapsible open={expandedMobileMenus.mujer} onOpenChange={() => toggleMobileMenu("mujer")}>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors">
+                      MUJER
+                      <ChevronRight
+                        className={`h-4 w-4 transition-transform ${expandedMobileMenus.mujer ? "rotate-90" : ""}`}
+                      />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                      <Link href="/categoria/mujer" className="block text-sm hover:text-primary transition-colors py-1">
+                        Ver todo
+                      </Link>
+                      {shouldShowCategory("vestimenta") && (
+                        <div>
+                          <Link
+                            href="/categoria/mujer/vestimenta"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-1"
+                          >
+                            VESTIMENTA
+                          </Link>
+                          <div className="ml-4 space-y-1">
+                            {getSubcategoriesForCategory("vestimenta", "mujer").map((subcat) => (
+                              <Link
+                                key={subcat.id}
+                                href={`/categoria/mujer/vestimenta/${subcat.slug}`}
+                                className="block text-xs hover:text-primary transition-colors py-1"
+                              >
+                                {subcat.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {shouldShowCategory("accesorios") && (
+                        <div>
+                          <Link
+                            href="/categoria/mujer/accesorios"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-1"
+                          >
+                            ACCESORIOS
+                          </Link>
+                          <div className="ml-4 space-y-1">
+                            {getSubcategoriesForCategory("accesorios", "mujer").map((subcat) => (
+                              <Link
+                                key={subcat.id}
+                                href={`/categoria/mujer/accesorios/${subcat.slug}`}
+                                className="block text-xs hover:text-primary transition-colors py-1"
+                              >
+                                {subcat.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  <Collapsible open={expandedMobileMenus.hombre} onOpenChange={() => toggleMobileMenu("hombre")}>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors">
+                      HOMBRE
+                      <ChevronRight
+                        className={`h-4 w-4 transition-transform ${expandedMobileMenus.hombre ? "rotate-90" : ""}`}
+                      />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                      <Link
+                        href="/categoria/hombre"
+                        className="block text-sm hover:text-primary transition-colors py-1"
+                      >
+                        Ver todo
+                      </Link>
+                      {shouldShowCategory("vestimenta") && (
+                        <div>
+                          <Link
+                            href="/categoria/hombre/vestimenta"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-1"
+                          >
+                            VESTIMENTA
+                          </Link>
+                          <div className="ml-4 space-y-1">
+                            {getSubcategoriesForCategory("vestimenta", "hombre").map((subcat) => (
+                              <Link
+                                key={subcat.id}
+                                href={`/categoria/hombre/vestimenta/${subcat.slug}`}
+                                className="block text-xs hover:text-primary transition-colors py-1"
+                              >
+                                {subcat.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {shouldShowCategory("accesorios") && (
+                        <div>
+                          <Link
+                            href="/categoria/hombre/accesorios"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-1"
+                          >
+                            ACCESORIOS
+                          </Link>
+                          <div className="ml-4 space-y-1">
+                            {getSubcategoriesForCategory("accesorios", "hombre").map((subcat) => (
+                              <Link
+                                key={subcat.id}
+                                href={`/categoria/hombre/accesorios/${subcat.slug}`}
+                                className="block text-xs hover:text-primary transition-colors py-1"
+                              >
+                                {subcat.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  <Collapsible open={expandedMobileMenus.marcas} onOpenChange={() => toggleMobileMenu("marcas")}>
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors">
+                      MARCAS
+                      <ChevronRight
+                        className={`h-4 w-4 transition-transform ${expandedMobileMenus.marcas ? "rotate-90" : ""}`}
+                      />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 ml-4">
+                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                        {brandsWithProducts.map((brand) => (
+                          <Link
+                            key={brand.id}
+                            href={`/marca/${brand.slug}`}
+                            className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
+                          >
+                            {brand.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
                   <Link href="/nuevo" className="text-lg font-medium hover:text-primary transition-colors">
                     NUEVO
                   </Link>

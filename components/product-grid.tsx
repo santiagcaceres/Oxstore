@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ProductCard } from "@/components/product-card"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { Product } from "@/lib/database"
 
@@ -22,6 +23,7 @@ interface ProductGridProps {
   filterSize?: string
   isNew?: boolean
   onSale?: boolean
+  showCarousel?: boolean // Nueva prop para mostrar carrusel en mobile
 }
 
 export function ProductGrid({
@@ -39,11 +41,45 @@ export function ProductGrid({
   filterSize = "",
   isNew = false,
   onSale = false,
+  showCarousel = false, // Valor por defecto false
 }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [loading, setLoading] = useState(false)
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(0)
+  const [currentIndex, setCurrentIndex] = useState(0) // Estado para el carrusel
+  const carouselRef = useRef<HTMLDivElement>(null) // Ref para el carrusel
+
+  const scrollToIndex = (index: number) => {
+    if (carouselRef.current) {
+      const cardWidth = carouselRef.current.scrollWidth / products.length
+      carouselRef.current.scrollTo({
+        left: cardWidth * index,
+        behavior: "smooth",
+      })
+      setCurrentIndex(index)
+    }
+  }
+
+  const goToPrevious = () => {
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : products.length - 1
+    scrollToIndex(newIndex)
+  }
+
+  const goToNext = () => {
+    const newIndex = currentIndex < products.length - 1 ? currentIndex + 1 : 0
+    scrollToIndex(newIndex)
+  }
+
+  useEffect(() => {
+    if (showCarousel && products.length > 1) {
+      const interval = setInterval(() => {
+        goToNext()
+      }, 4000) // Cambiar cada 4 segundos
+
+      return () => clearInterval(interval)
+    }
+  }, [showCarousel, products.length, currentIndex])
 
   const loadProducts = async (reset = false) => {
     setLoading(true)
@@ -279,6 +315,79 @@ export function ProductGrid({
     return (
       <div className="text-center py-12">
         <p className="text-muted-foreground">No se encontraron productos.</p>
+      </div>
+    )
+  }
+
+  if (showCarousel) {
+    return (
+      <div className={className}>
+        {/* Desktop Grid */}
+        <div className="hidden md:block">
+          <div
+            className={`grid gap-6 ${
+              limit === 5
+                ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            }`}
+          >
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} className="animate-fade-in-up" />
+            ))}
+          </div>
+        </div>
+
+        {/* Mobile Carousel */}
+        <div className="md:hidden relative">
+          <div
+            ref={carouselRef}
+            className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory gap-4 pb-4"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {products.map((product) => (
+              <div key={product.id} className="flex-shrink-0 w-64 snap-start">
+                <ProductCard product={product} className="animate-fade-in-up" />
+              </div>
+            ))}
+          </div>
+
+          {/* Navigation Arrows */}
+          {products.length > 1 && (
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg"
+                onClick={goToPrevious}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg"
+                onClick={goToNext}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+
+        {loading && (
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            {Array.from({ length: Math.min(8, limit) }).map((_, i) => (
+              <div key={i} className="space-y-4">
+                <Skeleton className="aspect-square w-full" />
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     )
   }

@@ -170,7 +170,7 @@ export default function HomePage() {
                               <div className="max-w-md text-white">
                                 <h1 className="text-3xl md:text-5xl font-bold mb-2">{slide.title}</h1>
                                 <p className="text-lg md:text-xl mb-4">{slide.subtitle}</p>
-                                <Button className="bg-white text-black hover:bg-gray-100 text-lg px-8 py-3">
+                                <Button className="hidden md:block bg-white text-black hover:bg-gray-100 text-lg px-8 py-3">
                                   COMPRAR AHORA
                                 </Button>
                               </div>
@@ -190,11 +190,11 @@ export default function HomePage() {
 
         <section className="w-full py-8 bg-white" ref={(el) => (sectionsRef.current[1] = el)}>
           <div className="container mx-auto px-4">
-            <div className="text-center mb-8">
+            <div className="text-center mb-8 hidden md:block">
               <h2 className="text-2xl font-bold mb-2 text-black">- PRODUCTOS DESTACADOS -</h2>
             </div>
-            <div>
-              <ProductGrid featured={true} limit={5} />
+            <div className="relative">
+              <ProductGrid featured={true} limit={5} showCarousel={true} />
             </div>
           </div>
         </section>
@@ -221,11 +221,11 @@ export default function HomePage() {
 
         <section className="w-full py-8 bg-white" ref={(el) => (sectionsRef.current[3] = el)}>
           <div className="container mx-auto px-4">
-            <div className="text-center mb-8">
+            <div className="text-center mb-8 hidden md:block">
               <h2 className="text-2xl font-bold mb-2 text-black">- NUEVA COLECCIÓN -</h2>
             </div>
-            <div>
-              <ProductGrid limit={5} />
+            <div className="relative">
+              <ProductGrid limit={5} showCarousel={true} />
             </div>
           </div>
         </section>
