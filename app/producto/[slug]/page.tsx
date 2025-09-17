@@ -202,13 +202,15 @@ export default function ProductPage({ params }: ProductPageProps) {
             </div>
 
             {product.images && product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {product.images.map((image, index) => (
                   <button
                     key={image.id}
                     onClick={() => setSelectedImage(index)}
-                    className={`flex-shrink-0 aspect-square w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                      selectedImage === index ? "border-primary" : "border-transparent"
+                    className={`flex-shrink-0 aspect-square w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 hover:scale-105 ${
+                      selectedImage === index
+                        ? "border-primary ring-2 ring-primary/20"
+                        : "border-muted hover:border-primary/50"
                     }`}
                   >
                     <Image
@@ -232,7 +234,12 @@ export default function ProductPage({ params }: ProductPageProps) {
               <div className="flex items-center gap-3 mb-6">
                 <span className="text-3xl font-bold">${product.price}</span>
                 {product.compare_price && product.compare_price > product.price && product.compare_price > 0 && (
-                  <span className="text-xl text-muted-foreground line-through">${product.compare_price}</span>
+                  <>
+                    <span className="text-xl text-muted-foreground line-through">${product.compare_price}</span>
+                    <Badge variant="destructive">
+                      -{Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
+                    </Badge>
+                  </>
                 )}
               </div>
 
