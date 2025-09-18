@@ -167,12 +167,14 @@ export async function GET() {
           product.variedades?.reduce((total: number, variety: any) => total + (variety.stock || 0), 0) || 0
         const totalStock = Math.max(mainStock, varietyStock)
 
+        const impuestoMultiplier = product.impuesto || 1.22 // Usar el impuesto del producto o 1.22 por defecto
+
         const latestPrice =
           product.variedades && product.variedades.length > 0
             ? product.variedades[0].precio || product.precio
             : product.precio
 
-        const finalPrice = Math.round((latestPrice || 0) * 1.22)
+        const finalPrice = Math.round((latestPrice || 0) * impuestoMultiplier)
 
         return {
           zureo_id: product.id,
@@ -180,7 +182,7 @@ export async function GET() {
           name: product.nombre || "Sin nombre",
           slug: (product.nombre || "producto").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
           description: product.descripcionLarga || product.descripcionCorta || "",
-          price: finalPrice, // Precio con multiplicador 1.22
+          price: finalPrice, // Precio con multiplicador de impuesto
           precio_zureo: latestPrice || 0, // Precio original de Zureo
           stock_quantity: totalStock,
           category: product.tipo?.nombre || "Sin categoría",
@@ -193,7 +195,7 @@ export async function GET() {
             originalProduct: product,
             varieties: product.variedades || [],
             lastUpdated: new Date().toISOString(),
-            priceMultiplier: 1.22, // Registrar el multiplicador usado
+            priceMultiplier: impuestoMultiplier, // Registrar el multiplicador real usado
           }),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -206,7 +208,7 @@ export async function GET() {
       name: product.name,
       slug: product.slug,
       description: product.description,
-      price: product.price, // Precio con multiplicador 1.22
+      price: product.price, // Precio con multiplicador de impuesto
       zureo_price: product.precio_zureo, // Precio original de Zureo
       stock_quantity: product.stock_quantity,
       category_id: null, // Se puede mapear después
@@ -256,6 +258,7 @@ export async function GET() {
       try {
         const zureoData = JSON.parse(insertedProduct.zureo_data)
         const varieties = zureoData.varieties || []
+        const impuestoMultiplier = zureoData.priceMultiplier || 1.22
 
         if (varieties.length > 0) {
           const variants = varieties
@@ -303,7 +306,7 @@ export async function GET() {
               }
 
               const originalPrice = variety.precio || insertedProduct.zureo_price || 0
-              const finalPrice = Math.round(originalPrice * 1.22)
+              const finalPrice = Math.round(originalPrice * impuestoMultiplier)
 
               return {
                 product_id: insertedProduct.id,
@@ -311,12 +314,12 @@ export async function GET() {
                 color: color,
                 size: size,
                 stock_quantity: variety.stock || 0,
-                price: finalPrice, // Precio con multiplicador 1.22
+                price: finalPrice, // Precio con multiplicador de impuesto específico
                 variety_name: variety.nombre || `${color || ""} ${size || ""}`.trim() || "Variante",
                 variety_data: JSON.stringify({
                   ...variety,
                   originalPrice: originalPrice,
-                  priceMultiplier: 1.22,
+                  priceMultiplier: impuestoMultiplier, // Usar el multiplicador específico
                 }),
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
@@ -335,7 +338,7 @@ export async function GET() {
           }
         } else {
           const originalPrice = insertedProduct.zureo_price || 0
-          const finalPrice = Math.round(originalPrice * 1.22)
+          const finalPrice = Math.round(originalPrice * impuestoMultiplier)
 
           const basicVariant = {
             product_id: insertedProduct.id,
@@ -343,12 +346,12 @@ export async function GET() {
             color: null,
             size: null,
             stock_quantity: insertedProduct.stock_quantity,
-            price: finalPrice, // Precio con multiplicador 1.22
+            price: finalPrice, // Precio con multiplicador de impuesto específico
             variety_name: "Estándar",
             variety_data: JSON.stringify({
               isBasic: true,
               originalPrice: originalPrice,
-              priceMultiplier: 1.22,
+              priceMultiplier: impuestoMultiplier, // Usar el multiplicador específico
             }),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
