@@ -156,6 +156,7 @@ export async function GET() {
     // Paso 4: Limpiar productos existentes y guardar nuevos
     await supabase.from("products_in_stock").delete().neq("id", 0)
     await supabase.from("product_variants").delete().neq("id", 0)
+    await supabase.from("products").delete().neq("id", 0)
 
     const internalProducts = productsWithStock
       .filter((product) => !product.baja) // Filtrar productos dados de baja
@@ -199,28 +200,59 @@ export async function GET() {
         }
       })
 
+    const mainProducts = internalProducts.map((product) => ({
+      zureo_id: product.zureo_id,
+      zureo_code: product.zureo_code,
+      name: product.name,
+      slug: product.slug,
+      description: product.description,
+      price: product.price, // Precio con multiplicador 1.22
+      zureo_price: product.precio_zureo, // Precio original de Zureo
+      stock_quantity: product.stock_quantity,
+      category_id: null, // Se puede mapear después
+      brand: product.brand,
+      is_featured: product.is_featured,
+      is_active: true,
+      discount_percentage: product.discount_percentage,
+      zureo_data: product.zureo_data,
+      created_at: product.created_at,
+      updated_at: product.updated_at,
+      last_sync_at: new Date().toISOString(),
+    }))
+
     // Insertar productos en lotes de 100
     const batchSize = 100
     let insertedCount = 0
     const insertedProducts = []
+    const insertedMainProducts = []
 
     for (let i = 0; i < internalProducts.length; i += batchSize) {
       const batch = internalProducts.slice(i, i + batchSize)
+      const mainBatch = mainProducts.slice(i, i + batchSize)
+
       const { data: insertedBatch, error } = await supabase.from("products_in_stock").insert(batch).select()
+      const { data: insertedMainBatch, error: mainError } = await supabase.from("products").insert(mainBatch).select()
 
       if (error) {
         console.error(`[v0] Error inserting batch ${i / batchSize + 1}:`, error)
       } else {
         insertedCount += batch.length
         insertedProducts.push(...(insertedBatch || []))
-        console.log(`[v0] Inserted batch ${i / batchSize + 1}: ${batch.length} products`)
+        console.log(`[v0] Inserted batch ${i / batchSize + 1}: ${batch.length} products in products_in_stock`)
+      }
+
+      if (mainError) {
+        console.error(`[v0] Error inserting main batch ${i / batchSize + 1}:`, mainError)
+      } else {
+        insertedMainProducts.push(...(insertedMainBatch || []))
+        console.log(`[v0] Inserted batch ${i / batchSize + 1}: ${mainBatch.length} products in products table`)
       }
     }
 
-    console.log(`[v0] Creating variants for ${insertedProducts.length} products`)
+    console.log(`[v0] Creating variants for ${insertedMainProducts.length} products`)
     let totalVariantsCreated = 0
 
-    for (const insertedProduct of insertedProducts) {
+    for (const insertedProduct of insertedMainProducts) {
       try {
         const zureoData = JSON.parse(insertedProduct.zureo_data)
         const varieties = zureoData.varieties || []
@@ -270,7 +302,7 @@ export async function GET() {
                 }
               }
 
-              const originalPrice = variety.precio || insertedProduct.precio_zureo || 0
+              const originalPrice = variety.precio || insertedProduct.zureo_price || 0
               const finalPrice = Math.round(originalPrice * 1.22)
 
               return {
@@ -302,7 +334,7 @@ export async function GET() {
             }
           }
         } else {
-          const originalPrice = insertedProduct.precio_zureo || 0
+          const originalPrice = insertedProduct.zureo_price || 0
           const finalPrice = Math.round(originalPrice * 1.22)
 
           const basicVariant = {
@@ -354,6 +386,7 @@ export async function GET() {
         totalFetched: allProducts.length,
         totalWithStock: productsWithStock.length,
         totalInserted: insertedCount,
+        totalMainProducts: insertedMainProducts.length,
         totalVariantsCreated: totalVariantsCreated,
         syncTime: syncTime,
         categories: [...new Set(productsWithStock.map((p) => p.tipo?.nombre).filter(Boolean))],
