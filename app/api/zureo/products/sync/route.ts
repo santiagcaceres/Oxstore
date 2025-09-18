@@ -155,6 +155,7 @@ export async function GET() {
 
     // Paso 4: Limpiar productos existentes y guardar nuevos
     await supabase.from("products_in_stock").delete().neq("id", 0)
+    await supabase.from("product_variants").delete().neq("id", 0)
 
     // Convertir y guardar productos con stock
     const internalProducts = productsWithStock
@@ -195,21 +196,104 @@ export async function GET() {
         }
       })
 
-    // Insertar en lotes de 100
+    // Insertar productos en lotes de 100
     const batchSize = 100
     let insertedCount = 0
+    const insertedProducts = []
 
     for (let i = 0; i < internalProducts.length; i += batchSize) {
       const batch = internalProducts.slice(i, i + batchSize)
-      const { error } = await supabase.from("products_in_stock").insert(batch)
+      const { data: insertedBatch, error } = await supabase.from("products_in_stock").insert(batch).select()
 
       if (error) {
         console.error(`[v0] Error inserting batch ${i / batchSize + 1}:`, error)
       } else {
         insertedCount += batch.length
+        insertedProducts.push(...(insertedBatch || []))
         console.log(`[v0] Inserted batch ${i / batchSize + 1}: ${batch.length} products`)
       }
     }
+
+    console.log(`[v0] Creating variants for ${insertedProducts.length} products`)
+    let totalVariantsCreated = 0
+
+    for (const insertedProduct of insertedProducts) {
+      try {
+        const zureoData = JSON.parse(insertedProduct.zureo_data)
+        const varieties = zureoData.varieties || []
+
+        if (varieties.length > 0) {
+          // Crear variantes basadas en las variedades de Zureo
+          const variants = varieties
+            .filter((variety: any) => variety.stock > 0) // Solo variantes con stock
+            .map((variety: any) => {
+              // Extraer color y talle de los atributos
+              let color = null
+              let size = null
+
+              if (variety.atributos && Array.isArray(variety.atributos)) {
+                for (const attr of variety.atributos) {
+                  if (attr.atributo === "Color") {
+                    color = attr.valor
+                  } else if (attr.atributo === "Talle") {
+                    size = attr.valor
+                  }
+                }
+              }
+
+              return {
+                product_id: insertedProduct.id,
+                zureo_variety_id: variety.id,
+                color: color,
+                size: size,
+                stock_quantity: variety.stock || 0,
+                price: variety.precio || insertedProduct.price,
+                variety_name: variety.nombre || `${color || ""} ${size || ""}`.trim(),
+                variety_data: JSON.stringify(variety),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }
+            })
+
+          if (variants.length > 0) {
+            const { error: variantError } = await supabase.from("product_variants").insert(variants)
+
+            if (variantError) {
+              console.error(`[v0] Error inserting variants for product ${insertedProduct.id}:`, variantError)
+            } else {
+              totalVariantsCreated += variants.length
+              console.log(`[v0] Created ${variants.length} variants for product: ${insertedProduct.name}`)
+            }
+          }
+        } else {
+          // Si no hay variedades, crear una variante básica
+          const basicVariant = {
+            product_id: insertedProduct.id,
+            zureo_variety_id: null,
+            color: null,
+            size: null,
+            stock_quantity: insertedProduct.stock_quantity,
+            price: insertedProduct.price,
+            variety_name: "Estándar",
+            variety_data: JSON.stringify({ isBasic: true }),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+
+          const { error: variantError } = await supabase.from("product_variants").insert([basicVariant])
+
+          if (variantError) {
+            console.error(`[v0] Error inserting basic variant for product ${insertedProduct.id}:`, variantError)
+          } else {
+            totalVariantsCreated += 1
+          }
+        }
+      } catch (error) {
+        console.error(`[v0] Error processing variants for product ${insertedProduct.id}:`, error)
+      }
+    }
+
+    console.log(`[v0] Total variants created: ${totalVariantsCreated}`)
 
     const syncTime = new Date().toISOString()
     await supabase.from("sync_status").upsert({
@@ -228,6 +312,7 @@ export async function GET() {
         totalFetched: allProducts.length,
         totalWithStock: productsWithStock.length,
         totalInserted: insertedCount,
+        totalVariantsCreated: totalVariantsCreated,
         syncTime: syncTime,
         categories: [...new Set(productsWithStock.map((p) => p.tipo?.nombre).filter(Boolean))],
         brands: [...new Set(productsWithStock.map((p) => p.marca?.nombre).filter(Boolean))],

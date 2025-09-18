@@ -36,6 +36,7 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [selectedSize, setSelectedSize] = useState<string>("")
   const [selectedColor, setSelectedColor] = useState<string>("")
   const [availableVariants, setAvailableVariants] = useState<any[]>([])
+  const [selectedVariant, setSelectedVariant] = useState<any>(null)
   const [similarProducts, setSimilarProducts] = useState<Product[]>([])
   const [loadingSimilar, setLoadingSimilar] = useState(false)
   const { addItem } = useCart()
@@ -65,11 +66,16 @@ export default function ProductPage({ params }: ProductPageProps) {
 
             console.log("[v0] Processed available colors:", colors)
             console.log("[v0] Processed available sizes:", sizes)
+
+            if (data.variants.length > 0) {
+              const firstVariant = data.variants[0]
+              setSelectedVariant(firstVariant)
+              if (firstVariant.color) setSelectedColor(firstVariant.color)
+              if (firstVariant.size) setSelectedSize(firstVariant.size)
+            }
           } else {
             console.log("[v0] No variants found in product data")
           }
-          if (data.color) setSelectedColor(data.color)
-          if (data.size) setSelectedSize(data.size)
 
           loadSimilarProducts(data, setSimilarProducts, setLoadingSimilar)
         } else {
@@ -86,6 +92,18 @@ export default function ProductPage({ params }: ProductPageProps) {
     loadProduct()
   }, [params.slug])
 
+  useEffect(() => {
+    if (availableVariants.length > 0) {
+      const matchingVariant = availableVariants.find(
+        (v) => (!selectedColor || v.color === selectedColor) && (!selectedSize || v.size === selectedSize),
+      )
+      if (matchingVariant) {
+        setSelectedVariant(matchingVariant)
+        console.log("[v0] Selected variant updated:", matchingVariant)
+      }
+    }
+  }, [selectedColor, selectedSize, availableVariants])
+
   const getAvailableColors = () => {
     const colors = availableVariants
       .map((v) => v.color)
@@ -100,8 +118,23 @@ export default function ProductPage({ params }: ProductPageProps) {
     return sizes
   }
 
+  const getAvailableStock = () => {
+    if (selectedVariant) {
+      return selectedVariant.stock_quantity
+    }
+    return product?.stock_quantity || 0
+  }
+
+  const getCurrentPrice = () => {
+    if (selectedVariant && selectedVariant.price) {
+      return selectedVariant.price
+    }
+    return product?.price || 0
+  }
+
   const increaseQuantity = () => {
-    if (product && quantity < product.stock_quantity) {
+    const maxStock = getAvailableStock()
+    if (quantity < maxStock) {
       setQuantity((prev) => prev + 1)
     }
   }
@@ -113,13 +146,14 @@ export default function ProductPage({ params }: ProductPageProps) {
   }
 
   const handleAddToCart = async () => {
-    if (product && product.stock_quantity > 0) {
+    const availableStock = getAvailableStock()
+    if (product && availableStock > 0) {
       setIsAddingToCart(true)
 
       addItem({
-        id: product.id.toString(),
-        name: product.name,
-        price: product.price,
+        id: selectedVariant ? `${product.id}-${selectedVariant.id}` : product.id.toString(),
+        name: selectedVariant?.variety_name || product.name,
+        price: getCurrentPrice(),
         image: product.images?.[0]?.image_url || "/placeholder.svg",
         slug: params.slug,
         quantity: quantity,
@@ -159,6 +193,9 @@ export default function ProductPage({ params }: ProductPageProps) {
     return notFound()
   }
 
+  const availableStock = getAvailableStock()
+  const currentPrice = getCurrentPrice()
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -187,25 +224,26 @@ export default function ProductPage({ params }: ProductPageProps) {
                 src={product.images?.[selectedImage]?.image_url || "/placeholder.svg?height=600&width=600"}
                 alt={product.images?.[selectedImage]?.alt_text || product.name}
                 fill
-                className="object-cover"
+                className="object-cover transition-transform duration-300 hover:scale-105"
                 priority
               />
 
               <div className="absolute top-4 left-4 flex flex-col gap-2">
                 {product.is_featured && <Badge variant="secondary">Destacado</Badge>}
+                {availableStock <= 5 && availableStock > 0 && <Badge variant="destructive">¡Últimas unidades!</Badge>}
               </div>
             </div>
 
             {product.images && product.images.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-2">
+              <div className="flex gap-3 overflow-x-auto pb-2">
                 {product.images.map((image, index) => (
                   <button
                     key={image.id}
                     onClick={() => setSelectedImage(index)}
-                    className={`flex-shrink-0 aspect-square w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-200 hover:scale-105 ${
+                    className={`flex-shrink-0 aspect-square w-20 h-20 rounded-lg overflow-hidden border-2 transition-all duration-300 hover:scale-105 hover:shadow-md ${
                       selectedImage === index
-                        ? "border-primary ring-2 ring-primary/20"
-                        : "border-muted hover:border-primary/50"
+                        ? "border-primary ring-2 ring-primary/30 shadow-lg"
+                        : "border-muted hover:border-primary/60"
                     }`}
                   >
                     <Image
@@ -213,7 +251,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                       alt={image.alt_text || product.name}
                       width={80}
                       height={80}
-                      className="object-cover w-full h-full"
+                      className="object-cover w-full h-full transition-transform duration-300 hover:scale-110"
                     />
                   </button>
                 ))}
@@ -227,23 +265,20 @@ export default function ProductPage({ params }: ProductPageProps) {
               <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
 
               <div className="flex items-center gap-3 mb-6">
-                <span className="text-3xl font-bold">${product.price}</span>
-                {product.compare_price && product.compare_price > product.price && product.compare_price > 0 && (
-                  <>
-                    <span className="text-xl text-muted-foreground line-through">${product.compare_price}</span>
-                    <Badge variant="destructive">
-                      -{Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
-                    </Badge>
-                  </>
+                <span className="text-3xl font-bold">${currentPrice}</span>
+                {selectedVariant?.variety_name && (
+                  <Badge variant="outline" className="text-sm">
+                    {selectedVariant.variety_name}
+                  </Badge>
                 )}
               </div>
 
               <div className="mb-6">
-                {product.stock_quantity > 0 ? (
+                {availableStock > 0 ? (
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full" />
                     <span className="text-sm text-green-600">
-                      {product.stock_quantity > 10 ? "En stock" : `Solo ${product.stock_quantity} disponibles`}
+                      {availableStock > 10 ? "En stock" : `Solo ${availableStock} disponibles`}
                     </span>
                   </div>
                 ) : (
@@ -256,47 +291,52 @@ export default function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div className="space-y-4">
-              {(() => {
-                const colors = getAvailableColors()
-                const sizes = getAvailableSizes()
-                console.log("[v0] Rendering selectors - Colors:", colors, "Sizes:", sizes)
-                console.log("[v0] Available variants length:", availableVariants.length)
-                return null
-              })()}
-
               {availableVariants.length > 0 && getAvailableColors().length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium uppercase">Color:</label>
+                <div className="space-y-3">
+                  <label className="text-sm font-medium uppercase tracking-wide">Color:</label>
                   <div className="flex flex-wrap gap-2">
-                    {getAvailableColors().map((color) => (
-                      <Badge
-                        key={color}
-                        variant={selectedColor === color ? "default" : "outline"}
-                        className="cursor-pointer hover:bg-primary/10 transition-colors"
-                        onClick={() => setSelectedColor(color)}
-                      >
-                        {color.toUpperCase()}
-                      </Badge>
-                    ))}
+                    {getAvailableColors().map((color) => {
+                      const colorVariants = availableVariants.filter((v) => v.color === color)
+                      const hasStock = colorVariants.some((v) => v.stock_quantity > 0)
+
+                      return (
+                        <Badge
+                          key={color}
+                          variant={selectedColor === color ? "default" : "outline"}
+                          className={`cursor-pointer hover:bg-primary/10 transition-colors ${
+                            !hasStock ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                          onClick={() => hasStock && setSelectedColor(color)}
+                        >
+                          {color.toUpperCase()}
+                        </Badge>
+                      )
+                    })}
                   </div>
+                  {selectedColor && (
+                    <p className="text-sm text-muted-foreground">
+                      Color seleccionado: <span className="font-medium">{selectedColor.toUpperCase()}</span>
+                    </p>
+                  )}
                 </div>
               )}
 
               {availableVariants.length > 0 && getAvailableSizes().length > 0 && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium uppercase">Talles:</label>
+                <div className="space-y-3">
+                  <label className="text-sm font-medium uppercase tracking-wide">Talle:</label>
                   <div className="flex flex-wrap gap-2">
                     {getAvailableSizes().map((size) => {
-                      const sizeVariant = availableVariants.find((v) => v.size === size)
-                      const stock = sizeVariant?.stock_quantity || 0
+                      const sizeVariants = availableVariants.filter((v) => v.size === size)
+                      const hasStock = sizeVariants.some((v) => v.stock_quantity > 0)
+
                       return (
                         <Badge
                           key={size}
                           variant={selectedSize === size ? "default" : "outline"}
                           className={`cursor-pointer hover:bg-primary/10 transition-colors ${
-                            stock === 0 ? "opacity-50 cursor-not-allowed" : ""
+                            !hasStock ? "opacity-50 cursor-not-allowed" : ""
                           }`}
-                          onClick={() => stock > 0 && setSelectedSize(size)}
+                          onClick={() => hasStock && setSelectedSize(size)}
                         >
                           {size.toUpperCase()}
                         </Badge>
@@ -330,7 +370,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                     variant="ghost"
                     size="icon"
                     onClick={increaseQuantity}
-                    disabled={quantity >= product.stock_quantity}
+                    disabled={quantity >= availableStock}
                     className="h-10 w-10"
                   >
                     <Plus className="h-4 w-4" />
@@ -342,13 +382,13 @@ export default function ProductPage({ params }: ProductPageProps) {
                 <Button
                   size="lg"
                   className={`flex-1 transition-all duration-300 ${isAddingToCart ? "bg-green-500 hover:bg-green-600" : ""}`}
-                  disabled={product.stock_quantity === 0 || isAddingToCart}
+                  disabled={availableStock === 0 || isAddingToCart}
                   onClick={handleAddToCart}
                 >
                   <ShoppingCart
                     className={`h-5 w-5 mr-2 transition-transform duration-300 ${isAddingToCart ? "scale-110" : ""}`}
                   />
-                  {isAddingToCart ? "¡Agregado!" : product.stock_quantity === 0 ? "Agotado" : "Agregar al Carrito"}
+                  {isAddingToCart ? "¡Agregado!" : availableStock === 0 ? "Agotado" : "Agregar al Carrito"}
                 </Button>
                 <Button variant="outline" size="lg">
                   <Heart className="h-5 w-5" />
@@ -381,16 +421,16 @@ export default function ProductPage({ params }: ProductPageProps) {
                     <span className="font-medium">Marca:</span>
                     <span>{product.brand}</span>
                   </div>
-                  {product.color && (
+                  {selectedColor && (
                     <div className="flex justify-between py-2 border-b">
                       <span className="font-medium">Color:</span>
-                      <span>{product.color}</span>
+                      <span>{selectedColor}</span>
                     </div>
                   )}
-                  {product.size && (
+                  {selectedSize && (
                     <div className="flex justify-between py-2 border-b">
                       <span className="font-medium">Talle:</span>
-                      <span>{product.size}</span>
+                      <span>{selectedSize}</span>
                     </div>
                   )}
                   {product.weight && (
@@ -403,6 +443,12 @@ export default function ProductPage({ params }: ProductPageProps) {
                     <div className="flex justify-between py-2 border-b">
                       <span className="font-medium">Dimensiones:</span>
                       <span>{product.dimensions}</span>
+                    </div>
+                  )}
+                  {availableVariants.length > 0 && (
+                    <div className="flex justify-between py-2 border-b">
+                      <span className="font-medium">Variantes disponibles:</span>
+                      <span>{availableVariants.length}</span>
                     </div>
                   )}
                 </div>

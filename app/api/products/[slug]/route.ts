@@ -74,25 +74,60 @@ export async function GET(request: Request, { params }: { params: { slug: string
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    console.log(`[v0] Loading variants for zureo_code: ${product.zureo_code}`)
+    console.log(`[v0] Loading variants from product_variants table for product: ${productName}`)
 
     const { data: variants, error: variantsError } = await supabase
-      .from("products_in_stock")
-      .select("id, color, size, stock_quantity, price, custom_name, name, zureo_code")
-      .eq("zureo_code", product.zureo_code)
+      .from("product_variants")
+      .select("*")
+      .eq("product_id", product.id)
       .gt("stock_quantity", 0)
+      .order("id", { ascending: true })
 
     if (variantsError) {
       console.error(`[v0] Error loading variants:`, variantsError)
-    } else {
-      console.log(`[v0] Loaded ${variants?.length || 0} variants for product ${product.zureo_code}`)
-      console.log(`[v0] Variants data:`, variants)
+    }
 
-      variants?.forEach((variant, index) => {
+    console.log(`[v0] Found ${variants?.length || 0} variants in database`)
+
+    let processedVariants = []
+
+    if (variants && variants.length > 0) {
+      // Usar variantes de la base de datos
+      processedVariants = variants.map((variant: any) => ({
+        id: variant.id,
+        color: variant.color,
+        size: variant.size,
+        stock_quantity: variant.stock_quantity,
+        price: variant.price,
+        custom_name: variant.variety_name,
+        name: variant.variety_name || productName,
+        zureo_code: product.zureo_code,
+        variety_name: variant.variety_name,
+        zureo_variety_id: variant.zureo_variety_id,
+      }))
+
+      console.log(`[v0] Processed ${processedVariants.length} variants from database`)
+      processedVariants.forEach((variant: any, index: number) => {
         console.log(
-          `[v0] Variant ${index + 1}: ID=${variant.id}, Color=${variant.color}, Size=${variant.size}, Stock=${variant.stock_quantity}`,
+          `[v0] Variant ${index + 1}: Color=${variant.color}, Size=${variant.size}, Stock=${variant.stock_quantity}, Name=${variant.variety_name}`,
         )
       })
+    } else {
+      // Fallback: crear una variante básica con el producto principal
+      console.log(`[v0] No variants found in database, creating basic variant`)
+      processedVariants = [
+        {
+          id: product.id,
+          color: product.color,
+          size: product.size,
+          stock_quantity: product.stock_quantity,
+          price: product.price,
+          custom_name: product.custom_name,
+          name: productName,
+          zureo_code: product.zureo_code,
+          variety_name: "Estándar",
+        },
+      ]
     }
 
     console.log(`[v0] GET /api/products/${params.slug} - Product found: ${productName}`)
@@ -104,7 +139,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
       name: productName,
       description: product.local_description || product.description,
       price: product.local_price || product.price,
-      compare_price: product.compare_price || product.price * 1.2,
       stock_quantity: product.stock_quantity,
       sku: product.zureo_code || product.sku,
       brand: product.brand,
@@ -114,7 +148,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
       color: product.color,
       size: product.size,
       zureo_data: product.zureo_data,
-      variants: variants || [],
+      variants: processedVariants,
       images:
         productImages?.length > 0
           ? productImages.map((img: any, index: number) => ({

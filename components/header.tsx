@@ -181,32 +181,35 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] sm:w-[400px] overflow-y-auto">
-                <nav className="flex flex-col space-y-1 mt-8 px-4">
+                <nav className="flex flex-col space-y-0 mt-8 px-6">
                   <Collapsible open={expandedMobileMenus.mujer} onOpenChange={() => toggleMobileMenu("mujer")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-4 border-b border-border">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-6 border-b border-border/50">
                       MUJER
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.mujer ? "rotate-90" : ""}`}
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 ml-4 space-y-2 pb-4">
-                      <Link href="/categoria/mujer" className="block text-sm hover:text-primary transition-colors py-2">
+                    <CollapsibleContent className="mt-3 ml-4 space-y-3 pb-6">
+                      <Link
+                        href="/categoria/mujer"
+                        className="block text-sm hover:text-primary transition-colors py-2 px-2 rounded hover:bg-muted/50"
+                      >
                         Ver todo
                       </Link>
                       {shouldShowCategory("vestimenta") && (
-                        <div className="border-l-2 border-muted pl-4">
+                        <div className="border-l-2 border-muted pl-4 space-y-2">
                           <Link
                             href="/categoria/mujer/vestimenta"
-                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2 px-2 rounded hover:bg-primary/5"
                           >
                             VESTIMENTA
                           </Link>
-                          <div className="ml-4 space-y-1">
+                          <div className="ml-4 space-y-2">
                             {getSubcategoriesForCategory("vestimenta", "mujer").map((subcat) => (
                               <Link
                                 key={subcat.id}
                                 href={`/categoria/mujer/vestimenta/${subcat.slug}`}
-                                className="block text-xs hover:text-primary transition-colors py-1"
+                                className="block text-xs hover:text-primary transition-colors py-2 px-2 rounded hover:bg-muted/30"
                               >
                                 {subcat.name}
                               </Link>
@@ -215,19 +218,19 @@ export function Header() {
                         </div>
                       )}
                       {shouldShowCategory("accesorios") && (
-                        <div className="border-l-2 border-muted pl-4">
+                        <div className="border-l-2 border-muted pl-4 space-y-2">
                           <Link
                             href="/categoria/mujer/accesorios"
-                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2 px-2 rounded hover:bg-primary/5"
                           >
                             ACCESORIOS
                           </Link>
-                          <div className="ml-4 space-y-1">
+                          <div className="ml-4 space-y-2">
                             {getSubcategoriesForCategory("accesorios", "mujer").map((subcat) => (
                               <Link
                                 key={subcat.id}
                                 href={`/categoria/mujer/accesorios/${subcat.slug}`}
-                                className="block text-xs hover:text-primary transition-colors py-1"
+                                className="block text-xs hover:text-primary transition-colors py-2 px-2 rounded hover:bg-muted/30"
                               >
                                 {subcat.name}
                               </Link>
@@ -239,33 +242,33 @@ export function Header() {
                   </Collapsible>
 
                   <Collapsible open={expandedMobileMenus.hombre} onOpenChange={() => toggleMobileMenu("hombre")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-4 border-b border-border">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-6 border-b border-border/50">
                       HOMBRE
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.hombre ? "rotate-90" : ""}`}
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 ml-4 space-y-2 pb-4">
+                    <CollapsibleContent className="mt-3 ml-4 space-y-3 pb-6">
                       <Link
                         href="/categoria/hombre"
-                        className="block text-sm hover:text-primary transition-colors py-2"
+                        className="block text-sm hover:text-primary transition-colors py-2 px-2 rounded hover:bg-muted/50"
                       >
                         Ver todo
                       </Link>
                       {shouldShowCategory("vestimenta") && (
-                        <div className="border-l-2 border-muted pl-4">
+                        <div className="border-l-2 border-muted pl-4 space-y-2">
                           <Link
                             href="/categoria/hombre/vestimenta"
-                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2 px-2 rounded hover:bg-primary/5"
                           >
                             VESTIMENTA
                           </Link>
-                          <div className="ml-4 space-y-1">
+                          <div className="ml-4 space-y-2">
                             {getSubcategoriesForCategory("vestimenta", "hombre").map((subcat) => (
                               <Link
                                 key={subcat.id}
                                 href={`/categoria/hombre/vestimenta/${subcat.slug}`}
-                                className="block text-xs hover:text-primary transition-colors py-1"
+                                className="block text-xs hover:text-primary transition-colors py-2 px-2 rounded hover:bg-muted/30"
                               >
                                 {subcat.name}
                               </Link>
@@ -274,19 +277,19 @@ export function Header() {
                         </div>
                       )}
                       {shouldShowCategory("accesorios") && (
-                        <div className="border-l-2 border-muted pl-4">
+                        <div className="border-l-2 border-muted pl-4 space-y-2">
                           <Link
                             href="/categoria/hombre/accesorios"
-                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2 px-2 rounded hover:bg-primary/5"
                           >
                             ACCESORIOS
                           </Link>
-                          <div className="ml-4 space-y-1">
+                          <div className="ml-4 space-y-2">
                             {getSubcategoriesForCategory("accesorios", "hombre").map((subcat) => (
                               <Link
                                 key={subcat.id}
                                 href={`/categoria/hombre/accesorios/${subcat.slug}`}
-                                className="block text-xs hover:text-primary transition-colors py-1"
+                                className="block text-xs hover:text-primary transition-colors py-2 px-2 rounded hover:bg-muted/30"
                               >
                                 {subcat.name}
                               </Link>
@@ -298,19 +301,19 @@ export function Header() {
                   </Collapsible>
 
                   <Collapsible open={expandedMobileMenus.marcas} onOpenChange={() => toggleMobileMenu("marcas")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-4 border-b border-border">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-6 border-b border-border/50">
                       MARCAS
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.marcas ? "rotate-90" : ""}`}
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 ml-4 pb-4">
-                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border-l-2 border-muted pl-4">
+                    <CollapsibleContent className="mt-3 ml-4 pb-6">
+                      <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto border-l-2 border-muted pl-4">
                         {brandsWithProducts.map((brand) => (
                           <Link
                             key={brand.id}
                             href={`/marca/${brand.slug}`}
-                            className="text-sm hover:text-primary transition-colors p-2 hover:bg-muted rounded"
+                            className="text-sm hover:text-primary transition-colors p-3 hover:bg-muted/50 rounded"
                           >
                             {brand.name}
                           </Link>
@@ -321,13 +324,13 @@ export function Header() {
 
                   <Link
                     href="/nuevo"
-                    className="text-lg font-medium hover:text-primary transition-colors py-4 border-b border-border"
+                    className="text-lg font-medium hover:text-primary transition-colors py-6 px-2 border-b border-border/50 rounded hover:bg-muted/30"
                   >
                     NUEVO
                   </Link>
                   <Link
                     href="/sale"
-                    className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors py-4 border-b border-border"
+                    className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors py-6 px-2 border-b border-border/50 rounded hover:bg-destructive/5"
                   >
                     SALE
                   </Link>

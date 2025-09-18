@@ -130,24 +130,6 @@ export function HeroBanner() {
           ))}
         </div>
       </Link>
-
-      {banners.length > 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
-          {banners.map((_, index) => (
-            <button
-              key={index}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                index === currentIndex ? "bg-white" : "bg-white/50 hover:bg-white/70"
-              }`}
-              onClick={(e) => {
-                e.preventDefault()
-                goToSlide(index)
-              }}
-              disabled={isTransitioning}
-            />
-          ))}
-        </div>
-      )}
     </div>
   )
 }
