@@ -157,7 +157,6 @@ export async function GET() {
     await supabase.from("products_in_stock").delete().neq("id", 0)
     await supabase.from("product_variants").delete().neq("id", 0)
 
-    // Convertir y guardar productos con stock
     const internalProducts = productsWithStock
       .filter((product) => !product.baja) // Filtrar productos dados de baja
       .map((product) => {
@@ -167,11 +166,12 @@ export async function GET() {
           product.variedades?.reduce((total: number, variety: any) => total + (variety.stock || 0), 0) || 0
         const totalStock = Math.max(mainStock, varietyStock)
 
-        // Obtener precio más actualizado
         const latestPrice =
           product.variedades && product.variedades.length > 0
             ? product.variedades[0].precio || product.precio
             : product.precio
+
+        const finalPrice = Math.round((latestPrice || 0) * 1.22)
 
         return {
           zureo_id: product.id,
@@ -179,9 +179,11 @@ export async function GET() {
           name: product.nombre || "Sin nombre",
           slug: (product.nombre || "producto").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
           description: product.descripcionLarga || product.descripcionCorta || "",
-          price: latestPrice || 0,
+          price: finalPrice, // Precio con multiplicador 1.22
+          precio_zureo: latestPrice || 0, // Precio original de Zureo
           stock_quantity: totalStock,
           category: product.tipo?.nombre || "Sin categoría",
+          categoria_zureo: product.tipo?.nombre || "Sin categoría", // Categoría original de Zureo
           brand: product.marca?.nombre || "Sin marca",
           image_url: `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.nombre || "producto")}`,
           is_featured: false,
@@ -190,6 +192,7 @@ export async function GET() {
             originalProduct: product,
             varieties: product.variedades || [],
             lastUpdated: new Date().toISOString(),
+            priceMultiplier: 1.22, // Registrar el multiplicador usado
           }),
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -223,23 +226,52 @@ export async function GET() {
         const varieties = zureoData.varieties || []
 
         if (varieties.length > 0) {
-          // Crear variantes basadas en las variedades de Zureo
           const variants = varieties
             .filter((variety: any) => variety.stock > 0) // Solo variantes con stock
             .map((variety: any) => {
-              // Extraer color y talle de los atributos
+              // Extraer color y talle de los atributos con mejor lógica
               let color = null
               let size = null
 
               if (variety.atributos && Array.isArray(variety.atributos)) {
                 for (const attr of variety.atributos) {
-                  if (attr.atributo === "Color") {
-                    color = attr.valor
-                  } else if (attr.atributo === "Talle") {
-                    size = attr.valor
+                  const atributoName = (attr.atributo || "").toLowerCase()
+                  const valor = attr.valor || ""
+
+                  if (atributoName.includes("color") || atributoName.includes("colour")) {
+                    color = valor
+                  } else if (
+                    atributoName.includes("talle") ||
+                    atributoName.includes("size") ||
+                    atributoName.includes("talla")
+                  ) {
+                    size = valor
                   }
                 }
               }
+
+              // Si no hay atributos, intentar extraer del nombre de la variedad
+              if (!color && !size && variety.nombre) {
+                const nombre = variety.nombre.toLowerCase()
+
+                // Buscar patrones comunes de talle
+                const sizePatterns = /\b(xs|s|m|l|xl|xxl|\d+)\b/i
+                const sizeMatch = nombre.match(sizePatterns)
+                if (sizeMatch) {
+                  size = sizeMatch[0].toUpperCase()
+                }
+
+                // Buscar patrones comunes de color
+                const colorPatterns =
+                  /\b(negro|blanco|azul|rojo|verde|amarillo|rosa|gris|marron|beige|violeta|naranja|celeste|fucsia|dorado|plateado|black|white|blue|red|green|yellow|pink|gray|brown|purple|orange|gold|silver)\b/i
+                const colorMatch = nombre.match(colorPatterns)
+                if (colorMatch) {
+                  color = colorMatch[0]
+                }
+              }
+
+              const originalPrice = variety.precio || insertedProduct.precio_zureo || 0
+              const finalPrice = Math.round(originalPrice * 1.22)
 
               return {
                 product_id: insertedProduct.id,
@@ -247,9 +279,13 @@ export async function GET() {
                 color: color,
                 size: size,
                 stock_quantity: variety.stock || 0,
-                price: variety.precio || insertedProduct.price,
-                variety_name: variety.nombre || `${color || ""} ${size || ""}`.trim(),
-                variety_data: JSON.stringify(variety),
+                price: finalPrice, // Precio con multiplicador 1.22
+                variety_name: variety.nombre || `${color || ""} ${size || ""}`.trim() || "Variante",
+                variety_data: JSON.stringify({
+                  ...variety,
+                  originalPrice: originalPrice,
+                  priceMultiplier: 1.22,
+                }),
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
               }
@@ -266,16 +302,22 @@ export async function GET() {
             }
           }
         } else {
-          // Si no hay variedades, crear una variante básica
+          const originalPrice = insertedProduct.precio_zureo || 0
+          const finalPrice = Math.round(originalPrice * 1.22)
+
           const basicVariant = {
             product_id: insertedProduct.id,
             zureo_variety_id: null,
             color: null,
             size: null,
             stock_quantity: insertedProduct.stock_quantity,
-            price: insertedProduct.price,
+            price: finalPrice, // Precio con multiplicador 1.22
             variety_name: "Estándar",
-            variety_data: JSON.stringify({ isBasic: true }),
+            variety_data: JSON.stringify({
+              isBasic: true,
+              originalPrice: originalPrice,
+              priceMultiplier: 1.22,
+            }),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           }
