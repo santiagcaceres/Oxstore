@@ -487,6 +487,18 @@ export default function AdminBannersPage() {
                                     placeholder="Subtítulo del banner (opcional)"
                                   />
                                 </div>
+                                <div className="grid grid-cols-4 items-center gap-4">
+                                  <Label htmlFor="banner-link-url" className="text-right">
+                                    URL de Destino
+                                  </Label>
+                                  <Input
+                                    id="banner-link-url"
+                                    value={linkUrl}
+                                    onChange={(e) => setLinkUrl(e.target.value)}
+                                    className="col-span-3"
+                                    placeholder="https://ejemplo.com o /categoria/jeans"
+                                  />
+                                </div>
                               </div>
 
                               <div>

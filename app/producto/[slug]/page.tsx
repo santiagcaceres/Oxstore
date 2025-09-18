@@ -192,11 +192,6 @@ export default function ProductPage({ params }: ProductPageProps) {
               />
 
               <div className="absolute top-4 left-4 flex flex-col gap-2">
-                {product.compare_price && product.compare_price > product.price && product.compare_price > 0 && (
-                  <Badge variant="destructive">
-                    -{Math.round(((product.compare_price - product.price) / product.compare_price) * 100)}%
-                  </Badge>
-                )}
                 {product.is_featured && <Badge variant="secondary">Destacado</Badge>}
               </div>
             </div>

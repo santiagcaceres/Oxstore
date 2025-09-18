@@ -181,23 +181,23 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] sm:w-[400px] overflow-y-auto">
-                <nav className="flex flex-col space-y-4 mt-8">
+                <nav className="flex flex-col space-y-1 mt-8 px-4">
                   <Collapsible open={expandedMobileMenus.mujer} onOpenChange={() => toggleMobileMenu("mujer")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-2">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-4 border-b border-border">
                       MUJER
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.mujer ? "rotate-90" : ""}`}
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 ml-4 space-y-2">
-                      <Link href="/categoria/mujer" className="block text-sm hover:text-primary transition-colors py-1">
+                    <CollapsibleContent className="mt-2 ml-4 space-y-2 pb-4">
+                      <Link href="/categoria/mujer" className="block text-sm hover:text-primary transition-colors py-2">
                         Ver todo
                       </Link>
                       {shouldShowCategory("vestimenta") && (
-                        <div>
+                        <div className="border-l-2 border-muted pl-4">
                           <Link
                             href="/categoria/mujer/vestimenta"
-                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-1"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2"
                           >
                             VESTIMENTA
                           </Link>
@@ -215,10 +215,10 @@ export function Header() {
                         </div>
                       )}
                       {shouldShowCategory("accesorios") && (
-                        <div>
+                        <div className="border-l-2 border-muted pl-4">
                           <Link
                             href="/categoria/mujer/accesorios"
-                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-1"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2"
                           >
                             ACCESORIOS
                           </Link>
@@ -239,24 +239,24 @@ export function Header() {
                   </Collapsible>
 
                   <Collapsible open={expandedMobileMenus.hombre} onOpenChange={() => toggleMobileMenu("hombre")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-2">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-4 border-b border-border">
                       HOMBRE
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.hombre ? "rotate-90" : ""}`}
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 ml-4 space-y-2">
+                    <CollapsibleContent className="mt-2 ml-4 space-y-2 pb-4">
                       <Link
                         href="/categoria/hombre"
-                        className="block text-sm hover:text-primary transition-colors py-1"
+                        className="block text-sm hover:text-primary transition-colors py-2"
                       >
                         Ver todo
                       </Link>
                       {shouldShowCategory("vestimenta") && (
-                        <div>
+                        <div className="border-l-2 border-muted pl-4">
                           <Link
                             href="/categoria/hombre/vestimenta"
-                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-1"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2"
                           >
                             VESTIMENTA
                           </Link>
@@ -274,10 +274,10 @@ export function Header() {
                         </div>
                       )}
                       {shouldShowCategory("accesorios") && (
-                        <div>
+                        <div className="border-l-2 border-muted pl-4">
                           <Link
                             href="/categoria/hombre/accesorios"
-                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-1"
+                            className="block text-sm font-medium text-primary hover:text-primary/80 transition-colors py-2"
                           >
                             ACCESORIOS
                           </Link>
@@ -298,14 +298,14 @@ export function Header() {
                   </Collapsible>
 
                   <Collapsible open={expandedMobileMenus.marcas} onOpenChange={() => toggleMobileMenu("marcas")}>
-                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-2">
+                    <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-4 border-b border-border">
                       MARCAS
                       <ChevronRight
                         className={`h-4 w-4 transition-transform ${expandedMobileMenus.marcas ? "rotate-90" : ""}`}
                       />
                     </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-2 ml-4">
-                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    <CollapsibleContent className="mt-2 ml-4 pb-4">
+                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border-l-2 border-muted pl-4">
                         {brandsWithProducts.map((brand) => (
                           <Link
                             key={brand.id}
@@ -319,12 +319,15 @@ export function Header() {
                     </CollapsibleContent>
                   </Collapsible>
 
-                  <Link href="/nuevo" className="text-lg font-medium hover:text-primary transition-colors py-2">
+                  <Link
+                    href="/nuevo"
+                    className="text-lg font-medium hover:text-primary transition-colors py-4 border-b border-border"
+                  >
                     NUEVO
                   </Link>
                   <Link
                     href="/sale"
-                    className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors py-2"
+                    className="text-lg font-medium text-destructive hover:text-destructive/80 transition-colors py-4 border-b border-border"
                   >
                     SALE
                   </Link>

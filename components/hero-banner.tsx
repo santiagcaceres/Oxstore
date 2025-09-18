@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 
 const supabase = createClient()
@@ -134,48 +132,21 @@ export function HeroBanner() {
       </Link>
 
       {banners.length > 1 && (
-        <>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
-            onClick={(e) => {
-              e.preventDefault()
-              prevSlide()
-            }}
-            disabled={isTransitioning}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"
-            onClick={(e) => {
-              e.preventDefault()
-              nextSlide()
-            }}
-            disabled={isTransitioning}
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
-            {banners.map((_, index) => (
-              <button
-                key={index}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                  index === currentIndex ? "bg-white" : "bg-white/50 hover:bg-white/70"
-                }`}
-                onClick={(e) => {
-                  e.preventDefault()
-                  goToSlide(index)
-                }}
-                disabled={isTransitioning}
-              />
-            ))}
-          </div>
-        </>
+        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+          {banners.map((_, index) => (
+            <button
+              key={index}
+              className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                index === currentIndex ? "bg-white" : "bg-white/50 hover:bg-white/70"
+              }`}
+              onClick={(e) => {
+                e.preventDefault()
+                goToSlide(index)
+              }}
+              disabled={isTransitioning}
+            />
+          ))}
+        </div>
       )}
     </div>
   )
