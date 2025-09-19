@@ -15,7 +15,6 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Upload, X, Save, ArrowLeft, AlertCircle } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
-import VariantsDisplay from "@/components/variants-display"
 
 interface Product {
   id: number
@@ -764,26 +763,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         </Card>
       </div>
 
-      {/* Variantes y Talles */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Variantes y Talles</CardTitle>
-          <CardDescription>Información de talles y colores disponibles desde Zureo</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {product && (
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium text-muted-foreground">Código Zureo Base</Label>
-                <p className="font-mono">{product.zureo_code}</p>
-              </div>
-
-              <VariantsDisplay zureoCode={product.zureo_code} />
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
+      {/* Imágenes del Producto */}
       <Card>
         <CardHeader>
           <CardTitle>Imágenes del Producto</CardTitle>
