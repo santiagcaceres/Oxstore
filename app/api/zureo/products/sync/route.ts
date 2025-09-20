@@ -154,6 +154,7 @@ export async function GET() {
     console.log(`[v0] Products with stock: ${productsWithStock.length}`)
 
     // Paso 4: Limpiar productos existentes y guardar nuevos
+    console.log("[v0] Cleaning existing products...")
     await supabase.from("products_in_stock").delete().neq("id", 0)
     await supabase.from("product_variants").delete().neq("id", 0)
     await supabase.from("products").delete().neq("id", 0)
@@ -174,7 +175,11 @@ export async function GET() {
             ? product.variedades[0].precio || product.precio
             : product.precio
 
+        console.log(`[v0] Product ${product.id}: originalPrice=${latestPrice}, multiplier=${impuestoMultiplier}`)
+
         const finalPrice = Math.round((latestPrice || 0) * impuestoMultiplier)
+
+        console.log(`[v0] Product ${product.id}: finalPrice=${finalPrice}`)
 
         return {
           zureo_id: product.id,
@@ -232,6 +237,11 @@ export async function GET() {
       const batch = internalProducts.slice(i, i + batchSize)
       const mainBatch = mainProducts.slice(i, i + batchSize)
 
+      console.log(
+        `[v0] Batch ${i / batchSize + 1} sample prices:`,
+        batch.slice(0, 3).map((p) => ({ id: p.zureo_id, price: p.price, precio_zureo: p.precio_zureo })),
+      )
+
       const { data: insertedBatch, error } = await supabase.from("products_in_stock").insert(batch).select()
       const { data: insertedMainBatch, error: mainError } = await supabase.from("products").insert(mainBatch).select()
 
@@ -250,6 +260,10 @@ export async function GET() {
         console.log(`[v0] Inserted batch ${i / batchSize + 1}: ${mainBatch.length} products in products table`)
       }
     }
+
+    const { data: sampleProducts } = await supabase.from("products").select("id, name, price, zureo_price").limit(5)
+
+    console.log("[v0] Sample products after insert:", sampleProducts)
 
     console.log(`[v0] Creating variants for ${insertedMainProducts.length} products`)
     let totalVariantsCreated = 0
@@ -382,6 +396,15 @@ export async function GET() {
       updated_at: syncTime,
     })
 
+    const { data: finalCheck } = await supabase
+      .from("products")
+      .select("id, name, price, zureo_price")
+      .gt("price", 0)
+      .limit(10)
+
+    console.log("[v0] Final check - products with price > 0:", finalCheck?.length || 0)
+    console.log("[v0] Sample products with prices:", finalCheck)
+
     return Response.json({
       success: true,
       fromCache: false,
@@ -391,6 +414,7 @@ export async function GET() {
         totalInserted: insertedCount,
         totalMainProducts: insertedMainProducts.length,
         totalVariantsCreated: totalVariantsCreated,
+        productsWithPrices: finalCheck?.length || 0,
         syncTime: syncTime,
         categories: [...new Set(productsWithStock.map((p) => p.tipo?.nombre).filter(Boolean))],
         brands: [...new Set(productsWithStock.map((p) => p.marca?.nombre).filter(Boolean))],
