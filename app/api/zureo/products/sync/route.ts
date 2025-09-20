@@ -170,14 +170,14 @@ export async function GET() {
 
         const impuestoMultiplier = product.impuesto || 1.22 // Usar el impuesto del producto o 1.22 por defecto
 
-        const latestPrice =
-          product.variedades && product.variedades.length > 0
-            ? product.variedades[0].precio || product.precio
-            : product.precio
+        // Usar directamente el precio del producto principal
+        const basePrice = product.precio || 0
 
-        console.log(`[v0] Product ${product.id}: originalPrice=${latestPrice}, multiplier=${impuestoMultiplier}`)
+        console.log(
+          `[v0] Product ${product.id} (${product.codigo}): basePrice=${basePrice}, impuesto=${impuestoMultiplier}`,
+        )
 
-        const finalPrice = Math.round((latestPrice || 0) * impuestoMultiplier)
+        const finalPrice = Math.round(basePrice * impuestoMultiplier)
 
         console.log(`[v0] Product ${product.id}: finalPrice=${finalPrice}`)
 
@@ -186,9 +186,9 @@ export async function GET() {
           zureo_code: product.codigo || `ZUR-${product.id}`,
           name: product.nombre || "Sin nombre",
           slug: (product.nombre || "producto").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-          description: product.descripcionLarga || product.descripcionCorta || "",
+          description: product.descripcion_larga || product.descripcion_corta || "",
           price: finalPrice, // Precio con multiplicador de impuesto
-          precio_zureo: latestPrice || 0, // Precio original de Zureo
+          precio_zureo: basePrice, // Precio original de Zureo
           stock_quantity: totalStock,
           category: product.tipo?.nombre || "Sin categoría",
           categoria_zureo: product.tipo?.nombre || "Sin categoría", // Categoría original de Zureo
@@ -319,8 +319,12 @@ export async function GET() {
                 }
               }
 
-              const originalPrice = variety.precio || insertedProduct.zureo_price || 0
-              const finalPrice = Math.round(originalPrice * impuestoMultiplier)
+              const varietyPrice = variety.precio || insertedProduct.precio_zureo || 0
+              const finalVarietyPrice = Math.round(varietyPrice * impuestoMultiplier)
+
+              console.log(
+                `[v0] Variety ${variety.id}: originalPrice=${varietyPrice}, finalPrice=${finalVarietyPrice}, color=${color}, size=${size}`,
+              )
 
               return {
                 product_id: insertedProduct.id,
@@ -328,11 +332,11 @@ export async function GET() {
                 color: color,
                 size: size,
                 stock_quantity: variety.stock || 0,
-                price: finalPrice, // Precio con multiplicador de impuesto específico
+                price: finalVarietyPrice, // Precio con multiplicador de impuesto específico
                 variety_name: variety.nombre || `${color || ""} ${size || ""}`.trim() || "Variante",
                 variety_data: JSON.stringify({
                   ...variety,
-                  originalPrice: originalPrice,
+                  originalPrice: varietyPrice,
                   priceMultiplier: impuestoMultiplier, // Usar el multiplicador específico
                 }),
                 created_at: new Date().toISOString(),
@@ -351,7 +355,7 @@ export async function GET() {
             }
           }
         } else {
-          const originalPrice = insertedProduct.zureo_price || 0
+          const originalPrice = insertedProduct.precio_zureo || 0
           const finalPrice = Math.round(originalPrice * impuestoMultiplier)
 
           const basicVariant = {
