@@ -165,12 +165,12 @@ export default function HomePage() {
                           className="h-64 md:h-96 bg-cover bg-center relative w-full"
                           style={{ backgroundImage: `url(${slide.image_url})` }}
                         >
-                          <div className="absolute inset-0 bg-black/30 flex items-center">
+                          <div className="absolute inset-0 bg-black/30 flex items-center md:hidden">
                             <div className="container mx-auto px-8">
                               <div className="max-w-md text-white">
-                                <h1 className="text-3xl md:text-5xl font-bold mb-2">{slide.title}</h1>
-                                <p className="text-lg md:text-xl mb-4">{slide.subtitle}</p>
-                                <Button className="hidden md:block bg-white text-black hover:bg-gray-100 text-lg px-8 py-3">
+                                <h1 className="text-3xl font-bold mb-2">{slide.title}</h1>
+                                <p className="text-lg mb-4">{slide.subtitle}</p>
+                                <Button className="bg-white text-black hover:bg-gray-100 text-lg px-8 py-3">
                                   COMPRAR AHORA
                                 </Button>
                               </div>

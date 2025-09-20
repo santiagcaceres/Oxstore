@@ -45,7 +45,7 @@ export async function GET(request: Request) {
         id: product.id,
         name: product.custom_name || product.name,
         description: product.local_description || product.description,
-        price: product.local_price || product.price,
+        price: product.price || 0, // Usar directamente el precio calculado desde la sincronización
         compare_price: product.compare_price,
         stock_quantity: product.stock_quantity,
         sku: product.zureo_code || product.sku,
