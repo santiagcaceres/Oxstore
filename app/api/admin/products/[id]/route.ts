@@ -82,8 +82,19 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       .single()
 
     if (error) {
-      console.error("Error al actualizar producto:", error)
+      console.error("Error al actualizar producto en products_in_stock:", error)
       return NextResponse.json({ error: "Error al actualizar producto" }, { status: 500 })
+    }
+
+    if (data?.zureo_id) {
+      const { error: productsError } = await supabase.from("products").update(updateData).eq("zureo_id", data.zureo_id)
+
+      if (productsError) {
+        console.error("Error al actualizar producto en products:", productsError)
+        // Don't fail the entire operation, just log the error
+      } else {
+        console.log("[v0] Product updated successfully in both tables")
+      }
     }
 
     console.log("[v0] Product updated successfully:", data)
