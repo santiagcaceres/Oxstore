@@ -8,13 +8,13 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Edit, RefreshCw, AlertCircle, CheckCircle } from "lucide-react"
+import { Search, Edit, RefreshCw, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase/client"
 
 interface Product {
   id: number
-  zureo_id: string // Changed from number to string to match products_in_stock table
+  zureo_id: string
   zureo_code: string
   name: string
   description: string
@@ -26,9 +26,11 @@ interface Product {
   is_featured: boolean
   created_at: string
   updated_at: string
-  last_sync_at: string // Added field from products_in_stock table
-  zureo_data: any // Added zureo_data field
+  last_sync_at: string
+  zureo_data: any
 }
+
+const PRODUCTS_PER_PAGE = 100
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
@@ -39,28 +41,43 @@ export default function AdminProductsPage() {
   const [error, setError] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
   const [fromCache, setFromCache] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalProducts, setTotalProducts] = useState(0)
 
   useEffect(() => {
     loadLocalProducts()
-  }, [])
+  }, [currentPage])
 
   const loadLocalProducts = async () => {
     try {
       setLoading(true)
       setError(null)
       const supabase = createClient()
+
+      const { count } = await supabase
+        .from("products_in_stock")
+        .select("*", { count: "exact", head: true })
+        .gt("stock_quantity", 0)
+        .eq("is_active", true)
+
+      setTotalProducts(count || 0)
+
+      const from = (currentPage - 1) * PRODUCTS_PER_PAGE
+      const to = from + PRODUCTS_PER_PAGE - 1
+
       const { data: products, error } = await supabase
         .from("products_in_stock")
         .select("*")
         .gt("stock_quantity", 0)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
+        .range(from, to)
 
       if (error) {
         throw new Error(`Error cargando productos: ${error.message}`)
       }
 
-      console.log("[v0] Loaded products from database:", products?.length || 0)
+      console.log("[v0] Loaded products from database:", products?.length || 0, "of", count || 0)
       setProducts(products || [])
       setFromCache(false)
     } catch (error) {
@@ -95,6 +112,7 @@ export default function AdminProductsPage() {
       setSyncStatus(
         `Sincronizados ${data.savedProducts} productos con stock de ${data.totalProducts} productos totales`,
       )
+      setCurrentPage(1)
       await loadLocalProducts()
       setLastSync(data.timestamp)
       setFromCache(false)
@@ -117,14 +135,15 @@ export default function AdminProductsPage() {
         product.zureo_code.toLowerCase().includes(searchTerm.toLowerCase())),
   )
 
+  const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Productos con Stock</h1>
           <p className="text-muted-foreground">
-            Solo productos con stock disponible - Sincronización automática cada 24 horas{" "}
-            {/* Updated from 12 to 24 hours */}
+            Solo productos con stock disponible - Sincronización automática cada 24 horas
             {lastSync && (
               <span className="block text-xs mt-1">
                 Última sincronización: {new Date(lastSync).toLocaleString()}
@@ -161,7 +180,7 @@ export default function AdminProductsPage() {
             <CardTitle className="text-sm font-medium">Productos con Stock</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{products.length}</div>
+            <div className="text-2xl font-bold text-green-600">{totalProducts}</div>
           </CardContent>
         </Card>
         <Card>
@@ -192,7 +211,6 @@ export default function AdminProductsPage() {
         </Card>
       </div>
 
-      {/* Search */}
       <Card>
         <CardHeader>
           <CardTitle>Productos Disponibles</CardTitle>
@@ -212,6 +230,10 @@ export default function AdminProductsPage() {
                 className="pl-10"
               />
             </div>
+            <div className="text-sm text-muted-foreground">
+              Mostrando {(currentPage - 1) * PRODUCTS_PER_PAGE + 1} -{" "}
+              {Math.min(currentPage * PRODUCTS_PER_PAGE, totalProducts)} de {totalProducts}
+            </div>
           </div>
 
           {loading ? (
@@ -223,74 +245,102 @@ export default function AdminProductsPage() {
               </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Precio</TableHead>
-                  <TableHead>Stock</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.map((product) => (
-                  <TableRow key={product.id}>
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-muted">
-                          <Image
-                            src={product.image_url || "/placeholder.svg"}
-                            alt={product.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {product.brand} • {product.category}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{product.zureo_code}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">${product.price.toLocaleString()}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={product.stock_quantity <= 5 ? "secondary" : "default"}
-                        className="bg-green-100 text-green-800"
-                      >
-                        {product.stock_quantity} unidades
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Badge variant="default" className="bg-green-100 text-green-800">
-                          Disponible
-                        </Badge>
-                        {product.is_featured && <Badge variant="outline">Destacado</Badge>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/admin/productos/${product.id}/editar`}>
-                          <Edit className="h-4 w-4 mr-1" />
-                          Editar
-                        </Link>
-                      </Button>
-                    </TableCell>
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Producto</TableHead>
+                    <TableHead>Código</TableHead>
+                    <TableHead>Precio</TableHead>
+                    <TableHead>Stock</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredProducts.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-muted">
+                            <Image
+                              src={product.image_url || "/placeholder.svg"}
+                              alt={product.name}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-medium">{product.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {product.brand} • {product.category}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{product.zureo_code}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">${product.price.toLocaleString()}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={product.stock_quantity <= 5 ? "secondary" : "default"}
+                          className="bg-green-100 text-green-800"
+                        >
+                          {product.stock_quantity} unidades
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="default" className="bg-green-100 text-green-800">
+                            Disponible
+                          </Badge>
+                          {product.is_featured && <Badge variant="outline">Destacado</Badge>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/admin/productos/${product.id}/editar`}>
+                            <Edit className="h-4 w-4 mr-1" />
+                            Editar
+                          </Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1 || loading}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Anterior
+                  </Button>
+                  <div className="text-sm text-muted-foreground">
+                    Página {currentPage} de {totalPages}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages || loading}
+                  >
+                    Siguiente
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
 
           {filteredProducts.length === 0 && !loading && (

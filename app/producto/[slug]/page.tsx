@@ -460,13 +460,15 @@ export default function ProductPage({ params }: ProductPageProps) {
         {similarProducts.length > 0 && (
           <section className="mt-16">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold mb-2">Productos que te pueden gustar</h2>
-              <p className="text-muted-foreground">Descubre otros productos similares que podrían interesarte</p>
+              <h2 className="text-2xl font-bold mb-2">Productos Recomendados</h2>
+              <p className="text-muted-foreground">
+                Descubre productos similares de la misma categoría o marca que podrían interesarte
+              </p>
             </div>
 
             {loadingSimilar ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {[...Array(4)].map((_, i) => (
+                {[...Array(8)].map((_, i) => (
                   <div key={i} className="animate-pulse">
                     <div className="aspect-square bg-muted rounded-lg mb-4" />
                     <div className="h-4 bg-muted rounded w-3/4 mb-2" />
