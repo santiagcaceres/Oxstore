@@ -113,7 +113,6 @@ export async function POST() {
     console.log(`[v0] Total de productos obtenidos: ${allProducts.length}`)
 
     const { count: beforeCount } = await supabase.from("products_in_stock").select("*", { count: "exact", head: true })
-
     console.log(`[v0] Productos en DB antes de limpiar: ${beforeCount}`)
 
     console.log("[v0] Limpiando productos existentes...")
@@ -127,7 +126,6 @@ export async function POST() {
     const { count: afterDeleteCount } = await supabase
       .from("products_in_stock")
       .select("*", { count: "exact", head: true })
-
     console.log(`[v0] Productos en DB después de limpiar: ${afterDeleteCount}`)
 
     let productsWithStock = 0
@@ -154,23 +152,14 @@ export async function POST() {
                 description:
                   product.descripcion_larga || product.descripcion_corta || product.description || "Sin descripción",
                 price: finalPrice,
-                precio_zureo: varietyPrice,
                 stock_quantity: Number.parseInt(variety.stock) || 0,
                 category: product.tipo?.nombre || product.category || "Sin categoría",
-                categoria_zureo: product.tipo?.nombre || product.category || "Sin categoría",
                 brand: product.marca?.nombre || product.brand || "Sin marca",
                 color: color,
                 size: size,
                 image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
                 is_active: true,
                 is_featured: false,
-                zureo_data: JSON.stringify({
-                  originalProduct: product,
-                  variety: variety,
-                  lastUpdated: new Date().toISOString(),
-                  priceMultiplier: impuestoMultiplier,
-                }),
-                last_sync_at: new Date().toISOString(),
               })
 
               productsWithStock++
@@ -188,22 +177,14 @@ export async function POST() {
               description:
                 product.descripcion_larga || product.descripcion_corta || product.description || "Sin descripción",
               price: finalPrice,
-              precio_zureo: basePrice,
               stock_quantity: Number.parseInt(product.stock) || 0,
               category: product.tipo?.nombre || product.category || "Sin categoría",
-              categoria_zureo: product.tipo?.nombre || product.category || "Sin categoría",
               brand: product.marca?.nombre || product.brand || "Sin marca",
               color: null,
               size: null,
               image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
               is_active: true,
               is_featured: false,
-              zureo_data: JSON.stringify({
-                originalProduct: product,
-                lastUpdated: new Date().toISOString(),
-                priceMultiplier: impuestoMultiplier,
-              }),
-              last_sync_at: new Date().toISOString(),
             })
 
             productsWithStock++
@@ -221,7 +202,6 @@ export async function POST() {
         zureo_code: record.zureo_code,
         name: record.name,
         price: record.price,
-        precio_zureo: record.precio_zureo,
         color: record.color,
         size: record.size,
         stock_quantity: record.stock_quantity,
@@ -244,6 +224,7 @@ export async function POST() {
       if (error) {
         console.error(`[v0] Error insertando lote ${batchNumber}:`, error)
         console.error(`[v0] Detalles del error:`, JSON.stringify(error, null, 2))
+        console.error(`[v0] Primer registro del lote:`, JSON.stringify(batch[0], null, 2))
         errorCount++
       } else {
         insertedCount += data?.length || 0
@@ -259,7 +240,6 @@ export async function POST() {
     const { count: afterInsertCount } = await supabase
       .from("products_in_stock")
       .select("*", { count: "exact", head: true })
-
     console.log(`[v0] Productos en DB después de insertar: ${afterInsertCount}`)
 
     const { count: withPrice } = await supabase
