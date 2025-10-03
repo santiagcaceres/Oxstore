@@ -302,6 +302,21 @@ export async function GET() {
 
     console.log(`[v0] Total product records to insert: ${allProductRecords.length}`)
 
+    console.log("[v0] Sample of first 5 records to insert:")
+    allProductRecords.slice(0, 5).forEach((record, index) => {
+      console.log(`[v0] Record ${index + 1}:`, {
+        zureo_code: record.zureo_code,
+        name: record.name,
+        price: record.price,
+        precio_zureo: record.precio_zureo,
+        color: record.color,
+        size: record.size,
+        stock_quantity: record.stock_quantity,
+        brand: record.brand,
+        category: record.category,
+      })
+    })
+
     const batchSize = 100
     let insertedCount = 0
 
@@ -346,6 +361,26 @@ export async function GET() {
 
     console.log("[v0] Final check - sample products:", finalCheck)
 
+    const { count: withPrice } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+      .not("price", "is", null)
+      .gt("price", 0)
+
+    const { count: withColor } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+      .not("color", "is", null)
+
+    const { count: withSize } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+      .not("size", "is", null)
+
+    console.log("[v0] Products with price:", withPrice)
+    console.log("[v0] Products with color:", withColor)
+    console.log("[v0] Products with size:", withSize)
+
     const { data: withColorSize } = await supabase
       .from("products_in_stock")
       .select("id, zureo_code, color, size")
@@ -362,6 +397,9 @@ export async function GET() {
         totalFetched: allProducts.length,
         totalWithStock: productsWithStock.length,
         totalInserted: insertedCount,
+        productsWithPrice: withPrice || 0,
+        productsWithColor: withColor || 0,
+        productsWithSize: withSize || 0,
         productsWithColorAndSize: withColorSize?.length || 0,
         syncTime: syncTime,
         categories: [...new Set(productsWithStock.map((p) => p.tipo?.nombre).filter(Boolean))],
