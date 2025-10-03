@@ -94,7 +94,16 @@ export async function GET() {
       })
 
       if (!productsResponse.ok) {
-        const errorData = await productsResponse.json().catch(() => ({}))
+        let errorData
+        const contentType = productsResponse.headers.get("content-type")
+
+        if (contentType && contentType.includes("application/json")) {
+          errorData = await productsResponse.json().catch(() => ({}))
+        } else {
+          const errorText = await productsResponse.text()
+          errorData = { message: errorText, status: productsResponse.status }
+        }
+
         console.error("[v0] Products request failed:", productsResponse.status, errorData)
 
         if (productsResponse.status === 429) {
@@ -106,7 +115,25 @@ export async function GET() {
         break
       }
 
-      const productsData = await productsResponse.json()
+      let productsData
+      try {
+        const contentType = productsResponse.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          const responseText = await productsResponse.text()
+          console.error("[v0] Response is not JSON:", responseText.substring(0, 200))
+          throw new Error(`API returned non-JSON response: ${responseText.substring(0, 100)}`)
+        }
+
+        productsData = await productsResponse.json()
+      } catch (parseError) {
+        console.error("[v0] Failed to parse JSON response:", parseError)
+        return Response.json({
+          success: false,
+          error: "Failed to parse API response",
+          details: parseError instanceof Error ? parseError.message : "Unknown parsing error",
+        })
+      }
+
       const products = productsData.data || []
 
       console.log(`[v0] Received ${products.length} products`)
