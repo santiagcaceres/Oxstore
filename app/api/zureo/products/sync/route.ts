@@ -174,12 +174,22 @@ export async function GET() {
         const basePrice = product.precio || 0
 
         console.log(
-          `[v0] Product ${product.id} (${product.codigo}): basePrice=${basePrice}, impuesto=${impuestoMultiplier}`,
+          `[v0] PRECIO DEBUG - Product ${product.id} (${product.codigo}):`,
+          `basePrice=${basePrice}, impuesto=${impuestoMultiplier}, producto completo:`,
+          JSON.stringify({
+            id: product.id,
+            codigo: product.codigo,
+            nombre: product.nombre,
+            precio: product.precio,
+            impuesto: product.impuesto,
+          }),
         )
 
         const finalPrice = Math.round(basePrice * impuestoMultiplier)
 
-        console.log(`[v0] Product ${product.id}: finalPrice=${finalPrice}`)
+        console.log(
+          `[v0] PRECIO FINAL - Product ${product.id}: basePrice=${basePrice} * impuesto=${impuestoMultiplier} = finalPrice=${finalPrice}`,
+        )
 
         return {
           zureo_id: product.id,
@@ -239,7 +249,14 @@ export async function GET() {
 
       console.log(
         `[v0] Batch ${i / batchSize + 1} sample prices:`,
-        batch.slice(0, 3).map((p) => ({ id: p.zureo_id, price: p.price, precio_zureo: p.precio_zureo })),
+        batch.slice(0, 3).map((p) => ({
+          id: p.zureo_id,
+          codigo: p.zureo_code,
+          price: p.price,
+          precio_zureo: p.precio_zureo,
+          stock: p.stock_quantity,
+          name: p.name,
+        })),
       )
 
       const { data: insertedBatch, error } = await supabase.from("products_in_stock").insert(batch).select()
@@ -408,6 +425,22 @@ export async function GET() {
 
     console.log("[v0] Final check - products with price > 0:", finalCheck?.length || 0)
     console.log("[v0] Sample products with prices:", finalCheck)
+
+    const { data: priceCheck } = await supabase
+      .from("products_in_stock")
+      .select("id, zureo_code, name, price, precio_zureo, stock_quantity")
+      .gt("price", 0)
+      .limit(10)
+
+    console.log("[v0] VERIFICACIÓN PRECIOS - products_in_stock con price > 0:", priceCheck?.length || 0)
+    console.log("[v0] MUESTRA DE PRECIOS:", priceCheck)
+
+    const { data: allPriceCheck } = await supabase
+      .from("products_in_stock")
+      .select("id, zureo_code, name, price, precio_zureo")
+      .limit(5)
+
+    console.log("[v0] MUESTRA GENERAL (primeros 5 productos):", allPriceCheck)
 
     return Response.json({
       success: true,
