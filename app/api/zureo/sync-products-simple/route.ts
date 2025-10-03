@@ -151,12 +151,6 @@ export async function POST() {
                 zureo_id: product.id?.toString(),
                 zureo_code: product.codigo || product.code || product.id?.toString(),
                 name: product.nombre || product.name || "Producto sin nombre",
-                slug: `${product.id}-${variety.id}-${
-                  product.nombre
-                    ?.toLowerCase()
-                    .replace(/[^a-z0-9]+/g, "-")
-                    .replace(/(^-|-$)/g, "") || "producto"
-                }`,
                 description:
                   product.descripcion_larga || product.descripcion_corta || product.description || "Sin descripción",
                 price: finalPrice,
@@ -170,12 +164,12 @@ export async function POST() {
                 image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
                 is_active: true,
                 is_featured: false,
-                zureo_data: JSON.stringify({
+                zureo_data: {
                   originalProduct: product,
                   variety: variety,
                   lastUpdated: new Date().toISOString(),
                   priceMultiplier: impuestoMultiplier,
-                }),
+                },
                 last_sync_at: new Date().toISOString(),
               })
 
@@ -191,12 +185,6 @@ export async function POST() {
               zureo_id: product.id?.toString(),
               zureo_code: product.codigo || product.code || product.id?.toString(),
               name: product.nombre || product.name || "Producto sin nombre",
-              slug: `${product.id}-${
-                product.nombre
-                  ?.toLowerCase()
-                  .replace(/[^a-z0-9]+/g, "-")
-                  .replace(/(^-|-$)/g, "") || "producto"
-              }`,
               description:
                 product.descripcion_larga || product.descripcion_corta || product.description || "Sin descripción",
               price: finalPrice,
@@ -210,11 +198,11 @@ export async function POST() {
               image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
               is_active: true,
               is_featured: false,
-              zureo_data: JSON.stringify({
+              zureo_data: {
                 originalProduct: product,
                 lastUpdated: new Date().toISOString(),
                 priceMultiplier: impuestoMultiplier,
-              }),
+              },
               last_sync_at: new Date().toISOString(),
             })
 
