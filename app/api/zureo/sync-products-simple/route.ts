@@ -170,12 +170,12 @@ export async function POST() {
                 image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
                 is_active: true,
                 is_featured: false,
-                zureo_data: {
+                zureo_data: JSON.stringify({
                   originalProduct: product,
                   variety: variety,
                   lastUpdated: new Date().toISOString(),
                   priceMultiplier: impuestoMultiplier,
-                },
+                }),
                 last_sync_at: new Date().toISOString(),
               })
 
@@ -210,11 +210,11 @@ export async function POST() {
               image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
               is_active: true,
               is_featured: false,
-              zureo_data: {
+              zureo_data: JSON.stringify({
                 originalProduct: product,
                 lastUpdated: new Date().toISOString(),
                 priceMultiplier: impuestoMultiplier,
-              },
+              }),
               last_sync_at: new Date().toISOString(),
             })
 
