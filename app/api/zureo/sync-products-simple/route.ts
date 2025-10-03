@@ -3,6 +3,26 @@ import { createClient } from "@/lib/supabase/server"
 
 export const dynamic = "force-dynamic"
 
+function extractColorAndSize(variety: any): { color: string | null; size: string | null } {
+  let color = null
+  let size = null
+
+  if (variety.atributos && Array.isArray(variety.atributos)) {
+    for (const attr of variety.atributos) {
+      const atributoName = (attr.atributo || "").toLowerCase()
+      const valor = attr.valor || ""
+
+      if (atributoName.includes("color") || atributoName.includes("colour")) {
+        color = valor
+      } else if (atributoName.includes("talle") || atributoName.includes("size") || atributoName.includes("talla")) {
+        size = valor
+      }
+    }
+  }
+
+  return { color, size }
+}
+
 export async function POST() {
   try {
     console.log("[v0] Iniciando sincronización inteligente de productos")
@@ -52,7 +72,7 @@ export async function POST() {
 
     let allProducts: any[] = []
     let offset = 0
-    const limit = 500 // Reducir límite para evitar rate limiting
+    const limit = 500
     let requests = 0
 
     while (true) {
@@ -82,147 +102,169 @@ export async function POST() {
 
       console.log(`[v0] Obtenidos ${products.length} productos en esta página`)
 
-      // Si obtuvimos menos productos que el límite, hemos llegado al final
       if (products.length < limit) {
         break
       }
 
       offset += limit
-
       await new Promise((resolve) => setTimeout(resolve, 5000))
     }
 
     console.log(`[v0] Total de productos obtenidos: ${allProducts.length}`)
 
-    const { data: existingProducts, error: fetchError } = await supabase
-      .from("products_in_stock")
-      .select(
-        "zureo_id, name, description, price, stock_quantity, category, brand, image_url, is_featured, sale_price, discount_percentage, gender, subcategory",
-      )
-
-    if (fetchError) {
-      console.error("[v0] Error obteniendo productos existentes:", fetchError)
-      throw new Error("Error obteniendo productos existentes")
-    }
-
-    const existingProductsMap = new Map(existingProducts?.map((p) => [p.zureo_id, p]) || [])
-    console.log(`[v0] Productos existentes en BD: ${existingProductsMap.size}`)
-
-    const zureoProductIds = new Set<string>()
+    console.log("[v0] Limpiando productos existentes...")
+    await supabase.from("products_in_stock").delete().neq("id", 0)
 
     let savedProducts = 0
-    let updatedProducts = 0
-    let newProducts = 0
     let productsWithStock = 0
+    const allProductRecords = []
 
     for (const product of allProducts) {
       try {
-        // Verificar si el producto tiene stock
-        const hasStock = product.stock > 0 || (product.varieties && product.varieties.some((v: any) => v.stock > 0))
+        // Calcular precio con impuesto (igual que en el admin)
+        const impuestoMultiplier = product.impuesto || 1.22
+        const basePrice = Number.parseFloat(product.precio) || 0
 
-        if (!hasStock) {
-          continue // Saltar productos sin stock
-        }
+        // Si el producto tiene variedades, crear un registro por cada variedad
+        if (product.variedades && Array.isArray(product.variedades) && product.variedades.length > 0) {
+          for (const variety of product.variedades) {
+            if (variety.stock > 0) {
+              const { color, size } = extractColorAndSize(variety)
+              const varietyPrice = Number.parseFloat(variety.precio) || basePrice
+              const finalPrice = Math.round(varietyPrice * impuestoMultiplier)
 
-        productsWithStock++
-        const zureoId = product.id?.toString()
-        zureoProductIds.add(zureoId)
+              allProductRecords.push({
+                zureo_id: product.id?.toString(),
+                zureo_code: product.codigo || product.code || product.id?.toString(),
+                zureo_variety_id: variety.id,
+                name: product.nombre || product.name || "Producto sin nombre",
+                slug: `${product.id}-${variety.id}-${
+                  product.nombre
+                    ?.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, "-")
+                    .replace(/(^-|-$)/g, "") || "producto"
+                }`,
+                description:
+                  product.descripcion_larga || product.descripcion_corta || product.description || "Sin descripción",
+                price: finalPrice,
+                precio_zureo: varietyPrice,
+                stock_quantity: Number.parseInt(variety.stock) || 0,
+                category: product.tipo?.nombre || product.category || "Sin categoría",
+                categoria_zureo: product.tipo?.nombre || product.category || "Sin categoría",
+                brand: product.marca?.nombre || product.brand || "Sin marca",
+                color: color,
+                size: size,
+                image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
+                is_active: true,
+                is_featured: false,
+                zureo_data: JSON.stringify({
+                  originalProduct: product,
+                  variety: variety,
+                  lastUpdated: new Date().toISOString(),
+                  priceMultiplier: impuestoMultiplier,
+                }),
+                last_sync_at: new Date().toISOString(),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
 
-        // Crear slug único
-        const slug = `${product.id}-${
-          product.name
-            ?.toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "") || "producto"
-        }`
-
-        const existingProduct = existingProductsMap.get(zureoId)
-
-        if (existingProduct) {
-          const { error } = await supabase
-            .from("products_in_stock")
-            .update({
-              // Solo actualizar campos que vienen de Zureo, preservar personalizaciones
-              stock_quantity: Number.parseInt(product.stock) || 0,
-              zureo_data: product,
-              last_sync_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-              // Actualizar precio solo si no hay precio personalizado (sale_price)
-              ...(existingProduct.sale_price ? {} : { price: Number.parseFloat(product.price) || 0 }),
-              // Actualizar categoría solo si no hay categoría personalizada
-              ...(existingProduct.category && existingProduct.category !== "Sin categoría"
-                ? {}
-                : { category: product.category || "Sin categoría" }),
-              // Actualizar marca solo si no hay marca personalizada
-              ...(existingProduct.brand && existingProduct.brand !== "Sin marca"
-                ? {}
-                : { brand: product.brand || "Sin marca" }),
-              // Actualizar imagen solo si no hay imagen personalizada
-              ...(existingProduct.image_url && !existingProduct.image_url.includes("placeholder")
-                ? {}
-                : { image_url: product.image || "/placeholder.svg?height=300&width=300" }),
-            })
-            .eq("zureo_id", zureoId)
-
-          if (error) {
-            console.error(`[v0] Error actualizando producto ${product.id}:`, error)
-          } else {
-            updatedProducts++
+              productsWithStock++
+            }
           }
         } else {
-          const { error } = await supabase.from("products_in_stock").insert({
-            zureo_id: zureoId,
-            zureo_code: product.codigo || product.code || product.id?.toString(),
-            name: product.name || "Producto sin nombre",
-            description: product.description || product.name || "Sin descripción",
-            price: Number.parseFloat(product.price) || 0,
-            stock_quantity: Number.parseInt(product.stock) || 0,
-            category: product.category || "Sin categoría",
-            brand: product.brand || "Sin marca",
-            image_url: product.image || "/placeholder.svg?height=300&width=300",
-            is_active: true,
-            is_featured: false,
-            zureo_data: product,
-            last_sync_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
+          // Producto sin variedades
+          if (product.stock > 0) {
+            const finalPrice = Math.round(basePrice * impuestoMultiplier)
 
-          if (error) {
-            console.error(`[v0] Error insertando producto nuevo ${product.id}:`, error)
-          } else {
-            newProducts++
+            allProductRecords.push({
+              zureo_id: product.id?.toString(),
+              zureo_code: product.codigo || product.code || product.id?.toString(),
+              zureo_variety_id: null,
+              name: product.nombre || product.name || "Producto sin nombre",
+              slug: `${product.id}-${
+                product.nombre
+                  ?.toLowerCase()
+                  .replace(/[^a-z0-9]+/g, "-")
+                  .replace(/(^-|-$)/g, "") || "producto"
+              }`,
+              description:
+                product.descripcion_larga || product.descripcion_corta || product.description || "Sin descripción",
+              price: finalPrice,
+              precio_zureo: basePrice,
+              stock_quantity: Number.parseInt(product.stock) || 0,
+              category: product.tipo?.nombre || product.category || "Sin categoría",
+              categoria_zureo: product.tipo?.nombre || product.category || "Sin categoría",
+              brand: product.marca?.nombre || product.brand || "Sin marca",
+              color: null,
+              size: null,
+              image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
+              is_active: true,
+              is_featured: false,
+              zureo_data: JSON.stringify({
+                originalProduct: product,
+                lastUpdated: new Date().toISOString(),
+                priceMultiplier: impuestoMultiplier,
+              }),
+              last_sync_at: new Date().toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+
+            productsWithStock++
           }
-        }
-
-        savedProducts++
-        if (savedProducts % 50 === 0) {
-          console.log(`[v0] ${savedProducts} productos procesados...`)
         }
       } catch (error) {
         console.error(`[v0] Error procesando producto ${product.id}:`, error)
       }
     }
 
-    const productsToDelete = existingProducts?.filter((p) => !zureoProductIds.has(p.zureo_id)) || []
-    let deletedProducts = 0
+    console.log(`[v0] Total de registros a insertar: ${allProductRecords.length}`)
+    console.log("[v0] Muestra de primeros 3 registros:")
+    allProductRecords.slice(0, 3).forEach((record, index) => {
+      console.log(`[v0] Registro ${index + 1}:`, {
+        zureo_code: record.zureo_code,
+        name: record.name,
+        price: record.price,
+        precio_zureo: record.precio_zureo,
+        color: record.color,
+        size: record.size,
+        stock_quantity: record.stock_quantity,
+      })
+    })
 
-    if (productsToDelete.length > 0) {
-      console.log(`[v0] Eliminando ${productsToDelete.length} productos sin stock o inexistentes`)
+    const batchSize = 100
+    for (let i = 0; i < allProductRecords.length; i += batchSize) {
+      const batch = allProductRecords.slice(i, i + batchSize)
 
-      const { error: deleteError } = await supabase
-        .from("products_in_stock")
-        .delete()
-        .in(
-          "zureo_id",
-          productsToDelete.map((p) => p.zureo_id),
-        )
+      const { error } = await supabase.from("products_in_stock").insert(batch)
 
-      if (deleteError) {
-        console.error("[v0] Error eliminando productos:", deleteError)
+      if (error) {
+        console.error(`[v0] Error insertando lote ${i / batchSize + 1}:`, error)
       } else {
-        deletedProducts = productsToDelete.length
+        savedProducts += batch.length
+        console.log(`[v0] Insertado lote ${i / batchSize + 1}: ${batch.length} productos`)
       }
     }
+
+    const { count: withPrice } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+      .not("price", "is", null)
+      .gt("price", 0)
+
+    const { count: withColor } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+      .not("color", "is", null)
+
+    const { count: withSize } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+      .not("size", "is", null)
+
+    console.log(`[v0] Productos con precio: ${withPrice}`)
+    console.log(`[v0] Productos con color: ${withColor}`)
+    console.log(`[v0] Productos con talle: ${withSize}`)
 
     await supabase.from("sync_status").upsert(
       {
@@ -237,24 +279,18 @@ export async function POST() {
       },
     )
 
-    console.log(`[v0] Sincronización completada:`)
-    console.log(`[v0] - Productos nuevos: ${newProducts}`)
-    console.log(`[v0] - Productos actualizados: ${updatedProducts}`)
-    console.log(`[v0] - Productos eliminados: ${deletedProducts}`)
-    console.log(`[v0] - Total procesados: ${savedProducts}`)
+    console.log(`[v0] Sincronización completada: ${savedProducts} productos guardados`)
 
     return NextResponse.json({
       success: true,
       totalProducts: allProducts.length,
       productsWithStock,
-      newProducts,
-      updatedProducts,
-      deletedProducts,
-      totalProcessed: savedProducts,
+      savedProducts,
+      productsWithPrice: withPrice || 0,
+      productsWithColor: withColor || 0,
+      productsWithSize: withSize || 0,
       requests,
       timestamp: new Date().toISOString(),
-      endpoint: `${baseUrl}/sdk/v1/product/all`,
-      sampleProducts: allProducts.slice(0, 3),
     })
   } catch (error) {
     console.error("[v0] Error en sincronización de productos:", error)
