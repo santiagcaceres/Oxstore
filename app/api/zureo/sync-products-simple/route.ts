@@ -201,7 +201,6 @@ export async function POST() {
                 image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
                 is_active: true,
                 is_featured: false,
-                zureo_data: product,
               })
 
               productsWithStock++
@@ -227,7 +226,6 @@ export async function POST() {
               image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
               is_active: true,
               is_featured: false,
-              zureo_data: product,
             })
 
             productsWithStock++
