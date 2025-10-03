@@ -112,10 +112,24 @@ export async function POST() {
 
     console.log(`[v0] Total de productos obtenidos: ${allProducts.length}`)
 
-    console.log("[v0] Limpiando productos existentes...")
-    await supabase.from("products_in_stock").delete().neq("id", 0)
+    const { count: beforeCount } = await supabase.from("products_in_stock").select("*", { count: "exact", head: true })
 
-    let savedProducts = 0
+    console.log(`[v0] Productos en DB antes de limpiar: ${beforeCount}`)
+
+    console.log("[v0] Limpiando productos existentes...")
+    const { error: deleteError } = await supabase.from("products_in_stock").delete().neq("id", 0)
+
+    if (deleteError) {
+      console.error("[v0] Error al limpiar productos:", deleteError)
+      throw new Error(`Error al limpiar productos: ${deleteError.message}`)
+    }
+
+    const { count: afterDeleteCount } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+
+    console.log(`[v0] Productos en DB después de limpiar: ${afterDeleteCount}`)
+
     let productsWithStock = 0
     const allProductRecords = []
 
@@ -136,7 +150,6 @@ export async function POST() {
               allProductRecords.push({
                 zureo_id: product.id?.toString(),
                 zureo_code: product.codigo || product.code || product.id?.toString(),
-                zureo_variety_id: variety.id,
                 name: product.nombre || product.name || "Producto sin nombre",
                 slug: `${product.id}-${variety.id}-${
                   product.nombre
@@ -157,15 +170,13 @@ export async function POST() {
                 image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
                 is_active: true,
                 is_featured: false,
-                zureo_data: JSON.stringify({
+                zureo_data: {
                   originalProduct: product,
                   variety: variety,
                   lastUpdated: new Date().toISOString(),
                   priceMultiplier: impuestoMultiplier,
-                }),
+                },
                 last_sync_at: new Date().toISOString(),
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
               })
 
               productsWithStock++
@@ -179,7 +190,6 @@ export async function POST() {
             allProductRecords.push({
               zureo_id: product.id?.toString(),
               zureo_code: product.codigo || product.code || product.id?.toString(),
-              zureo_variety_id: null,
               name: product.nombre || product.name || "Producto sin nombre",
               slug: `${product.id}-${
                 product.nombre
@@ -200,14 +210,12 @@ export async function POST() {
               image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
               is_active: true,
               is_featured: false,
-              zureo_data: JSON.stringify({
+              zureo_data: {
                 originalProduct: product,
                 lastUpdated: new Date().toISOString(),
                 priceMultiplier: impuestoMultiplier,
-              }),
+              },
               last_sync_at: new Date().toISOString(),
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
             })
 
             productsWithStock++
@@ -233,18 +241,38 @@ export async function POST() {
     })
 
     const batchSize = 100
+    let insertedCount = 0
+    let errorCount = 0
+
     for (let i = 0; i < allProductRecords.length; i += batchSize) {
       const batch = allProductRecords.slice(i, i + batchSize)
+      const batchNumber = Math.floor(i / batchSize) + 1
+      const totalBatches = Math.ceil(allProductRecords.length / batchSize)
 
-      const { error } = await supabase.from("products_in_stock").insert(batch)
+      console.log(`[v0] Insertando lote ${batchNumber}/${totalBatches}: ${batch.length} productos`)
+
+      const { data, error } = await supabase.from("products_in_stock").insert(batch).select()
 
       if (error) {
-        console.error(`[v0] Error insertando lote ${i / batchSize + 1}:`, error)
+        console.error(`[v0] Error insertando lote ${batchNumber}:`, error)
+        console.error(`[v0] Detalles del error:`, JSON.stringify(error, null, 2))
+        errorCount++
       } else {
-        savedProducts += batch.length
-        console.log(`[v0] Insertado lote ${i / batchSize + 1}: ${batch.length} productos`)
+        insertedCount += data?.length || 0
+        console.log(`[v0] Lote ${batchNumber} insertado exitosamente: ${data?.length || 0} productos`)
       }
     }
+
+    console.log(`[v0] Resumen de inserción:`)
+    console.log(`[v0] - Total a insertar: ${allProductRecords.length}`)
+    console.log(`[v0] - Insertados exitosamente: ${insertedCount}`)
+    console.log(`[v0] - Lotes con errores: ${errorCount}`)
+
+    const { count: afterInsertCount } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+
+    console.log(`[v0] Productos en DB después de insertar: ${afterInsertCount}`)
 
     const { count: withPrice } = await supabase
       .from("products_in_stock")
@@ -270,7 +298,7 @@ export async function POST() {
       {
         sync_type: "products",
         status: "completed",
-        total_records: savedProducts,
+        total_records: insertedCount,
         last_sync_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       },
@@ -279,16 +307,17 @@ export async function POST() {
       },
     )
 
-    console.log(`[v0] Sincronización completada: ${savedProducts} productos guardados`)
+    console.log(`[v0] Sincronización completada: ${insertedCount} productos guardados`)
 
     return NextResponse.json({
       success: true,
       totalProducts: allProducts.length,
       productsWithStock,
-      savedProducts,
+      savedProducts: insertedCount,
       productsWithPrice: withPrice || 0,
       productsWithColor: withColor || 0,
       productsWithSize: withSize || 0,
+      errorBatches: errorCount,
       requests,
       timestamp: new Date().toISOString(),
     })
