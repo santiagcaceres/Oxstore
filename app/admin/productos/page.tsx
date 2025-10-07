@@ -22,6 +22,8 @@ interface Product {
   stock_quantity: number
   category: string
   brand: string
+  color: string | null
+  size: string | null
   image_url: string
   is_featured: boolean
   created_at: string
@@ -30,10 +32,23 @@ interface Product {
   zureo_data: any
 }
 
+interface GroupedProduct {
+  zureo_code: string
+  name: string
+  brand: string
+  category: string
+  image_url: string
+  is_featured: boolean
+  variants: Product[]
+  totalStock: number
+  price: number
+}
+
 const PRODUCTS_PER_PAGE = 100
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
+  const [groupedProducts, setGroupedProducts] = useState<GroupedProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -79,11 +94,15 @@ export default function AdminProductsPage() {
 
       console.log("[v0] Loaded products from database:", products?.length || 0, "of", count || 0)
       setProducts(products || [])
+
+      const grouped = groupProductsByCode(products || [])
+      setGroupedProducts(grouped)
       setFromCache(false)
     } catch (error) {
       console.error("Error loading products from database:", error)
       setError(error instanceof Error ? error.message : "Error cargando productos")
       setProducts([])
+      setGroupedProducts([])
     } finally {
       setLoading(false)
     }
@@ -126,9 +145,56 @@ export default function AdminProductsPage() {
     }
   }
 
-  const filteredProducts = products.filter(
+  const groupProductsByCode = (products: Product[]): GroupedProduct[] => {
+    const grouped = new Map<string, GroupedProduct>()
+
+    products.forEach((product) => {
+      const code = product.zureo_code
+      if (!grouped.has(code)) {
+        grouped.set(code, {
+          zureo_code: code,
+          name: product.name,
+          brand: product.brand,
+          category: product.category,
+          image_url: product.image_url,
+          is_featured: product.is_featured,
+          variants: [],
+          totalStock: 0,
+          price: product.price,
+        })
+      }
+
+      const group = grouped.get(code)!
+      group.variants.push(product)
+      group.totalStock += product.stock_quantity
+    })
+
+    return Array.from(grouped.values())
+  }
+
+  const formatStockBySizes = (variants: Product[]): string => {
+    const sizes = variants.map((v) => v.size).filter(Boolean)
+    const uniqueSizes = [...new Set(sizes)]
+
+    if (uniqueSizes.length === 0 || uniqueSizes.length === 1) {
+      const totalStock = variants.reduce((sum, v) => sum + v.stock_quantity, 0)
+      return `Talle único: ${totalStock} unidades`
+    }
+
+    const stockBySize = new Map<string, number>()
+    variants.forEach((variant) => {
+      const size = variant.size || "Sin talle"
+      stockBySize.set(size, (stockBySize.get(size) || 0) + variant.stock_quantity)
+    })
+
+    return Array.from(stockBySize.entries())
+      .map(([size, stock]) => `${size}: ${stock}`)
+      .join(", ")
+  }
+
+  const filteredProducts = groupedProducts.filter(
     (product) =>
-      product.stock_quantity > 0 &&
+      product.totalStock > 0 &&
       (product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
         product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -188,7 +254,7 @@ export default function AdminProductsPage() {
             <CardTitle className="text-sm font-medium">Productos Destacados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{products.filter((p) => p.is_featured).length}</div>
+            <div className="text-2xl font-bold">{groupedProducts.filter((p) => p.is_featured).length}</div>
           </CardContent>
         </Card>
         <Card>
@@ -205,7 +271,7 @@ export default function AdminProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${products.reduce((sum, p) => sum + p.price * p.stock_quantity, 0).toLocaleString()}
+              ${groupedProducts.reduce((sum, p) => sum + p.price * p.totalStock, 0).toLocaleString()}
             </div>
           </CardContent>
         </Card>
@@ -252,14 +318,14 @@ export default function AdminProductsPage() {
                     <TableHead>Producto</TableHead>
                     <TableHead>Código</TableHead>
                     <TableHead>Precio</TableHead>
-                    <TableHead>Stock</TableHead>
+                    <TableHead>Stock por Talle</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredProducts.map((product) => (
-                    <TableRow key={product.id}>
+                    <TableRow key={product.zureo_code}>
                       <TableCell>
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 relative rounded-lg overflow-hidden bg-muted">
@@ -287,11 +353,12 @@ export default function AdminProductsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="text-sm">{formatStockBySizes(product.variants)}</div>
                         <Badge
-                          variant={product.stock_quantity <= 5 ? "secondary" : "default"}
-                          className="bg-green-100 text-green-800"
+                          variant={product.totalStock <= 5 ? "secondary" : "default"}
+                          className="bg-green-100 text-green-800 mt-1"
                         >
-                          {product.stock_quantity} unidades
+                          Total: {product.totalStock}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -300,11 +367,16 @@ export default function AdminProductsPage() {
                             Disponible
                           </Badge>
                           {product.is_featured && <Badge variant="outline">Destacado</Badge>}
+                          {product.variants.length > 1 && (
+                            <Badge variant="outline" className="text-xs">
+                              {product.variants.length} variantes
+                            </Badge>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/admin/productos/${product.id}/editar`}>
+                          <Link href={`/admin/productos/${product.variants[0].id}/editar`}>
                             <Edit className="h-4 w-4 mr-1" />
                             Editar
                           </Link>

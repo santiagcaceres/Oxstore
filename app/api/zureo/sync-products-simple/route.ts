@@ -148,26 +148,8 @@ export async function POST() {
     console.log(`[v0] ✓ TOTAL DE PRODUCTOS OBTENIDOS: ${allProducts.length}`)
     console.log(`[v0] ========================================`)
 
-    // Paso 3: Limpiar tabla
-    console.log("[v0] Paso 3: Limpiando productos existentes en la base de datos...")
-
-    const { count: beforeCount } = await supabase.from("products_in_stock").select("*", { count: "exact", head: true })
-    console.log(`[v0] Productos en DB antes de limpiar: ${beforeCount}`)
-
-    const { error: deleteError } = await supabase.from("products_in_stock").delete().neq("id", 0)
-
-    if (deleteError) {
-      console.error("[v0] ERROR al limpiar productos:", deleteError)
-      throw new Error(`Error al limpiar productos: ${deleteError.message}`)
-    }
-
-    const { count: afterDeleteCount } = await supabase
-      .from("products_in_stock")
-      .select("*", { count: "exact", head: true })
-    console.log(`[v0] ✓ Productos en DB después de limpiar: ${afterDeleteCount}`)
-
-    // Paso 4: Procesar y preparar productos
-    console.log("[v0] Paso 4: Procesando productos...")
+    // Paso 3: Procesar productos ANTES de limpiar la tabla
+    console.log("[v0] Paso 3: Procesando productos...")
 
     let productsWithStock = 0
     const allProductRecords = []
@@ -237,6 +219,33 @@ export async function POST() {
     }
 
     console.log(`[v0] ✓ Total de registros preparados para insertar: ${allProductRecords.length}`)
+
+    if (allProductRecords.length === 0) {
+      console.log("[v0] ⚠️ No hay productos para insertar. No se limpiará la tabla.")
+      return NextResponse.json({
+        success: false,
+        error: "No hay productos con stock para sincronizar",
+        timestamp: new Date().toISOString(),
+      })
+    }
+
+    console.log("[v0] Paso 4: Limpiando productos existentes en la base de datos...")
+
+    const { count: beforeCount } = await supabase.from("products_in_stock").select("*", { count: "exact", head: true })
+    console.log(`[v0] Productos en DB antes de limpiar: ${beforeCount}`)
+
+    const { error: deleteError } = await supabase.from("products_in_stock").delete().neq("id", 0)
+
+    if (deleteError) {
+      console.error("[v0] ERROR al limpiar productos:", deleteError)
+      throw new Error(`Error al limpiar productos: ${deleteError.message}`)
+    }
+
+    const { count: afterDeleteCount } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+    console.log(`[v0] ✓ Productos en DB después de limpiar: ${afterDeleteCount}`)
+
     console.log("[v0] Muestra de primeros 3 registros:")
     allProductRecords.slice(0, 3).forEach((record, index) => {
       console.log(`[v0] Registro ${index + 1}:`, {
