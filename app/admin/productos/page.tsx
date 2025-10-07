@@ -203,6 +203,9 @@ export default function AdminProductsPage() {
 
   const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE)
 
+  const uniqueProducts = groupedProducts.length
+  const totalVariants = products.length
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -243,10 +246,20 @@ export default function AdminProductsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Productos con Stock</CardTitle>
+            <CardTitle className="text-sm font-medium">Productos Únicos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{totalProducts}</div>
+            <div className="text-2xl font-bold text-blue-600">{uniqueProducts}</div>
+            <p className="text-xs text-muted-foreground mt-1">Por código Zureo</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Variantes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{totalVariants}</div>
+            <p className="text-xs text-muted-foreground mt-1">Todas las combinaciones</p>
           </CardContent>
         </Card>
         <Card>
@@ -263,16 +276,6 @@ export default function AdminProductsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">0</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total Stock</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              ${groupedProducts.reduce((sum, p) => sum + p.price * p.totalStock, 0).toLocaleString()}
-            </div>
           </CardContent>
         </Card>
       </div>

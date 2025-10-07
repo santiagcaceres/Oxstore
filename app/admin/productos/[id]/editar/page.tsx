@@ -73,6 +73,16 @@ interface ProductImage {
   is_primary: boolean
 }
 
+interface ProductVariant {
+  id: number
+  zureo_code: string
+  color: string | null
+  size: string | null
+  stock_quantity: number
+  price: number
+  image_url: string | null
+}
+
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [product, setProduct] = useState<Product | null>(null)
@@ -96,6 +106,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [selectedSubSubcategory, setSelectedSubSubcategory] = useState("")
   const [isFeatured, setIsFeatured] = useState(false)
   const [uploading, setUploading] = useState(false)
+
+  const [variants, setVariants] = useState<ProductVariant[]>([])
+  const [loadingVariants, setLoadingVariants] = useState(false)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -236,6 +249,29 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
   }
 
+  const loadVariants = async (zureoCode: string) => {
+    try {
+      setLoadingVariants(true)
+      console.log("[v0] Loading variants for zureo_code:", zureoCode)
+
+      const { data, error } = await supabase
+        .from("products_in_stock")
+        .select("id, zureo_code, color, size, stock_quantity, price, image_url")
+        .eq("zureo_code", zureoCode)
+        .order("color")
+        .order("size")
+
+      if (error) throw error
+
+      console.log("[v0] Loaded variants:", data?.length || 0)
+      setVariants(data || [])
+    } catch (error) {
+      console.error("[v0] Error loading variants:", error)
+    } finally {
+      setLoadingVariants(false)
+    }
+  }
+
   const loadProduct = async () => {
     try {
       setLoading(true)
@@ -261,7 +297,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
           if (zureoData.precio || zureoData.price) {
             const originalPrice = Number(zureoData.precio || zureoData.price)
-            zureoPrice = Math.round(originalPrice * 1.22) // Multiplicar por 1.22 y redondear
+            zureoPrice = Math.round(originalPrice * 1.22)
             console.log("[v0] Original Zureo price:", originalPrice)
             console.log("[v0] Price with 1.22 multiplier:", zureoPrice)
           }
@@ -282,6 +318,10 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSelectedCategory(prod.category || "")
       setSelectedSubcategory(prod.subcategory || "")
       setIsFeatured(prod.is_featured || false)
+
+      if (prod.zureo_code) {
+        loadVariants(prod.zureo_code)
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : "Error desconocido")
     } finally {
@@ -505,6 +545,22 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     } finally {
       setSaving(false)
     }
+  }
+
+  const groupVariantsByColor = () => {
+    const grouped = variants.reduce(
+      (acc, variant) => {
+        const color = variant.color || "Sin color"
+        if (!acc[color]) {
+          acc[color] = []
+        }
+        acc[color].push(variant)
+        return acc
+      },
+      {} as Record<string, ProductVariant[]>,
+    )
+
+    return grouped
   }
 
   return (
@@ -762,6 +818,49 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Variantes del Producto</CardTitle>
+          <CardDescription>Colores y talles disponibles con su stock</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingVariants ? (
+            <p className="text-muted-foreground">Cargando variantes...</p>
+          ) : variants.length === 0 ? (
+            <p className="text-muted-foreground">No hay variantes disponibles</p>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(groupVariantsByColor()).map(([color, colorVariants]) => (
+                <div key={color} className="border rounded-lg p-4">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm"
+                      style={{ backgroundColor: color.toLowerCase() === "sin color" ? "#ccc" : color.toLowerCase() }}
+                    />
+                    <h3 className="font-semibold text-lg capitalize">{color}</h3>
+                    <Badge variant="secondary">
+                      {colorVariants.reduce((sum, v) => sum + v.stock_quantity, 0)} unidades
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-2">
+                    {colorVariants.map((variant) => (
+                      <div key={variant.id} className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded">
+                        <span className="font-medium">{variant.size || "Talle único"}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-muted-foreground">${variant.price}</span>
+                          <span className="font-semibold">{variant.stock_quantity} unidades</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Imágenes del Producto */}
       <Card>
