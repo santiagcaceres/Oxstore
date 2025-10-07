@@ -103,14 +103,7 @@ export function ProductGrid({
       const supabase = createClient()
       let query = supabase.from("products_in_stock").select("*").gt("stock_quantity", 0).eq("is_active", true)
 
-      // Solo mostrar productos que tengan información completa de categorías
-      query = query.not("category", "is", null).not("brand", "is", null).not("gender", "is", null)
-
-      if (gender && gender !== "unisex") {
-        query = query.or(`gender.eq.${gender},gender.eq.unisex`)
-      } else if (gender === "unisex") {
-        query = query.eq("gender", "unisex")
-      }
+      query = query.not("category", "is", null).not("brand", "is", null)
 
       if (category) {
         query = query.eq("category", category)

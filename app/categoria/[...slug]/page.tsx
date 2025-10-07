@@ -56,15 +56,6 @@ export default function CategoryPage({ params }: PageProps) {
           // Solo mostrar productos con información completa
           .not("category", "is", null)
           .not("brand", "is", null)
-          .not("gender", "is", null)
-
-        if (gender && gender !== "nuevo") {
-          if (gender === "unisex") {
-            query = query.eq("gender", "unisex")
-          } else {
-            query = query.or(`gender.eq.${gender},gender.eq.unisex`)
-          }
-        }
 
         if (category) {
           query = query.eq("category", category)
