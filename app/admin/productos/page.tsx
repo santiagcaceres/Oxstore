@@ -58,6 +58,8 @@ export default function AdminProductsPage() {
   const [fromCache, setFromCache] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
   const [totalProducts, setTotalProducts] = useState(0)
+  const [totalUniqueProducts, setTotalUniqueProducts] = useState(0)
+  const [totalAllVariants, setTotalAllVariants] = useState(0)
 
   useEffect(() => {
     loadLocalProducts()
@@ -69,13 +71,23 @@ export default function AdminProductsPage() {
       setError(null)
       const supabase = createClient()
 
-      const { count } = await supabase
+      const { count: totalVariantsCount } = await supabase
         .from("products_in_stock")
         .select("*", { count: "exact", head: true })
         .gt("stock_quantity", 0)
         .eq("is_active", true)
 
-      setTotalProducts(count || 0)
+      setTotalProducts(totalVariantsCount || 0)
+      setTotalAllVariants(totalVariantsCount || 0)
+
+      const { data: uniqueCodesData } = await supabase
+        .from("products_in_stock")
+        .select("zureo_code")
+        .gt("stock_quantity", 0)
+        .eq("is_active", true)
+
+      const uniqueCodes = new Set(uniqueCodesData?.map((p) => p.zureo_code) || [])
+      setTotalUniqueProducts(uniqueCodes.size)
 
       const from = (currentPage - 1) * PRODUCTS_PER_PAGE
       const to = from + PRODUCTS_PER_PAGE - 1
@@ -92,7 +104,7 @@ export default function AdminProductsPage() {
         throw new Error(`Error cargando productos: ${error.message}`)
       }
 
-      console.log("[v0] Loaded products from database:", products?.length || 0, "of", count || 0)
+      console.log("[v0] Loaded products from database:", products?.length || 0, "of", totalVariantsCount || 0)
       setProducts(products || [])
 
       const grouped = groupProductsByCode(products || [])
@@ -203,9 +215,6 @@ export default function AdminProductsPage() {
 
   const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE)
 
-  const uniqueProducts = groupedProducts.length
-  const totalVariants = products.length
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -246,10 +255,10 @@ export default function AdminProductsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Productos Únicos</CardTitle>
+            <CardTitle className="text-sm font-medium">Total de Productos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{uniqueProducts}</div>
+            <div className="text-2xl font-bold text-blue-600">{totalUniqueProducts}</div>
             <p className="text-xs text-muted-foreground mt-1">Por código Zureo</p>
           </CardContent>
         </Card>
@@ -258,7 +267,7 @@ export default function AdminProductsPage() {
             <CardTitle className="text-sm font-medium">Total Variantes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{totalVariants}</div>
+            <div className="text-2xl font-bold text-green-600">{totalAllVariants}</div>
             <p className="text-xs text-muted-foreground mt-1">Todas las combinaciones</p>
           </CardContent>
         </Card>
