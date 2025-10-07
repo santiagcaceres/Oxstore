@@ -15,7 +15,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
     let product = null
     let error = null
 
-    // Primero intentar buscar por ID si es numérico
     if (productId && !isNaN(Number(productId))) {
       const result = await supabase.from("products_in_stock").select("*").eq("id", productId).single()
       product = result.data
@@ -26,7 +25,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
     if (!product) {
       console.log(`[v0] Product not found by ID, trying name search for: ${params.slug}`)
 
-      // Extraer el nombre del slug (todo después del primer guión)
       const nameFromSlug = slugParts.slice(1).join("-").replace(/-/g, " ")
 
       if (nameFromSlug) {
@@ -47,21 +45,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
       }
     }
 
-    // Si aún no se encuentra, intentar buscar solo por ID numérico sin validar formato
-    if (!product && productId) {
-      const { data: fallbackProduct, error: fallbackError } = await supabase
-        .from("products_in_stock")
-        .select("*")
-        .eq("id", productId)
-        .single()
-
-      if (fallbackProduct) {
-        product = fallbackProduct
-        error = null
-        console.log(`[v0] Found product by fallback ID search: ${fallbackProduct.custom_name || fallbackProduct.name}`)
-      }
-    }
-
     if (error || !product) {
       console.log(`[v0] GET /api/products/${params.slug} - Product not found after all attempts`)
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
@@ -74,71 +57,78 @@ export async function GET(request: Request, { params }: { params: { slug: string
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
-    console.log(`[v0] Loading variants from product_variants table for product: ${productName}`)
+    console.log(`[v0] Loading variants from products_in_stock for zureo_code: ${product.zureo_code}`)
 
     const { data: variants, error: variantsError } = await supabase
-      .from("product_variants")
+      .from("products_in_stock")
       .select("*")
-      .eq("product_id", product.id)
+      .eq("zureo_code", product.zureo_code)
       .gt("stock_quantity", 0)
-      .order("id", { ascending: true })
+      .order("color", { ascending: true })
+      .order("size", { ascending: true })
 
     if (variantsError) {
       console.error(`[v0] Error loading variants:`, variantsError)
     }
 
-    console.log(`[v0] Found ${variants?.length || 0} variants in database`)
+    console.log(`[v0] Found ${variants?.length || 0} variants with same zureo_code`)
 
     let processedVariants = []
 
     if (variants && variants.length > 0) {
-      // Usar variantes de la base de datos
       processedVariants = variants.map((variant: any) => ({
         id: variant.id,
-        color: variant.color,
-        size: variant.size,
+        color: variant.color || null,
+        size: variant.size || null,
         stock_quantity: variant.stock_quantity,
         price: variant.price,
-        custom_name: variant.variety_name,
-        name: variant.variety_name || productName,
-        zureo_code: product.zureo_code,
-        variety_name: variant.variety_name,
-        zureo_variety_id: variant.zureo_variety_id,
+        custom_name: variant.custom_name || variant.name,
+        name: variant.custom_name || variant.name,
+        zureo_code: variant.zureo_code,
+        variety_name:
+          `${variant.color ? `Color: ${variant.color}` : ""} ${variant.size ? `Talle: ${variant.size}` : ""}`.trim() ||
+          "Estándar",
+        image_url: variant.image_url,
       }))
 
-      console.log(`[v0] Processed ${processedVariants.length} variants from database`)
+      console.log(`[v0] Processed ${processedVariants.length} variants from products_in_stock`)
       processedVariants.forEach((variant: any, index: number) => {
         console.log(
-          `[v0] Variant ${index + 1}: Color=${variant.color}, Size=${variant.size}, Stock=${variant.stock_quantity}, Name=${variant.variety_name}`,
+          `[v0] Variant ${index + 1}: Color=${variant.color}, Size=${variant.size}, Stock=${variant.stock_quantity}, Price=${variant.price}`,
         )
       })
     } else {
-      // Fallback: crear una variante básica con el producto principal
-      console.log(`[v0] No variants found in database, creating basic variant`)
+      console.log(`[v0] No variants found, creating basic variant`)
       processedVariants = [
         {
           id: product.id,
-          color: product.color,
-          size: product.size,
+          color: product.color || null,
+          size: product.size || null,
           stock_quantity: product.stock_quantity,
           price: product.price,
-          custom_name: product.custom_name,
+          custom_name: product.custom_name || product.name,
           name: productName,
           zureo_code: product.zureo_code,
           variety_name: "Estándar",
+          image_url: product.image_url,
         },
       ]
     }
 
     console.log(`[v0] GET /api/products/${params.slug} - Product found: ${productName}`)
 
-    const productImages = product.product_images
+    const imagesByColor: { [key: string]: string } = {}
+    variants?.forEach((variant: any) => {
+      if (variant.color && variant.image_url) {
+        imagesByColor[variant.color] = variant.image_url
+      }
+    })
 
     const transformedProduct = {
       id: product.id,
       name: productName,
-      description: product.local_description || product.description,
-      price: product.local_price || product.price,
+      description: product.description,
+      price: product.price,
       stock_quantity: product.stock_quantity,
       sku: product.zureo_code || product.sku,
       brand: product.brand,
@@ -147,23 +137,17 @@ export async function GET(request: Request, { params }: { params: { slug: string
       slug: params.slug,
       color: product.color,
       size: product.size,
-      zureo_data: product.zureo_data,
+      zureo_code: product.zureo_code,
       variants: processedVariants,
-      images:
-        productImages?.length > 0
-          ? productImages.map((img: any, index: number) => ({
-              id: index + 1,
-              image_url: img.image_url,
-              alt_text: productName,
-            }))
-          : [
-              {
-                id: 1,
-                image_url:
-                  product.image_url || `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(productName)}`,
-                alt_text: productName,
-              },
-            ],
+      imagesByColor: imagesByColor,
+      images: [
+        {
+          id: 1,
+          image_url:
+            product.image_url || `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(productName)}`,
+          alt_text: productName,
+        },
+      ],
       weight: product.weight,
       dimensions: product.dimensions,
     }
