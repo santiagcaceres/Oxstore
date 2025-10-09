@@ -56,21 +56,50 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       gender,
     } = body
 
-    const updateData: any = {}
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    }
 
-    if (custom_name !== undefined) updateData.name = custom_name
-    if (local_description !== undefined) updateData.description = local_description
-    if (local_price !== undefined) updateData.price = local_price
-    if (local_images !== undefined && local_images.length > 0) updateData.image_url = local_images[0]
-    if (is_featured !== undefined) updateData.is_featured = is_featured
-    if (brand !== undefined) updateData.brand = brand
-    if (category !== undefined) updateData.category = category
-    if (subcategory !== undefined) updateData.subcategory = subcategory
-    if (sale_price !== undefined) updateData.sale_price = sale_price
-    if (discount_percentage !== undefined) updateData.discount_percentage = discount_percentage
-    if (gender !== undefined) updateData.gender = gender
-
-    updateData.updated_at = new Date().toISOString()
+    // Only add fields that are explicitly provided
+    if (custom_name !== undefined && custom_name !== null) {
+      updateData.custom_name = custom_name
+      updateData.name = custom_name // Also update name for display
+    }
+    if (local_description !== undefined && local_description !== null) {
+      updateData.custom_description = local_description
+      updateData.description = local_description // Also update description for display
+    }
+    if (local_price !== undefined && local_price !== null) {
+      updateData.price = Number.parseInt(local_price.toString())
+    }
+    if (local_images !== undefined && local_images !== null && Array.isArray(local_images) && local_images.length > 0) {
+      updateData.image_url = local_images[0]
+    }
+    if (is_featured !== undefined && is_featured !== null) {
+      updateData.is_featured = is_featured
+    }
+    if (brand !== undefined && brand !== null && brand !== "") {
+      updateData.brand = brand
+    }
+    if (category !== undefined && category !== null && category !== "") {
+      updateData.category = category
+    }
+    if (subcategory !== undefined && subcategory !== null && subcategory !== "") {
+      updateData.subcategory = subcategory
+    }
+    if (gender !== undefined && gender !== null && gender !== "") {
+      updateData.gender = gender
+    }
+    if (sale_price !== undefined && sale_price !== null && sale_price !== "") {
+      updateData.sale_price = Number.parseFloat(sale_price.toString())
+    } else if (sale_price === null || sale_price === "") {
+      updateData.sale_price = null
+    }
+    if (discount_percentage !== undefined && discount_percentage !== null && discount_percentage !== "") {
+      updateData.discount_percentage = Number.parseInt(discount_percentage.toString())
+    } else if (discount_percentage === null || discount_percentage === "") {
+      updateData.discount_percentage = null
+    }
 
     console.log("[v0] Update data being sent to database:", updateData)
 
@@ -82,49 +111,101 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       .single()
 
     if (error) {
-      console.error("Error al actualizar producto en products_in_stock:", error)
-      return NextResponse.json({ error: "Error al actualizar producto" }, { status: 500 })
+      console.error("[v0] Error updating products_in_stock:", error)
+      return NextResponse.json(
+        {
+          error: "Error al actualizar producto",
+          details: error.message,
+          hint: error.hint,
+        },
+        { status: 500 },
+      )
     }
 
-    if (data?.zureo_id) {
-      const { error: productsError } = await supabase.from("products").update(updateData).eq("zureo_id", data.zureo_id)
+    console.log("[v0] Product updated successfully in products_in_stock:", data)
 
-      if (productsError) {
-        console.error("Error al actualizar producto en products:", productsError)
-        // Don't fail the entire operation, just log the error
-      } else {
-        console.log("[v0] Product updated successfully in both tables")
+    if (data?.zureo_code) {
+      const variantUpdateData: any = {}
+
+      // Only update fields that make sense for all variants
+      if (custom_name !== undefined && custom_name !== null) {
+        variantUpdateData.custom_name = custom_name
+        variantUpdateData.name = custom_name
+      }
+      if (local_description !== undefined && local_description !== null) {
+        variantUpdateData.custom_description = local_description
+        variantUpdateData.description = local_description
+      }
+      if (is_featured !== undefined && is_featured !== null) {
+        variantUpdateData.is_featured = is_featured
+      }
+      if (brand !== undefined && brand !== null && brand !== "") {
+        variantUpdateData.brand = brand
+      }
+      if (category !== undefined && category !== null && category !== "") {
+        variantUpdateData.category = category
+      }
+      if (subcategory !== undefined && subcategory !== null && subcategory !== "") {
+        variantUpdateData.subcategory = subcategory
+      }
+      if (gender !== undefined && gender !== null && gender !== "") {
+        variantUpdateData.gender = gender
+      }
+
+      if (Object.keys(variantUpdateData).length > 0) {
+        variantUpdateData.updated_at = new Date().toISOString()
+
+        const { error: variantsError } = await supabase
+          .from("products_in_stock")
+          .update(variantUpdateData)
+          .eq("zureo_code", data.zureo_code)
+          .neq("id", params.id) // Don't update the current product again
+
+        if (variantsError) {
+          console.error("[v0] Error updating variants:", variantsError)
+          // Don't fail the entire operation
+        } else {
+          console.log("[v0] All variants updated successfully")
+        }
       }
     }
 
-    console.log("[v0] Product updated successfully:", data)
-
     if (local_images && Array.isArray(local_images) && local_images.length > 0) {
-      // Eliminar imágenes existentes
+      // Delete existing images
       await supabase.from("product_images").delete().eq("product_id", params.id)
 
-      // Insertar nuevas imágenes
+      // Insert new images
       const imageInserts = local_images.map((imageUrl: string, index: number) => ({
         product_id: Number.parseInt(params.id),
         image_url: imageUrl,
         sort_order: index,
-        is_primary: index === 0, // La primera imagen es la principal
-        alt_text: data.name || "Imagen del producto",
+        is_primary: index === 0,
+        alt_text: data.custom_name || data.name || "Imagen del producto",
       }))
 
       const { error: imagesError } = await supabase.from("product_images").insert(imageInserts)
 
       if (imagesError) {
-        console.error("Error al actualizar imágenes:", imagesError)
-        // No fallar la actualización del producto por errores de imágenes
+        console.error("[v0] Error updating images:", imagesError)
+        // Don't fail the entire operation
       } else {
         console.log("[v0] Product images updated successfully")
       }
     }
 
-    return NextResponse.json({ product: data })
+    return NextResponse.json({
+      success: true,
+      product: data,
+      message: "Producto actualizado correctamente",
+    })
   } catch (error) {
-    console.error("Error al actualizar producto:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    console.error("[v0] Exception in PATCH handler:", error)
+    return NextResponse.json(
+      {
+        error: "Error interno del servidor",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
