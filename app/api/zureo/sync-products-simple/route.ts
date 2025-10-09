@@ -160,6 +160,13 @@ export async function POST() {
         const impuestoMultiplier = product.impuesto || 1.22
         const basePrice = Number.parseFloat(product.precio) || 0
 
+        let categoriaGenero = null
+        if (product.tipo?.genero) {
+          categoriaGenero = product.tipo.genero.toLowerCase()
+        } else if (product.genero) {
+          categoriaGenero = product.genero.toLowerCase()
+        }
+
         // Si el producto tiene variedades, crear un registro por cada variedad
         if (product.variedades && Array.isArray(product.variedades) && product.variedades.length > 0) {
           for (const variety of product.variedades) {
@@ -180,6 +187,7 @@ export async function POST() {
                 brand: product.marca?.nombre || product.brand || "Sin marca",
                 color: color,
                 size: size,
+                categoria_genero: categoriaGenero,
                 image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
                 is_active: true,
                 is_featured: false,
@@ -205,6 +213,7 @@ export async function POST() {
               brand: product.marca?.nombre || product.brand || "Sin marca",
               color: null,
               size: null,
+              categoria_genero: categoriaGenero,
               image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
               is_active: true,
               is_featured: false,

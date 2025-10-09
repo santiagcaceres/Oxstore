@@ -113,6 +113,12 @@ export function ProductGrid({
         query = query.eq("subcategory", subcategory)
       }
 
+      if (gender && gender !== "unisex") {
+        query = query.or(`categoria_genero.eq.${gender},categoria_genero.eq.unisex`)
+      } else if (gender === "unisex") {
+        query = query.eq("categoria_genero", "unisex")
+      }
+
       // Apply featured filter
       if (featured) {
         query = query.eq("is_featured", true)

@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Search, ShoppingBag, User, Menu, ChevronDown, ChevronRight } from "lucide-react"
@@ -37,6 +39,7 @@ interface Subcategory {
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("") // Agregando estado para búsqueda
   const [brands, setBrands] = useState<Brand[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
@@ -168,6 +171,14 @@ export function Header() {
 
   const shouldShowCategory = (categorySlug: string) => {
     return categoriesWithProducts.includes(categorySlug)
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    // Agregando función para manejar búsqueda
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      window.location.href = `/buscar?q=${encodeURIComponent(searchQuery.trim())}`
+    }
   }
 
   return (
@@ -534,10 +545,16 @@ export function Header() {
 
           {/* Search Bar */}
           <div className="hidden lg:flex items-center ml-auto">
-            <div className="relative w-80">
+            <form onSubmit={handleSearch} className="relative w-80">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input type="search" placeholder="Buscar productos..." className="pl-10 pr-4" />
-            </div>
+              <Input
+                type="search"
+                placeholder="Buscar productos..."
+                className="pl-10 pr-4"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </form>
           </div>
 
           {/* Actions */}
@@ -567,10 +584,16 @@ export function Header() {
 
         {isSearchOpen && (
           <div className="lg:hidden py-4 border-t animate-fade-in-up">
-            <div className="relative">
+            <form onSubmit={handleSearch} className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input type="search" placeholder="Buscar productos..." className="pl-10 pr-4" />
-            </div>
+              <Input
+                type="search"
+                placeholder="Buscar productos..."
+                className="pl-10 pr-4"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </form>
           </div>
         )}
       </div>
