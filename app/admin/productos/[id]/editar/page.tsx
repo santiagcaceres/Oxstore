@@ -168,6 +168,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const setPrimaryImage = async (imageId: number) => {
     try {
+      const { error: unmarkError } = await supabase
+        .from("product_images")
+        .update({ is_primary: false })
+        .eq("product_id", params.id)
+
+      if (unmarkError) {
+        console.error("[v0] Error unmarking images:", unmarkError)
+        throw new Error(`Error al desmarcar imágenes: ${unmarkError.message}`)
+      }
+
       const { error: updateError } = await supabase
         .from("product_images")
         .update({ is_primary: true })
@@ -176,6 +186,18 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       if (updateError) {
         console.error("[v0] Database update error:", updateError)
         throw new Error(`Error al marcar imagen como principal: ${updateError.message}`)
+      }
+
+      const selectedImage = productImages.find((img) => img.id === imageId)
+      if (selectedImage) {
+        const { error: productUpdateError } = await supabase
+          .from("products_in_stock")
+          .update({ image_url: selectedImage.image_url })
+          .eq("id", params.id)
+
+        if (productUpdateError) {
+          console.error("[v0] Error updating product image_url:", productUpdateError)
+        }
       }
 
       await loadProductImages()
@@ -866,7 +888,10 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       <Card>
         <CardHeader>
           <CardTitle>Imágenes del Producto</CardTitle>
-          <CardDescription>Gestiona múltiples imágenes para mostrar en tu tienda</CardDescription>
+          <CardDescription>
+            Gestiona múltiples imágenes para mostrar en tu tienda. Haz clic en la estrella para marcar como imagen
+            principal.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -883,24 +908,28 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                           fill
                           className="object-cover rounded-lg"
                         />
-                        {image.is_primary && <Badge className="absolute top-2 left-2 text-xs">Principal</Badge>}
+                        {image.is_primary && (
+                          <Badge className="absolute top-2 left-2 text-xs bg-primary">★ Principal</Badge>
+                        )}
                       </div>
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <div className="absolute top-2 right-2 flex gap-1">
                         {!image.is_primary && (
                           <Button
                             variant="secondary"
                             size="sm"
                             onClick={() => setPrimaryImage(image.id)}
-                            className="h-6 w-6 p-0"
+                            className="h-7 px-2 text-xs"
+                            title="Marcar como imagen principal"
                           >
-                            <span className="text-xs">★</span>
+                            ★ Principal
                           </Button>
                         )}
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => removeImage(image.id)}
-                          className="h-6 w-6 p-0"
+                          className="h-7 w-7 p-0"
+                          title="Eliminar imagen"
                         >
                           <X className="h-3 w-3" />
                         </Button>

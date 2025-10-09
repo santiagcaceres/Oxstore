@@ -403,7 +403,7 @@ export function Header() {
                             ACCESORIOS
                           </Link>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
-                            {getSubcategoriesForCategory("accesorios").map((subcat) => (
+                            {getSubcategoriesForCategory("accesorios", "mujer").map((subcat) => (
                               <Link
                                 key={subcat.id}
                                 href={`/categoria/mujer/accesorios/${subcat.slug}`}
@@ -476,7 +476,7 @@ export function Header() {
                             ACCESORIOS
                           </Link>
                           <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
-                            {getSubcategoriesForCategory("accesorios").map((subcat) => (
+                            {getSubcategoriesForCategory("accesorios", "hombre").map((subcat) => (
                               <Link
                                 key={subcat.id}
                                 href={`/categoria/hombre/accesorios/${subcat.slug}`}
