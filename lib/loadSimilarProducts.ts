@@ -7,13 +7,15 @@ export const loadSimilarProducts = async (
 ) => {
   setLoadingSimilar(true)
   try {
+    const currentZureoCode = currentProduct.zureo_code || currentProduct.sku
+
     // Buscar productos de la misma categoría
     const categoryResponse = await fetch(
-      `/api/products?category=${encodeURIComponent(currentProduct.category || "")}&limit=8`,
+      `/api/products?category=${encodeURIComponent(currentProduct.category || "")}&limit=12`,
     )
 
     // Buscar productos de la misma marca
-    const brandResponse = await fetch(`/api/products?brand=${encodeURIComponent(currentProduct.brand || "")}&limit=8`)
+    const brandResponse = await fetch(`/api/products?brand=${encodeURIComponent(currentProduct.brand || "")}&limit=12`)
 
     const [categoryData, brandData] = await Promise.all([
       categoryResponse.ok ? categoryResponse.json() : { products: [] },
@@ -25,10 +27,17 @@ export const loadSimilarProducts = async (
     const brandProducts = brandData.products || []
 
     const allProducts = [...categoryProducts, ...brandProducts]
-    const uniqueProducts = allProducts.filter(
-      (product, index, self) =>
-        index === self.findIndex((p) => p.id === product.id) && product.id !== currentProduct.id,
-    )
+
+    const uniqueProducts = allProducts.filter((product, index, self) => {
+      const productZureoCode = product.zureo_code || product.sku
+      return (
+        index ===
+          self.findIndex((p) => {
+            const pZureoCode = p.zureo_code || p.sku
+            return pZureoCode === productZureoCode
+          }) && productZureoCode !== currentZureoCode
+      )
+    })
 
     // Priorizar productos que coincidan en categoría Y marca
     const sortedProducts = uniqueProducts.sort((a, b) => {

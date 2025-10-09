@@ -30,6 +30,7 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [similarProducts, setSimilarProducts] = useState<Product[]>([])
   const [loadingSimilar, setLoadingSimilar] = useState(false)
   const [imagesByColor, setImagesByColor] = useState<{ [key: string]: string }>({})
+  const [originalImages, setOriginalImages] = useState<any[]>([])
   const { addItem } = useCart()
   const [isAddingToCart, setIsAddingToCart] = useState(false)
 
@@ -44,6 +45,9 @@ export default function ProductPage({ params }: ProductPageProps) {
           console.log("[v0] Variants in product data:", data.variants)
 
           setProduct(data)
+          if (data.images) {
+            setOriginalImages(data.images)
+          }
           if (data.imagesByColor) {
             setImagesByColor(data.imagesByColor)
           }
@@ -101,14 +105,18 @@ export default function ProductPage({ params }: ProductPageProps) {
               id: 1,
               image_url: imagesByColor[matchingVariant.color],
               alt_text: product?.name || "",
+              is_primary: true,
             },
           ]
           setProduct((prev) => (prev ? { ...prev, images: newImages } : null))
           setSelectedImage(0)
+        } else if (originalImages.length > 0) {
+          setProduct((prev) => (prev ? { ...prev, images: originalImages } : null))
+          setSelectedImage(0)
         }
       }
     }
-  }, [selectedColor, selectedSize, availableVariants, imagesByColor, product?.name])
+  }, [selectedColor, selectedSize, availableVariants, imagesByColor, product?.name, originalImages])
 
   const getAvailableColors = () => {
     const colors = availableVariants
