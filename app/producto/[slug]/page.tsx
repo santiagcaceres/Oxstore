@@ -5,7 +5,7 @@ import { notFound, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, ShoppingCart, Heart, Share2, ArrowLeft, Ruler, Truck } from "lucide-react"
+import { Minus, Plus, ShoppingCart, Heart, Share2, ArrowLeft, Ruler, Truck, Package } from "lucide-react"
 import type { Product } from "@/lib/database"
 import { useCart } from "@/contexts/cart-context"
 import { loadSimilarProducts } from "@/lib/loadSimilarProducts"
@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface ProductPageProps {
   params: {
@@ -58,6 +59,16 @@ export default function ProductPage({ params }: ProductPageProps) {
             imagesByColor: data.imagesByColor,
           })
 
+          if (data.images && data.images.length > 0) {
+            data.images.forEach((img: any, index: number) => {
+              console.log(`[v0] Image ${index}:`, {
+                id: img.id,
+                url: img.image_url,
+                is_primary: img.is_primary,
+              })
+            })
+          }
+
           setProduct(data)
           if (data.images && data.images.length > 0) {
             setOriginalImages(data.images)
@@ -83,6 +94,7 @@ export default function ProductPage({ params }: ProductPageProps) {
             if (sizeGuideResponse.ok) {
               const sizeGuideData = await sizeGuideResponse.json()
               setSizeGuideUrl(sizeGuideData.image_url)
+              console.log("[v0] Size guide loaded:", sizeGuideData.image_url)
             }
           }
 
@@ -242,7 +254,7 @@ export default function ProductPage({ params }: ProductPageProps) {
           <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
             {product.images && product.images.length > 0 && product.images[selectedImage] ? (
               <Image
-                key={`product-image-${selectedImage}-${product.images[selectedImage].image_url}`}
+                key={`product-image-${selectedImage}-${product.images[selectedImage].image_url}-${Date.now()}`}
                 src={product.images[selectedImage].image_url || "/placeholder.svg"}
                 alt={product.images[selectedImage].alt_text || product.name}
                 fill
@@ -250,10 +262,19 @@ export default function ProductPage({ params }: ProductPageProps) {
                 priority
                 unoptimized
                 onError={(e) => {
-                  console.error("[v0] Error loading image:", product.images[selectedImage].image_url)
+                  console.error("[v0] ❌ Error loading image:", {
+                    url: product.images[selectedImage].image_url,
+                    index: selectedImage,
+                    error: e,
+                  })
+                  const target = e.target as HTMLImageElement
+                  target.src = "/placeholder.svg?height=600&width=600"
                 }}
                 onLoad={() => {
-                  console.log("[v0] Image loaded successfully:", product.images[selectedImage].image_url)
+                  console.log("[v0] ✅ Image loaded successfully:", {
+                    url: product.images[selectedImage].image_url,
+                    index: selectedImage,
+                  })
                 }}
               />
             ) : (
@@ -279,7 +300,7 @@ export default function ProductPage({ params }: ProductPageProps) {
                 <button
                   key={`thumbnail-${index}-${image.id}`}
                   onClick={() => {
-                    console.log("[v0] Thumbnail clicked, changing to index:", index)
+                    console.log("[v0] Thumbnail clicked, changing to index:", index, "URL:", image.image_url)
                     setSelectedImage(index)
                   }}
                   className={`relative aspect-square overflow-hidden rounded-md border-2 transition-all ${
@@ -292,6 +313,9 @@ export default function ProductPage({ params }: ProductPageProps) {
                     fill
                     className="object-cover"
                     unoptimized
+                    onError={(e) => {
+                      console.error("[v0] ❌ Thumbnail error:", image.image_url)
+                    }}
                   />
                 </button>
               ))}
@@ -318,20 +342,6 @@ export default function ProductPage({ params }: ProductPageProps) {
               <p className="text-muted-foreground">{product.description}</p>
             </div>
           )}
-
-          <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Truck className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Tiempos de envío estimados</p>
-                <p className="text-xs text-blue-700 dark:text-blue-300">
-                  • CABA y GBA: 2-4 días hábiles
-                  <br />• Interior del país: 5-7 días hábiles
-                  <br />• Envío gratis en compras superiores a $50.000
-                </p>
-              </div>
-            </div>
-          </div>
 
           {/* Selectores de variantes */}
           <div className="space-y-4">
@@ -399,32 +409,6 @@ export default function ProductPage({ params }: ProductPageProps) {
                     )
                   })}
                 </div>
-                {sizeGuideUrl && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="link" size="sm" className="p-0 h-auto">
-                        <Ruler className="h-4 w-4 mr-1" />
-                        Ver guía de talles
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-3xl">
-                      <DialogHeader>
-                        <DialogTitle>Guía de Talles - {product.brand}</DialogTitle>
-                        <DialogDescription>
-                          Consulta la tabla de medidas para encontrar tu talle perfecto
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="relative w-full aspect-video">
-                        <Image
-                          src={sizeGuideUrl || "/placeholder.svg"}
-                          alt="Guía de talles"
-                          fill
-                          className="object-contain"
-                        />
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
               </div>
             )}
           </div>
@@ -474,6 +458,62 @@ export default function ProductPage({ params }: ProductPageProps) {
               <ShoppingCart className="h-5 w-5 mr-2" />
               {isAddingToCart ? "Agregando..." : "Agregar al Carrito"}
             </Button>
+
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
+                  <span className="font-medium text-muted-foreground">Condiciones de envío</span>
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2 text-muted-foreground space-y-1">
+                  <p>• CABA y GBA: 2-4 días hábiles</p>
+                  <p>• Interior del país: 5-7 días hábiles</p>
+                  <p>• Envío gratis en compras superiores a $50.000</p>
+                </CollapsibleContent>
+              </Collapsible>
+
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
+                  <span className="font-medium text-muted-foreground">Condiciones de cambio</span>
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2 text-muted-foreground space-y-1">
+                  <p>• Cambios sin cargo dentro de los 30 días</p>
+                  <p>• El producto debe estar sin uso y con etiquetas</p>
+                  <p>• Presentar comprobante de compra</p>
+                  <p>• No se aceptan cambios en productos en oferta</p>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {sizeGuideUrl && (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
+                      <span className="font-medium text-muted-foreground">Guía de talles</span>
+                      <Ruler className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Guía de Talles - {product.brand}</DialogTitle>
+                      <DialogDescription>
+                        Consulta la tabla de medidas para encontrar tu talle perfecto
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="relative w-full aspect-video">
+                      <Image
+                        src={sizeGuideUrl || "/placeholder.svg"}
+                        alt="Guía de talles"
+                        fill
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+
             <div className="flex gap-2">
               <Button variant="outline" size="lg" className="flex-1 bg-transparent">
                 <Heart className="h-5 w-5 mr-2" />
@@ -485,44 +525,6 @@ export default function ProductPage({ params }: ProductPageProps) {
               </Button>
             </div>
           </div>
-
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="link" className="p-0 h-auto text-sm">
-                Ver condiciones de envío completas
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Condiciones de Envío</DialogTitle>
-                <DialogDescription>Información detallada sobre nuestros envíos</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <h4 className="font-semibold mb-2">Tiempos de entrega</h4>
-                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    <li>CABA y GBA: 2-4 días hábiles</li>
-                    <li>Interior del país: 5-7 días hábiles</li>
-                    <li>Zonas remotas: 7-10 días hábiles</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Costos de envío</h4>
-                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                    <li>Envío gratis en compras superiores a $50.000</li>
-                    <li>CABA y GBA: $2.500</li>
-                    <li>Interior del país: $3.500</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-semibold mb-2">Seguimiento</h4>
-                  <p className="text-muted-foreground">
-                    Recibirás un código de seguimiento por email una vez que tu pedido sea despachado.
-                  </p>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
 
           {/* Información adicional */}
           <div className="border-t pt-6 space-y-2 text-sm text-muted-foreground">
