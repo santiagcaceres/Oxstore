@@ -110,6 +110,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [loadingVariants, setLoadingVariants] = useState(false)
 
+  const [selectedColorForUpload, setSelectedColorForUpload] = useState<string>("")
+  const [availableColors, setAvailableColors] = useState<string[]>([])
+
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -287,6 +290,12 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
       console.log("[v0] Loaded variants:", data?.length || 0)
       setVariants(data || [])
+
+      const colors = [...new Set(data?.map((v) => v.color).filter(Boolean) as string[])]
+      setAvailableColors(colors)
+      if (colors.length > 0 && !selectedColorForUpload) {
+        setSelectedColorForUpload(colors[0])
+      }
     } catch (error) {
       console.error("[v0] Error loading variants:", error)
     } finally {
@@ -373,6 +382,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     const files = event.target.files
     if (!files || files.length === 0) return
 
+    if (availableColors.length > 0 && !selectedColorForUpload) {
+      setError("Por favor selecciona un color antes de subir imágenes")
+      return
+    }
+
     try {
       setUploading(true)
       setError(null)
@@ -385,7 +399,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         }
 
         const fileExt = file.name.split(".").pop()?.toLowerCase()
-        const fileName = `product-${params.id}-${Date.now()}-${i}.${fileExt}`
+        const fileName = `product-${params.id}-${selectedColorForUpload || "default"}-${Date.now()}-${i}.${fileExt}`
         const filePath = `products/${fileName}`
 
         console.log("[v0] Uploading file:", fileName, "Size:", file.size)
@@ -432,7 +446,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         const insertData = {
           product_id: productId,
           image_url: urlData.publicUrl,
-          alt_text: customName || product?.name || "Imagen del producto",
+          alt_text: `${customName || product?.name || "Producto"} - ${selectedColorForUpload || "Color único"}`,
           sort_order: productImages.length + i + 1,
           is_primary: productImages.length === 0 && i === 0,
         }
@@ -452,9 +466,26 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         }
 
         console.log("[v0] Database insert successful:", insertResult)
+
+        if (selectedColorForUpload && availableColors.length > 0) {
+          const { error: updateError } = await supabase
+            .from("products_in_stock")
+            .update({ image_url: urlData.publicUrl })
+            .eq("zureo_code", product?.zureo_code)
+            .eq("color", selectedColorForUpload)
+
+          if (updateError) {
+            console.error("[v0] Error updating variant images:", updateError)
+          } else {
+            console.log(`[v0] Updated image_url for all ${selectedColorForUpload} variants`)
+          }
+        }
       }
 
       await loadProductImages()
+      if (product?.zureo_code) {
+        await loadVariants(product.zureo_code)
+      }
       console.log("[v0] All images uploaded and saved successfully")
 
       event.target.value = ""
@@ -864,6 +895,16 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                     <Badge variant="secondary">
                       {colorVariants.reduce((sum, v) => sum + v.stock_quantity, 0)} unidades
                     </Badge>
+                    {colorVariants[0]?.image_url && (
+                      <div className="relative w-12 h-12 ml-auto">
+                        <Image
+                          src={colorVariants[0].image_url || "/placeholder.svg"}
+                          alt={`Imagen ${color}`}
+                          fill
+                          className="object-cover rounded"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -889,12 +930,41 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         <CardHeader>
           <CardTitle>Imágenes del Producto</CardTitle>
           <CardDescription>
-            Gestiona múltiples imágenes para mostrar en tu tienda. Haz clic en la estrella para marcar como imagen
-            principal.
+            {availableColors.length > 0
+              ? "Selecciona un color y sube imágenes específicas para ese color. Las imágenes se aplicarán a todas las variantes del color seleccionado."
+              : "Gestiona múltiples imágenes para mostrar en tu tienda. Haz clic en la estrella para marcar como imagen principal."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
+            {availableColors.length > 0 && (
+              <div>
+                <Label htmlFor="color-select">Selecciona el color para las imágenes</Label>
+                <Select value={selectedColorForUpload} onValueChange={setSelectedColorForUpload}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar color" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableColors.map((color) => (
+                      <SelectItem key={color} value={color}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-4 h-4 rounded-full border"
+                            style={{ backgroundColor: color.toLowerCase() }}
+                          />
+                          <span className="capitalize">{color}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Las imágenes que subas se asociarán con el color:{" "}
+                  <span className="font-semibold capitalize">{selectedColorForUpload}</span>
+                </p>
+              </div>
+            )}
+
             {productImages.length > 0 && (
               <div>
                 <Label className="text-sm font-medium mb-3 block">Imágenes actuales</Label>
@@ -945,7 +1015,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors">
                   <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    {uploading ? "Subiendo imagen..." : "Haz clic para agregar nueva imagen"}
+                    {uploading
+                      ? "Subiendo imagen..."
+                      : availableColors.length > 0
+                        ? `Haz clic para agregar imágenes para el color: ${selectedColorForUpload}`
+                        : "Haz clic para agregar nueva imagen"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Puedes seleccionar múltiples archivos a la vez</p>
                 </div>
@@ -956,7 +1030,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 accept="image/*"
                 multiple
                 onChange={handleImageUpload}
-                disabled={uploading}
+                disabled={uploading || (availableColors.length > 0 && !selectedColorForUpload)}
                 className="hidden"
               />
             </div>

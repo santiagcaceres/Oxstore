@@ -11,7 +11,7 @@ import {
   ImageIcon,
   MessageSquare,
   Percent,
-  Palette,
+  Ruler,
 } from "lucide-react"
 
 const navigation = [
@@ -31,9 +31,9 @@ const navigation = [
     icon: Package,
   },
   {
-    name: "Variantes",
-    href: "/admin/variantes",
-    icon: Palette,
+    name: "Guías de Talles",
+    href: "/admin/guias-talles",
+    icon: Ruler,
   },
   {
     name: "Descuentos",
