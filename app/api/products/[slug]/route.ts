@@ -21,7 +21,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
       error = result.error
     }
 
-    // Si no se encuentra por ID, intentar buscar por nombre similar
     if (!product) {
       console.log(`[v0] Product not found by ID, trying name search for: ${params.slug}`)
 
@@ -70,7 +69,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
 
     console.log(`[v0] Found ${productImages?.length || 0} images in product_images table`)
 
-    // Si no hay imágenes en product_images, usar el image_url del producto
     let images = []
     if (productImages && productImages.length > 0) {
       images = productImages.map((img) => ({
@@ -157,13 +155,41 @@ export async function GET(request: Request, { params }: { params: { slug: string
 
     console.log(`[v0] GET /api/products/${params.slug} - Product found: ${productName}`)
 
-    const imagesByColor: { [key: string]: string } = {}
-    variants?.forEach((variant: any) => {
-      if (variant.color && variant.image_url) {
-        imagesByColor[variant.color] = variant.image_url
+    const allImagesByColor: { [key: string]: any[] } = {}
+
+    // Obtener todos los product_ids de las variantes del mismo zureo_code
+    const variantIds = variants?.map((v: any) => v.id) || []
+
+    if (variantIds.length > 0) {
+      const { data: allVariantImages, error: allImagesError } = await supabase
+        .from("product_images")
+        .select("*")
+        .in("product_id", variantIds)
+        .order("sort_order", { ascending: true })
+
+      if (allImagesError) {
+        console.error(`[v0] Error loading all variant images:`, allImagesError)
+      } else if (allVariantImages && allVariantImages.length > 0) {
+        // Agrupar imágenes por color
+        variants?.forEach((variant: any) => {
+          if (variant.color) {
+            const variantImages = allVariantImages
+              .filter((img: any) => img.product_id === variant.id)
+              .map((img: any) => ({
+                id: img.id,
+                image_url: img.image_url,
+                alt_text: img.alt_text || productName,
+                is_primary: img.is_primary || false,
+              }))
+
+            if (variantImages.length > 0) {
+              allImagesByColor[variant.color] = variantImages
+              console.log(`[v0] Loaded ${variantImages.length} images for color: ${variant.color}`)
+            }
+          }
+        })
       }
-    })
-    console.log(`[v0] Images by color:`, imagesByColor)
+    }
 
     const transformedProduct = {
       id: product.id,
@@ -180,13 +206,14 @@ export async function GET(request: Request, { params }: { params: { slug: string
       size: product.size,
       zureo_code: product.zureo_code,
       variants: processedVariants,
-      imagesByColor: imagesByColor,
-      images: images, // Usar el array de imágenes cargado desde product_images
+      allImagesByColor: allImagesByColor, // Enviar todas las imágenes por color
+      images: images,
       weight: product.weight,
       dimensions: product.dimensions,
     }
 
-    console.log(`[v0] Transformed product with ${transformedProduct.images.length} images`)
+    console.log(`[v0] Transformed product with ${transformedProduct.images.length} default images`)
+    console.log(`[v0] Images by color: ${Object.keys(allImagesByColor).length} colors`)
     console.log(`[v0] Transformed product variants count: ${transformedProduct.variants.length}`)
 
     return NextResponse.json(transformedProduct)

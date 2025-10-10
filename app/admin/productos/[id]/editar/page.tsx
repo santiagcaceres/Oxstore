@@ -391,6 +391,21 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setUploading(true)
       setError(null)
 
+      let variantIdsForColor: number[] = [Number.parseInt(params.id, 10)]
+
+      if (selectedColorForUpload && product?.zureo_code) {
+        const { data: colorVariants, error: variantsError } = await supabase
+          .from("products_in_stock")
+          .select("id")
+          .eq("zureo_code", product.zureo_code)
+          .eq("color", selectedColorForUpload)
+
+        if (!variantsError && colorVariants && colorVariants.length > 0) {
+          variantIdsForColor = colorVariants.map((v) => v.id)
+          console.log(`[v0] Found ${variantIdsForColor.length} variants for color ${selectedColorForUpload}`)
+        }
+      }
+
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
 
@@ -426,52 +441,34 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
         console.log("[v0] Public URL obtained:", urlData.publicUrl)
 
-        const productId = Number.parseInt(params.id, 10)
-        if (isNaN(productId)) {
-          throw new Error("ID de producto inválido")
-        }
-
-        // Verify product exists in products_in_stock before inserting image
-        const { data: productExists, error: checkError } = await supabase
-          .from("products_in_stock")
-          .select("id")
-          .eq("id", productId)
-          .single()
-
-        if (checkError || !productExists) {
-          console.error("[v0] Product not found in products_in_stock:", checkError)
-          throw new Error("El producto no existe en la base de datos")
-        }
-
-        const insertData = {
-          product_id: productId,
+        const imageInserts = variantIdsForColor.map((variantId, index) => ({
+          product_id: variantId,
           image_url: urlData.publicUrl,
           alt_text: `${customName || product?.name || "Producto"} - ${selectedColorForUpload || "Color único"}`,
           sort_order: productImages.length + i + 1,
-          is_primary: productImages.length === 0 && i === 0,
-        }
+          is_primary: productImages.length === 0 && i === 0 && index === 0,
+        }))
 
-        console.log("[v0] Inserting image data:", insertData)
+        console.log(`[v0] Inserting ${imageInserts.length} image records for all color variants`)
 
         const { data: insertResult, error: insertError } = await supabase
           .from("product_images")
-          .insert(insertData)
+          .insert(imageInserts)
           .select()
 
         if (insertError) {
           console.error("[v0] Database insert error:", insertError)
-          // Clean up uploaded file if database insert fails
           await supabase.storage.from("product-images").remove([filePath])
           throw new Error(`Error al guardar imagen en base de datos: ${insertError.message}`)
         }
 
         console.log("[v0] Database insert successful:", insertResult)
 
-        if (selectedColorForUpload && availableColors.length > 0) {
+        if (selectedColorForUpload && product?.zureo_code) {
           const { error: updateError } = await supabase
             .from("products_in_stock")
             .update({ image_url: urlData.publicUrl })
-            .eq("zureo_code", product?.zureo_code)
+            .eq("zureo_code", product.zureo_code)
             .eq("color", selectedColorForUpload)
 
           if (updateError) {
