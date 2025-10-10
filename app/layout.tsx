@@ -6,6 +6,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { CartProvider } from "@/contexts/cart-context"
 import { FloatingCart } from "@/components/floating-cart"
+import { Header } from "@/components/header"
 
 export const metadata: Metadata = {
   title: "Oxstore",
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <CartProvider>
+            <Header />
             {children}
             <FloatingCart />
           </CartProvider>

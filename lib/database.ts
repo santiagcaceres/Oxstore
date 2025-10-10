@@ -9,6 +9,8 @@ export interface Product {
   short_description: string
   price: number
   compare_price?: number
+  sale_price?: number
+  discount_percentage?: number
   sku: string
   stock_quantity: number
   category_id: number
@@ -23,9 +25,13 @@ export interface Product {
   updated_at: string
   color?: string
   size?: string
+  zureo_code?: string
   zureo_data?: any
-  category?: Category
+  category?: Category | string
   images?: ProductImage[]
+  availableColors?: string[]
+  availableSizes?: string[]
+  variantCount?: number
 }
 
 export interface Category {
@@ -96,6 +102,8 @@ export class Database {
         short_description: product.descripcion_corta,
         price: product.precio,
         compare_price: product.precio * 1.2,
+        sale_price: product.precio * 0.8, // Assuming a 20% discount for sale price
+        discount_percentage: 20, // Assuming a 20% discount
         sku: product.codigo,
         stock_quantity: product.stock,
         category_id: 1,
@@ -106,7 +114,13 @@ export class Database {
         updated_at: new Date().toISOString(),
         color: product.color,
         size: product.size,
+        zureo_code: product.zureo_code, // New field
         zureo_data: product.zureo_data,
+        category: product.categoria, // Updated field type
+        images: product.imagenes, // Assuming product.imagenes is an array of ProductImage
+        availableColors: product.disponibles.colores, // New field
+        availableSizes: product.disponibles.tallas, // New field
+        variantCount: product.variantes.length, // New field
       }
     } catch (error) {
       console.error("[v0] Error fetching product by slug:", error)

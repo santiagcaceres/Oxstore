@@ -5,7 +5,7 @@ import { notFound, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, ShoppingCart, Heart, Share2, ArrowLeft, Ruler, Truck, Package } from "lucide-react"
+import { Minus, Plus, ShoppingCart, Heart, Share2, Ruler, Truck, Package } from "lucide-react"
 import type { Product } from "@/lib/database"
 import { useCart } from "@/contexts/cart-context"
 import { loadSimilarProducts } from "@/lib/loadSimilarProducts"
@@ -227,11 +227,6 @@ export default function ProductPage({ params }: ProductPageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Button variant="ghost" onClick={() => router.push("/")} className="mb-6">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Volver al inicio
-      </Button>
-
       <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
         <div className="space-y-4">
           {/* Imagen principal */}

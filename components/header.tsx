@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
-import { Search, ShoppingBag, User, Menu, ChevronDown, ChevronRight } from "lucide-react"
+import { Search, ShoppingBag, User, Menu, ChevronDown, ChevronRight, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -256,6 +256,12 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" asChild className="hidden md:flex">
+              <Link href="/">
+                <Home className="h-5 w-5" />
+              </Link>
+            </Button>
+
             <Sheet onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
@@ -263,7 +269,14 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] sm:w-[400px] overflow-y-auto">
-                <nav className="flex flex-col space-y-0 mt-8 px-6">
+                <Link
+                  href="/"
+                  className="flex items-center gap-2 text-lg font-medium hover:text-primary transition-colors py-6 px-2 border-b border-border/50 rounded hover:bg-muted/30 mt-8"
+                >
+                  <Home className="h-5 w-5" />
+                  INICIO
+                </Link>
+                <nav className="flex flex-col space-y-0">
                   <Collapsible open={expandedMobileMenus.mujer} onOpenChange={() => toggleMobileMenu("mujer")}>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-6 border-b border-border/50">
                       MUJER
