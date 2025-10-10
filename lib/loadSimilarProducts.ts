@@ -11,32 +11,52 @@ export const loadSimilarProducts = async (
 
     // Buscar productos de la misma categoría
     const categoryResponse = await fetch(
-      `/api/products?category=${encodeURIComponent(currentProduct.category || "")}&limit=12`,
+      `/api/products?category=${encodeURIComponent(currentProduct.category || "")}&limit=50`,
     )
 
     // Buscar productos de la misma marca
-    const brandResponse = await fetch(`/api/products?brand=${encodeURIComponent(currentProduct.brand || "")}&limit=12`)
+    const brandResponse = await fetch(`/api/products?brand=${encodeURIComponent(currentProduct.brand || "")}&limit=50`)
 
     const [categoryData, brandData] = await Promise.all([
       categoryResponse.ok ? categoryResponse.json() : { products: [] },
       brandResponse.ok ? brandResponse.json() : { products: [] },
     ])
 
-    // Combinar productos de categoría y marca, eliminando duplicados
+    // Combinar productos de categoría y marca
     const categoryProducts = categoryData.products || []
     const brandProducts = brandData.products || []
-
     const allProducts = [...categoryProducts, ...brandProducts]
 
-    const uniqueProducts = allProducts.filter((product, index, self) => {
-      const productZureoCode = product.zureo_code || product.sku
-      return (
-        index ===
-          self.findIndex((p) => {
-            const pZureoCode = p.zureo_code || p.sku
-            return pZureoCode === productZureoCode
-          }) && productZureoCode !== currentZureoCode
-      )
+    const productsByCode = new Map<string, Product[]>()
+
+    allProducts.forEach((product) => {
+      const zureoCode = product.zureo_code || product.sku
+
+      // Excluir el producto actual
+      if (zureoCode === currentZureoCode) return
+
+      if (!productsByCode.has(zureoCode)) {
+        productsByCode.set(zureoCode, [])
+      }
+      productsByCode.get(zureoCode)!.push(product)
+    })
+
+    // Convertir el Map a un array de productos representativos (uno por código)
+    const uniqueProducts: Product[] = []
+    productsByCode.forEach((variants, zureoCode) => {
+      // Usar el primer producto como representante, pero agregar información de variantes
+      const representative = { ...variants[0] }
+
+      // Agregar información de todos los colores y talles disponibles
+      const colors = [...new Set(variants.map((v) => v.color).filter(Boolean))]
+      const sizes = [...new Set(variants.map((v) => v.size).filter(Boolean))]
+
+      // Agregar metadata de variantes al producto representativo
+      representative.availableColors = colors
+      representative.availableSizes = sizes
+      representative.variantCount = variants.length
+
+      uniqueProducts.push(representative)
     })
 
     // Priorizar productos que coincidan en categoría Y marca
