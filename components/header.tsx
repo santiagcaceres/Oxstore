@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Search, ShoppingBag, User, Menu, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -39,7 +38,10 @@ interface Subcategory {
 export function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("") // Agregando estado para búsqueda
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchSuggestions, setSearchSuggestions] = useState<any[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const searchTimeoutRef = useRef<NodeJS.Timeout>()
   const [brands, setBrands] = useState<Brand[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [subcategories, setSubcategories] = useState<Subcategory[]>([])
@@ -165,7 +167,6 @@ export function Header() {
       )
     }
 
-    // Esto permite que se muestren las subcategorías aunque no tengan productos actualmente
     return filteredSubcategories
   }
 
@@ -173,12 +174,79 @@ export function Header() {
     return categoriesWithProducts.includes(categorySlug)
   }
 
+  const searchProducts = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSearchSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      )
+
+      const searchTerm = query.toLowerCase()
+      const { data, error } = await supabase
+        .from("products_in_stock")
+        .select("id, name, brand, price, image_url, zureo_code")
+        .or(
+          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,brand.ilike.%${searchTerm}%,zureo_code.ilike.%${searchTerm}%`,
+        )
+        .gt("stock_quantity", 0)
+        .eq("is_active", true)
+        .limit(5)
+
+      if (!error && data) {
+        const uniqueProducts = data.reduce((acc: any[], product) => {
+          if (!acc.find((p) => p.zureo_code === product.zureo_code)) {
+            acc.push(product)
+          }
+          return acc
+        }, [])
+
+        setSearchSuggestions(uniqueProducts)
+        setShowSuggestions(true)
+      }
+    } catch (error) {
+      console.error("[v0] Error searching products:", error)
+    }
+  }
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      searchProducts(searchQuery)
+    }, 300)
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current)
+      }
+    }
+  }, [searchQuery])
+
   const handleSearch = (e: React.FormEvent) => {
-    // Agregando función para manejar búsqueda
     e.preventDefault()
     if (searchQuery.trim()) {
+      setShowSuggestions(false)
       window.location.href = `/buscar?q=${encodeURIComponent(searchQuery.trim())}`
     }
+  }
+
+  const handleSuggestionClick = (productId: number, productName: string) => {
+    setShowSuggestions(false)
+    setSearchQuery("")
+    const slug = `${productId}-${productName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .trim()}`
+    window.location.href = `/producto/${slug}`
   }
 
   return (
@@ -545,16 +613,43 @@ export function Header() {
 
           {/* Search Bar */}
           <div className="hidden lg:flex items-center ml-auto">
-            <form onSubmit={handleSearch} className="relative w-80">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                type="search"
-                placeholder="Buscar productos..."
-                className="pl-10 pr-4"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </form>
+            <div className="relative w-80">
+              <form onSubmit={handleSearch} className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 z-10" />
+                <Input
+                  type="search"
+                  placeholder="Buscar productos..."
+                  className="pl-10 pr-4"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery.length >= 2 && setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                />
+              </form>
+
+              {showSuggestions && searchSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg z-[150] max-h-96 overflow-y-auto">
+                  {searchSuggestions.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleSuggestionClick(product.id, product.name)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left border-b last:border-b-0"
+                    >
+                      <img
+                        src={product.image_url || "/placeholder.svg?height=50&width=50"}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{product.name}</p>
+                        <p className="text-xs text-muted-foreground">{product.brand}</p>
+                      </div>
+                      <p className="text-sm font-semibold">${product.price?.toFixed(2)}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Actions */}
@@ -584,16 +679,43 @@ export function Header() {
 
         {isSearchOpen && (
           <div className="lg:hidden py-4 border-t animate-fade-in-up">
-            <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                type="search"
-                placeholder="Buscar productos..."
-                className="pl-10 pr-4"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </form>
+            <div className="relative">
+              <form onSubmit={handleSearch} className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 z-10" />
+                <Input
+                  type="search"
+                  placeholder="Buscar productos..."
+                  className="pl-10 pr-4"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => searchQuery.length >= 2 && setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                />
+              </form>
+
+              {showSuggestions && searchSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-background border rounded-lg shadow-lg z-[150] max-h-96 overflow-y-auto">
+                  {searchSuggestions.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => handleSuggestionClick(product.id, product.name)}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left border-b last:border-b-0"
+                    >
+                      <img
+                        src={product.image_url || "/placeholder.svg?height=50&width=50"}
+                        alt={product.name}
+                        className="w-12 h-12 object-cover rounded"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{product.name}</p>
+                        <p className="text-xs text-muted-foreground">{product.brand}</p>
+                      </div>
+                      <p className="text-sm font-semibold">${product.price?.toFixed(2)}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

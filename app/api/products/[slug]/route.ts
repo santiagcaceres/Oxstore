@@ -57,6 +57,51 @@ export async function GET(request: Request, { params }: { params: { slug: string
       return NextResponse.json({ error: "Producto no encontrado" }, { status: 404 })
     }
 
+    console.log(`[v0] Loading images for product_id: ${product.id}`)
+    const { data: productImages, error: imagesError } = await supabase
+      .from("product_images")
+      .select("*")
+      .eq("product_id", product.id)
+      .order("sort_order", { ascending: true })
+
+    if (imagesError) {
+      console.error(`[v0] Error loading product images:`, imagesError)
+    }
+
+    console.log(`[v0] Found ${productImages?.length || 0} images in product_images table`)
+
+    // Si no hay imágenes en product_images, usar el image_url del producto
+    let images = []
+    if (productImages && productImages.length > 0) {
+      images = productImages.map((img) => ({
+        id: img.id,
+        image_url: img.image_url,
+        alt_text: img.alt_text || productName,
+        is_primary: img.is_primary || false,
+      }))
+      console.log(`[v0] Using ${images.length} images from product_images table`)
+    } else if (product.image_url) {
+      images = [
+        {
+          id: 1,
+          image_url: product.image_url,
+          alt_text: productName,
+          is_primary: true,
+        },
+      ]
+      console.log(`[v0] Using single image from products_in_stock.image_url`)
+    } else {
+      images = [
+        {
+          id: 1,
+          image_url: `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(productName)}`,
+          alt_text: productName,
+          is_primary: true,
+        },
+      ]
+      console.log(`[v0] Using placeholder image`)
+    }
+
     console.log(`[v0] Loading variants from products_in_stock for zureo_code: ${product.zureo_code}`)
 
     const { data: variants, error: variantsError } = await supabase
@@ -92,11 +137,6 @@ export async function GET(request: Request, { params }: { params: { slug: string
       }))
 
       console.log(`[v0] Processed ${processedVariants.length} variants from products_in_stock`)
-      processedVariants.forEach((variant: any, index: number) => {
-        console.log(
-          `[v0] Variant ${index + 1}: Color=${variant.color}, Size=${variant.size}, Stock=${variant.stock_quantity}, Price=${variant.price}`,
-        )
-      })
     } else {
       console.log(`[v0] No variants found, creating basic variant`)
       processedVariants = [
@@ -123,6 +163,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
         imagesByColor[variant.color] = variant.image_url
       }
     })
+    console.log(`[v0] Images by color:`, imagesByColor)
 
     const transformedProduct = {
       id: product.id,
@@ -140,31 +181,13 @@ export async function GET(request: Request, { params }: { params: { slug: string
       zureo_code: product.zureo_code,
       variants: processedVariants,
       imagesByColor: imagesByColor,
-      images: [
-        {
-          id: 1,
-          image_url:
-            product.image_url || `/placeholder.svg?height=600&width=600&query=${encodeURIComponent(productName)}`,
-          alt_text: productName,
-        },
-      ],
+      images: images, // Usar el array de imágenes cargado desde product_images
       weight: product.weight,
       dimensions: product.dimensions,
     }
 
+    console.log(`[v0] Transformed product with ${transformedProduct.images.length} images`)
     console.log(`[v0] Transformed product variants count: ${transformedProduct.variants.length}`)
-    console.log(
-      `[v0] Available colors: ${transformedProduct.variants
-        .map((v) => v.color)
-        .filter(Boolean)
-        .join(", ")}`,
-    )
-    console.log(
-      `[v0] Available sizes: ${transformedProduct.variants
-        .map((v) => v.size)
-        .filter(Boolean)
-        .join(", ")}`,
-    )
 
     return NextResponse.json(transformedProduct)
   } catch (error) {

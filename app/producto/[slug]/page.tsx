@@ -51,12 +51,21 @@ export default function ProductPage({ params }: ProductPageProps) {
         if (response.ok) {
           const data = await response.json()
 
+          console.log("[v0] Product data loaded:", {
+            name: data.name,
+            imagesCount: data.images?.length || 0,
+            images: data.images,
+            imagesByColor: data.imagesByColor,
+          })
+
           setProduct(data)
-          if (data.images) {
+          if (data.images && data.images.length > 0) {
             setOriginalImages(data.images)
+            console.log("[v0] Original images set:", data.images.length)
           }
           if (data.imagesByColor) {
             setImagesByColor(data.imagesByColor)
+            console.log("[v0] Images by color set:", Object.keys(data.imagesByColor).length)
           }
           if (data.variants && data.variants.length > 0) {
             setAvailableVariants(data.variants)
@@ -99,8 +108,8 @@ export default function ProductPage({ params }: ProductPageProps) {
       if (matchingVariant) {
         setSelectedVariant(matchingVariant)
 
-        // Si hay imagen específica para este color, usarla
         if (matchingVariant.color && imagesByColor[matchingVariant.color]) {
+          console.log("[v0] Changing to color-specific image:", matchingVariant.color)
           const newImages = [
             {
               id: 1,
@@ -112,11 +121,11 @@ export default function ProductPage({ params }: ProductPageProps) {
           if (product) {
             setProduct({ ...product, images: newImages })
           }
-          setSelectedImage(0)
+          setSelectedImage(0) // Siempre resetear a 0 cuando cambia el color
         } else if (originalImages.length > 0 && product) {
-          // Restaurar imágenes originales si no hay imagen específica
+          console.log("[v0] Restoring original images:", originalImages.length)
           setProduct({ ...product, images: originalImages })
-          setSelectedImage(0)
+          setSelectedImage(0) // Resetear a 0 al restaurar imágenes originales
         }
       }
     }
@@ -214,6 +223,12 @@ export default function ProductPage({ params }: ProductPageProps) {
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0]
   const hasDiscount = product.sale_price && product.sale_price < product.price && product.discount_percentage > 0
 
+  console.log("[v0] Rendering product with images:", {
+    totalImages: product.images?.length || 0,
+    selectedImage,
+    currentImageUrl: product.images?.[selectedImage]?.image_url,
+  })
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Button variant="ghost" onClick={() => router.push("/")} className="mb-6">
@@ -225,15 +240,21 @@ export default function ProductPage({ params }: ProductPageProps) {
         <div className="space-y-4">
           {/* Imagen principal */}
           <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
-            {product.images && product.images[selectedImage] ? (
+            {product.images && product.images.length > 0 && product.images[selectedImage] ? (
               <Image
-                key={`${product.images[selectedImage].image_url}-${selectedImage}`}
+                key={`product-image-${selectedImage}-${product.images[selectedImage].image_url}`}
                 src={product.images[selectedImage].image_url || "/placeholder.svg"}
-                alt={product.name}
+                alt={product.images[selectedImage].alt_text || product.name}
                 fill
                 className="object-cover"
                 priority
                 unoptimized
+                onError={(e) => {
+                  console.error("[v0] Error loading image:", product.images[selectedImage].image_url)
+                }}
+                onLoad={() => {
+                  console.log("[v0] Image loaded successfully:", product.images[selectedImage].image_url)
+                }}
               />
             ) : (
               <Image
@@ -256,8 +277,11 @@ export default function ProductPage({ params }: ProductPageProps) {
             <div className="grid grid-cols-4 gap-2">
               {product.images.map((image, index) => (
                 <button
-                  key={`${image.id}-${index}`}
-                  onClick={() => setSelectedImage(index)}
+                  key={`thumbnail-${index}-${image.id}`}
+                  onClick={() => {
+                    console.log("[v0] Thumbnail clicked, changing to index:", index)
+                    setSelectedImage(index)
+                  }}
                   className={`relative aspect-square overflow-hidden rounded-md border-2 transition-all ${
                     selectedImage === index ? "border-primary" : "border-transparent hover:border-muted-foreground"
                   }`}
