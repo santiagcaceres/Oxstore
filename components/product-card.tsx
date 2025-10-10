@@ -29,6 +29,7 @@ export function ProductCard({ product, className = "", index = 0 }: ProductCardP
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0]
   const hasDiscount = product.sale_price && product.sale_price < product.price && product.discount_percentage > 0
   const discountPercentage = hasDiscount ? product.discount_percentage : 0
+  const displayPrice = hasDiscount ? product.sale_price : product.price
 
   const animationDelay = `stagger-${Math.min(index + 1, 6)}`
 
@@ -132,7 +133,7 @@ export function ProductCard({ product, className = "", index = 0 }: ProductCardP
         {/* Price */}
         <div className="flex items-center gap-2">
           <span className="font-bold text-lg transition-all duration-300 group-hover:text-primary">
-            ${hasDiscount ? product.sale_price : product.price}
+            ${displayPrice}
           </span>
           {hasDiscount && <span className="text-sm text-muted-foreground line-through">${product.price}</span>}
         </div>

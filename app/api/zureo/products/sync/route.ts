@@ -226,7 +226,8 @@ export async function GET() {
       const impuestoMultiplier = product.impuesto || 1.22
       const basePrice = product.precio || 0
 
-      // Si el producto tiene variedades, crear un registro por cada variedad
+      const brandName = (product.marca?.nombre || "SIN MARCA").toUpperCase()
+
       if (product.variedades && Array.isArray(product.variedades) && product.variedades.length > 0) {
         for (const variety of product.variedades) {
           if (variety.stock > 0) {
@@ -250,7 +251,7 @@ export async function GET() {
               stock_quantity: variety.stock,
               category: product.tipo?.nombre || "Sin categoría",
               categoria_zureo: product.tipo?.nombre || "Sin categoría",
-              brand: product.marca?.nombre || "Sin marca",
+              brand: brandName, // Usar marca en mayúsculas
               color: color,
               size: size,
               image_url: `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.nombre || "producto")}`,
@@ -268,7 +269,6 @@ export async function GET() {
           }
         }
       } else {
-        // Producto sin variedades - crear un solo registro
         const finalPrice = Math.round(basePrice * impuestoMultiplier)
 
         allProductRecords.push({
@@ -283,7 +283,7 @@ export async function GET() {
           stock_quantity: product.stock || 0,
           category: product.tipo?.nombre || "Sin categoría",
           categoria_zureo: product.tipo?.nombre || "Sin categoría",
-          brand: product.marca?.nombre || "Sin marca",
+          brand: brandName, // Usar marca en mayúsculas
           color: null,
           size: null,
           image_url: `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.nombre || "producto")}`,

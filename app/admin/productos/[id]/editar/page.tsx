@@ -547,16 +547,18 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       setSaving(true)
       setError(null)
 
+      const brandToSave = selectedBrand.toUpperCase()
+
       const requestData = {
         custom_name: customName,
         local_description: customDescription,
         local_price: customPrice ? Math.round(Number(customPrice)) : Math.round(product.price),
         local_images: productImages.map((img) => img.image_url),
         is_featured: isFeatured,
-        brand: selectedBrand,
+        brand: brandToSave, // Save brand in uppercase
         category: selectedCategory,
         subcategory: selectedSubcategory,
-        gender: selectedGender, // Added gender field that was missing
+        gender: selectedGender,
         sale_price: isOnSale && salePrice ? Number.parseFloat(salePrice) : null,
         discount_percentage: isOnSale && discountPercentage ? Number.parseInt(discountPercentage) : null,
       }
@@ -585,7 +587,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       await Promise.all([loadProduct(), loadProductImages()])
       setError(null)
 
-      // Show success message briefly before redirecting
       setTimeout(() => {
         router.push("/admin/productos")
       }, 1000)
@@ -612,6 +613,17 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
     return grouped
   }
+
+  useEffect(() => {
+    if (isOnSale && discountPercentage && customPrice) {
+      const basePrice = Number.parseFloat(customPrice)
+      const discount = Number.parseInt(discountPercentage)
+      if (!isNaN(basePrice) && !isNaN(discount) && discount > 0 && discount <= 100) {
+        const calculatedSalePrice = basePrice * (1 - discount / 100)
+        setSalePrice(calculatedSalePrice.toFixed(2))
+      }
+    }
+  }, [discountPercentage, customPrice, isOnSale])
 
   return (
     <div className="space-y-6">
@@ -819,7 +831,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <SelectContent>
                   {brands.map((brand) => (
                     <SelectItem key={brand.id} value={brand.name}>
-                      {brand.name.toUpperCase()}
+                      {brand.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -840,17 +852,6 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               {isOnSale && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="sale-price">Precio de oferta</Label>
-                    <Input
-                      id="sale-price"
-                      type="number"
-                      step="0.01"
-                      placeholder="Precio con descuento"
-                      value={salePrice}
-                      onChange={(e) => setSalePrice(e.target.value)}
-                    />
-                  </div>
-                  <div>
                     <Label htmlFor="discount-percentage">% Descuento</Label>
                     <Input
                       id="discount-percentage"
@@ -861,6 +862,22 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                       value={discountPercentage}
                       onChange={(e) => setDiscountPercentage(e.target.value)}
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      El precio de oferta se calculará automáticamente
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="sale-price">Precio de oferta (calculado)</Label>
+                    <Input
+                      id="sale-price"
+                      type="number"
+                      step="0.01"
+                      placeholder="Precio con descuento"
+                      value={salePrice}
+                      onChange={(e) => setSalePrice(e.target.value)}
+                      disabled
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Calculado automáticamente desde el descuento</p>
                   </div>
                 </div>
               )}

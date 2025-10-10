@@ -11,14 +11,6 @@ import { useCart } from "@/contexts/cart-context"
 import { loadSimilarProducts } from "@/lib/loadSimilarProducts"
 import { ProductCard } from "@/components/product-card"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface ProductPageProps {
@@ -158,6 +150,19 @@ export default function ProductPage({ params }: ProductPageProps) {
 
   const getCurrentPrice = () => {
     if (selectedVariant && selectedVariant.price) {
+      if (selectedVariant.sale_price && selectedVariant.sale_price < selectedVariant.price) {
+        return selectedVariant.sale_price
+      }
+      return selectedVariant.price
+    }
+    if (product?.sale_price && product.sale_price < product.price) {
+      return product.sale_price
+    }
+    return product?.price || 0
+  }
+
+  const getOriginalPrice = () => {
+    if (selectedVariant && selectedVariant.price) {
       return selectedVariant.price
     }
     return product?.price || 0
@@ -198,20 +203,13 @@ export default function ProductPage({ params }: ProductPageProps) {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <Skeleton className="aspect-square w-full" />
-            <div className="grid grid-cols-4 gap-2">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="aspect-square" />
-              ))}
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="relative w-16 h-16 mx-auto">
+              <div className="absolute inset-0 border-4 border-muted rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>
-          </div>
-          <div className="space-y-6">
-            <Skeleton className="h-8 w-3/4" />
-            <Skeleton className="h-6 w-1/4" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-12 w-full" />
+            <p className="text-muted-foreground">Cargando producto...</p>
           </div>
         </div>
       </div>
@@ -320,7 +318,7 @@ export default function ProductPage({ params }: ProductPageProps) {
           {/* Precio */}
           <div className="flex items-center gap-3">
             <span className="text-3xl font-bold">${getCurrentPrice()}</span>
-            {hasDiscount && <span className="text-xl text-muted-foreground line-through">${product.price}</span>}
+            {hasDiscount && <span className="text-xl text-muted-foreground line-through">${getOriginalPrice()}</span>}
           </div>
 
           {/* Descripción */}
@@ -447,6 +445,26 @@ export default function ProductPage({ params }: ProductPageProps) {
             </Button>
 
             <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+              {sizeGuideUrl && (
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
+                    <span className="font-medium text-muted-foreground">Guía de talles</span>
+                    <Ruler className="h-4 w-4 text-muted-foreground" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-2">
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-background">
+                      <Image
+                        src={sizeGuideUrl || "/placeholder.svg"}
+                        alt={`Guía de talles - ${product.brand}`}
+                        fill
+                        className="object-contain"
+                        unoptimized
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
                   <span className="font-medium text-muted-foreground">Condiciones de envío</span>
@@ -471,34 +489,6 @@ export default function ProductPage({ params }: ProductPageProps) {
                   <p>• No se aceptan cambios en productos en oferta</p>
                 </CollapsibleContent>
               </Collapsible>
-
-              {sizeGuideUrl && (
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
-                      <span className="font-medium text-muted-foreground">Guía de talles</span>
-                      <Ruler className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-3xl">
-                    <DialogHeader>
-                      <DialogTitle>Guía de Talles - {product.brand}</DialogTitle>
-                      <DialogDescription>
-                        Consulta la tabla de medidas para encontrar tu talle perfecto
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="relative w-full aspect-video">
-                      <Image
-                        src={sizeGuideUrl || "/placeholder.svg"}
-                        alt="Guía de talles"
-                        fill
-                        className="object-contain"
-                        unoptimized
-                      />
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              )}
             </div>
 
             <div className="flex gap-2">
