@@ -122,21 +122,6 @@ export async function POST() {
 
     console.log("[v0] Paso 3: Procesando productos...")
 
-    // Mapear categoría a subcategoría
-    function mapCategoryToSubcategory(categoryName: string): string | null {
-      const name = categoryName.toLowerCase()
-      if (name.includes("remera") || name.includes("camiseta")) return "Remeras"
-      if (name.includes("pantalon") || name.includes("jean")) return "Pantalones"
-      if (name.includes("buzo")) return "Buzos"
-      if (name.includes("campera") || name.includes("jacket")) return "Camperas"
-      if (name.includes("zapatilla") || name.includes("calzado")) return "Zapatillas"
-      if (name.includes("short")) return "Shorts"
-      if (name.includes("vestido")) return "Vestidos"
-      if (name.includes("pollera") || name.includes("falda")) return "Polleras"
-      if (name.includes("accesorio")) return "Accesorios"
-      return null
-    }
-
     // Crear todos los registros de productos
     const allProductRecords = []
     let productsProcessed = 0
@@ -158,7 +143,7 @@ export async function POST() {
         }
 
         const categoryName = product.tipo?.nombre || product.category || ""
-        const subcategory = mapCategoryToSubcategory(categoryName)
+        // const subcategory = mapCategoryToSubcategory(categoryName)
 
         // Si el producto tiene variedades
         if (product.variedades && Array.isArray(product.variedades) && product.variedades.length > 0) {
@@ -179,11 +164,11 @@ export async function POST() {
                 price: finalPrice,
                 stock_quantity: stock,
                 category: product.tipo?.nombre || product.category || "Sin categoría",
-                subcategory: subcategory,
+                // subcategory: subcategory,
                 brand: (product.marca?.nombre || product.brand || "Sin marca").toUpperCase(),
                 color: color,
                 size: size,
-                categoria_genero: categoriaGenero,
+                // categoria_genero: categoriaGenero,
                 image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
                 is_active: true,
                 is_featured: false,
@@ -210,11 +195,11 @@ export async function POST() {
               price: finalPrice,
               stock_quantity: stock,
               category: product.tipo?.nombre || product.category || "Sin categoría",
-              subcategory: subcategory,
+              // subcategory: subcategory,
               brand: (product.marca?.nombre || product.brand || "Sin marca").toUpperCase(),
               color: null,
               size: null,
-              categoria_genero: categoriaGenero,
+              // categoria_genero: categoriaGenero,
               image_url: product.imagen || product.image || "/placeholder.svg?height=300&width=300",
               is_active: true,
               is_featured: false,
