@@ -510,6 +510,7 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       totalProducts: allProducts.length,
+      savedProducts: insertedCount + updatedCount, // Total de productos guardados (nuevos + actualizados)
       inserted: insertedCount,
       updated: updatedCount,
       deactivated: deactivatedCount,

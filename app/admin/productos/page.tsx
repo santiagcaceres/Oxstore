@@ -149,31 +149,39 @@ export default function AdminProductsPage() {
       setError(null)
       setSyncStatus("Forzando sincronización...")
 
+      console.log("[v0] 🔄 Iniciando sincronización manual...")
+
       const response = await fetch("/api/zureo/sync-products-simple", {
         method: "POST",
       })
 
+      console.log("[v0] 📡 Respuesta recibida:", response.status, response.statusText)
+
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error("[v0] ❌ Error en respuesta:", errorText)
         throw new Error(`Error ${response.status}: ${response.statusText}`)
       }
 
       const data = await response.json()
+      console.log("[v0] 📦 Datos recibidos:", data)
 
       if (!data.success) {
         throw new Error(data.error || "Error al sincronizar productos")
       }
 
-      setSyncStatus(
-        `Sincronizados ${data.savedProducts} productos con stock de ${data.totalProducts} productos totales`,
-      )
+      const message = `✓ Sincronización completada: ${data.savedProducts || 0} productos guardados (${data.inserted || 0} nuevos, ${data.updated || 0} actualizados) de ${data.totalProducts || 0} productos totales`
+      console.log("[v0] ✅", message)
+      setSyncStatus(message)
+
       setCurrentPage(1)
       await loadLocalProducts()
       setLastSync(data.timestamp)
       setFromCache(false)
 
-      setTimeout(() => setSyncStatus(null), 3000)
+      setTimeout(() => setSyncStatus(null), 5000)
     } catch (error) {
-      console.error("Error syncing products:", error)
+      console.error("[v0] ❌ Error syncing products:", error)
       setError(error instanceof Error ? error.message : "Error al sincronizar")
     } finally {
       setSyncing(false)
