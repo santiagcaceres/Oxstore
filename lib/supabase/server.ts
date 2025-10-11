@@ -1,33 +1,21 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr"
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 
 export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error(
-      "❌ Supabase URL o KEY faltan. Añade NEXT_PUBLIC_SUPABASE_URL y la KEY correspondiente en tus variables de entorno.",
-    )
-  }
-
   const cookieStore = cookies()
 
-  return createServerClient(supabaseUrl, supabaseKey, {
+  return createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: {
-      get: (name: string) => cookieStore.get(name)?.value,
-      set: (name: string, value: string, options: CookieOptions) => {
-        try {
-          cookieStore.set({ name, value, ...options })
-        } catch (error) {
-          // Ignorar error en Server Components
-        }
+      getAll() {
+        return cookieStore.getAll()
       },
-      remove: (name: string, options: CookieOptions) => {
+      setAll(cookiesToSet) {
         try {
-          cookieStore.set({ name, value: "", ...options })
-        } catch (error) {
-          // Ignorar error en Server Components
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+        } catch {
+          // The `setAll` method was called from a Server Component.
+          // This can be ignored if you have middleware refreshing
+          // user sessions.
         }
       },
     },
