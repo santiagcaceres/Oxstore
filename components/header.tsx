@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import Image from "next/image"
 import { useCart } from "@/contexts/cart-context"
 import { createBrowserClient } from "@supabase/ssr"
+import { usePathname } from "next/navigation"
 
 interface Brand {
   id: number
@@ -36,6 +37,9 @@ interface Subcategory {
 }
 
 export function Header() {
+  const pathname = usePathname()
+  const isHomePage = pathname === "/"
+
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -256,11 +260,13 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild className="hidden md:flex">
-              <Link href="/">
-                <Home className="h-5 w-5" />
-              </Link>
-            </Button>
+            {!isHomePage && (
+              <Button variant="ghost" size="icon" asChild className="hidden md:flex">
+                <Link href="/">
+                  <Home className="h-5 w-5" />
+                </Link>
+              </Button>
+            )}
 
             <Sheet onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
@@ -269,13 +275,15 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[300px] sm:w-[400px] overflow-y-auto">
-                <Link
-                  href="/"
-                  className="flex items-center gap-2 text-lg font-medium hover:text-primary transition-colors py-6 px-2 border-b border-border/50 rounded hover:bg-muted/30 mt-8"
-                >
-                  <Home className="h-5 w-5" />
-                  INICIO
-                </Link>
+                {!isHomePage && (
+                  <Link
+                    href="/"
+                    className="flex items-center gap-2 text-lg font-medium hover:text-primary transition-colors py-6 px-2 border-b border-border/50 rounded hover:bg-muted/30 mt-8"
+                  >
+                    <Home className="h-5 w-5" />
+                    INICIO
+                  </Link>
+                )}
                 <nav className="flex flex-col space-y-0">
                   <Collapsible open={expandedMobileMenus.mujer} onOpenChange={() => toggleMobileMenu("mujer")}>
                     <CollapsibleTrigger className="flex items-center justify-between w-full text-lg font-medium hover:text-primary transition-colors py-6 border-b border-border/50">

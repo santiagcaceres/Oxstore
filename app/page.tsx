@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react"
 import { HeroBanner } from "@/components/hero-banner"
 import { ProductGrid } from "@/components/product-grid"
-import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -150,8 +149,6 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-background page-transition">
-      <Header />
-
       <main>
         <section className="w-full" ref={(el) => (sectionsRef.current[0] = el)}>
           <div className="w-full">
@@ -274,7 +271,7 @@ export default function HomePage() {
                 placeholder="Tu email"
                 className="flex-1 px-4 py-2 rounded-lg border border-input bg-background transition-all duration-300 focus:ring-2 focus:ring-primary/20 focus:border-primary hover-glow"
               />
-              <Button className="btn-press hover-scale">Suscribirse</Button>
+              <Button>Suscribirse</Button>
             </div>
           </div>
         </section>

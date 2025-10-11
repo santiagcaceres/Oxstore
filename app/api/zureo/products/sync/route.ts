@@ -220,6 +220,77 @@ export async function GET() {
       return { color, size }
     }
 
+    const { data: subcategoriesData } = await supabase
+      .from("subcategories")
+      .select("id, name, slug, category_id")
+      .eq("is_active", true)
+
+    const subcategoriesMap = new Map(subcategoriesData?.map((s) => [s.name.toLowerCase(), s]) || [])
+    console.log("[v0] Loaded subcategories for mapping:", subcategoriesMap.size)
+
+    function mapZureoToSubcategory(zureoCategory: string): string | null {
+      if (!zureoCategory) return null
+
+      const categoryLower = zureoCategory.toLowerCase().trim()
+
+      // Direct mapping
+      if (subcategoriesMap.has(categoryLower)) {
+        return subcategoriesMap.get(categoryLower)!.name
+      }
+
+      // Fuzzy matching for common variations
+      const mappings: { [key: string]: string } = {
+        remera: "Remeras",
+        remeras: "Remeras",
+        camiseta: "Remeras",
+        camisetas: "Remeras",
+        pantalon: "Pantalones",
+        pantalones: "Pantalones",
+        jean: "Jeans",
+        jeans: "Jeans",
+        buzo: "Buzos",
+        buzos: "Buzos",
+        campera: "Camperas",
+        camperas: "Camperas",
+        zapatilla: "Zapatillas",
+        zapatillas: "Zapatillas",
+        zapato: "Zapatos",
+        zapatos: "Zapatos",
+        short: "Shorts",
+        shorts: "Shorts",
+        pollera: "Polleras",
+        polleras: "Polleras",
+        vestido: "Vestidos",
+        vestidos: "Vestidos",
+        camisa: "Camisas",
+        camisas: "Camisas",
+        chomba: "Chombas",
+        chombas: "Chombas",
+        musculosa: "Musculosas",
+        musculosas: "Musculosas",
+        calza: "Calzas",
+        calzas: "Calzas",
+        jogger: "Joggers",
+        joggers: "Joggers",
+        canguro: "Canguros",
+        canguros: "Canguros",
+        gorra: "Gorras",
+        gorras: "Gorras",
+        mochila: "Mochilas",
+        mochilas: "Mochilas",
+        cartera: "Carteras",
+        carteras: "Carteras",
+        billetera: "Billeteras",
+        billeteras: "Billeteras",
+        cinturon: "Cinturones",
+        cinturones: "Cinturones",
+        medias: "Medias",
+        media: "Medias",
+      }
+
+      return mappings[categoryLower] || null
+    }
+
     const allProductRecords = []
 
     for (const product of productsWithStock.filter((p) => !p.baja)) {
@@ -227,6 +298,7 @@ export async function GET() {
       const basePrice = product.precio || 0
 
       const brandName = (product.marca?.nombre || "SIN MARCA").toUpperCase()
+      const subcategory = mapZureoToSubcategory(product.tipo?.nombre || "")
 
       if (product.variedades && Array.isArray(product.variedades) && product.variedades.length > 0) {
         for (const variety of product.variedades) {
@@ -236,7 +308,7 @@ export async function GET() {
             const finalPrice = Math.round(varietyPrice * impuestoMultiplier)
 
             console.log(
-              `[v0] Product ${product.codigo} - Variety: color=${color}, size=${size}, price=${finalPrice}, stock=${variety.stock}`,
+              `[v0] Product ${product.codigo} - Variety: color=${color}, size=${size}, price=${finalPrice}, stock=${variety.stock}, subcategory=${subcategory}`,
             )
 
             allProductRecords.push({
@@ -251,7 +323,8 @@ export async function GET() {
               stock_quantity: variety.stock,
               category: product.tipo?.nombre || "Sin categoría",
               categoria_zureo: product.tipo?.nombre || "Sin categoría",
-              brand: brandName, // Usar marca en mayúsculas
+              subcategory: subcategory, // Add subcategory field
+              brand: brandName,
               color: color,
               size: size,
               image_url: `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.nombre || "producto")}`,
@@ -283,7 +356,8 @@ export async function GET() {
           stock_quantity: product.stock || 0,
           category: product.tipo?.nombre || "Sin categoría",
           categoria_zureo: product.tipo?.nombre || "Sin categoría",
-          brand: brandName, // Usar marca en mayúsculas
+          subcategory: subcategory, // Add subcategory field
+          brand: brandName,
           color: null,
           size: null,
           image_url: `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.nombre || "producto")}`,
@@ -381,6 +455,13 @@ export async function GET() {
     console.log("[v0] Products with color:", withColor)
     console.log("[v0] Products with size:", withSize)
 
+    const { count: withSubcategory } = await supabase
+      .from("products_in_stock")
+      .select("*", { count: "exact", head: true })
+      .not("subcategory", "is", null)
+
+    console.log("[v0] Products with subcategory:", withSubcategory)
+
     const { data: withColorSize } = await supabase
       .from("products_in_stock")
       .select("id, zureo_code, color, size")
@@ -401,6 +482,7 @@ export async function GET() {
         productsWithColor: withColor || 0,
         productsWithSize: withSize || 0,
         productsWithColorAndSize: withColorSize?.length || 0,
+        productsWithSubcategory: withSubcategory || 0, // Add subcategory count
         syncTime: syncTime,
         categories: [...new Set(productsWithStock.map((p) => p.tipo?.nombre).filter(Boolean))],
         brands: [...new Set(productsWithStock.map((p) => p.marca?.nombre).filter(Boolean))],

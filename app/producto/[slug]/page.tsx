@@ -74,12 +74,14 @@ export default function ProductPage({ params }: ProductPageProps) {
             }
           }
 
-          if (data.brand) {
-            const sizeGuideResponse = await fetch(`/api/size-guides/${encodeURIComponent(data.brand)}`)
+          if (data.subcategory) {
+            const sizeGuideResponse = await fetch(`/api/size-guides/${encodeURIComponent(data.subcategory)}`)
             if (sizeGuideResponse.ok) {
               const sizeGuideData = await sizeGuideResponse.json()
               setSizeGuideUrl(sizeGuideData.image_url)
-              console.log("[v0] Size guide loaded:", sizeGuideData.image_url)
+              console.log("[v0] Size guide loaded for subcategory:", data.subcategory, sizeGuideData.image_url)
+            } else {
+              console.log("[v0] No size guide found for subcategory:", data.subcategory)
             }
           }
 
