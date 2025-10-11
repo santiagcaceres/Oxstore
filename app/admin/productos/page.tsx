@@ -52,6 +52,8 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [filterBrand, setFilterBrand] = useState("")
+  const [availableBrands, setAvailableBrands] = useState<string[]>([])
   const [lastSync, setLastSync] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
@@ -63,7 +65,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     loadLocalProducts()
-  }, [currentPage])
+  }, [currentPage, filterBrand])
 
   const loadLocalProducts = async () => {
     try {
@@ -71,14 +73,29 @@ export default function AdminProductsPage() {
       setError(null)
       const supabase = createClient()
 
-      const { count: totalVariantsCount } = await supabase
+      let countQuery = supabase
         .from("products_in_stock")
         .select("*", { count: "exact", head: true })
         .gt("stock_quantity", 0)
         .eq("is_active", true)
 
+      if (filterBrand) {
+        countQuery = countQuery.eq("brand", filterBrand)
+      }
+
+      const { count: totalVariantsCount } = await countQuery
+
       setTotalProducts(totalVariantsCount || 0)
       setTotalAllVariants(totalVariantsCount || 0)
+
+      const { data: brandsData } = await supabase
+        .from("products_in_stock")
+        .select("brand")
+        .gt("stock_quantity", 0)
+        .eq("is_active", true)
+
+      const uniqueBrands = [...new Set(brandsData?.map((p) => p.brand).filter(Boolean) || [])]
+      setAvailableBrands(uniqueBrands.sort())
 
       const { data: uniqueCodesData } = await supabase
         .from("products_in_stock")
@@ -92,13 +109,19 @@ export default function AdminProductsPage() {
       const from = (currentPage - 1) * PRODUCTS_PER_PAGE
       const to = from + PRODUCTS_PER_PAGE - 1
 
-      const { data: products, error } = await supabase
+      let productsQuery = supabase
         .from("products_in_stock")
         .select("*")
         .gt("stock_quantity", 0)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .range(from, to)
+
+      if (filterBrand) {
+        productsQuery = productsQuery.eq("brand", filterBrand)
+      }
+
+      const { data: products, error } = await productsQuery
 
       if (error) {
         throw new Error(`Error cargando productos: ${error.message}`)
@@ -308,6 +331,21 @@ export default function AdminProductsPage() {
                 className="pl-10"
               />
             </div>
+            <select
+              value={filterBrand}
+              onChange={(e) => {
+                setFilterBrand(e.target.value)
+                setCurrentPage(1)
+              }}
+              className="px-3 py-2 border rounded-md bg-background"
+            >
+              <option value="">Todas las marcas</option>
+              {availableBrands.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
+            </select>
             <div className="text-sm text-muted-foreground">
               Mostrando {(currentPage - 1) * PRODUCTS_PER_PAGE + 1} -{" "}
               {Math.min(currentPage * PRODUCTS_PER_PAGE, totalProducts)} de {totalProducts}
