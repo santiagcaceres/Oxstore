@@ -1,0 +1,28 @@
+{
+  "name": "Luciano Fulco - Artista Visual",
+  "short_name": "L. Fulco",
+  "description": "Portfolio oficial de Luciano Fulco, artista visual uruguayo",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#000000",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["art", "portfolio", "gallery"],
+  "lang": "es",
+  "dir": "ltr"
+}

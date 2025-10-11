@@ -1,28 +1,33 @@
-import { updateSession } from "@/lib/supabase/middleware"
+import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
-export async function middleware(request: NextRequest) {
-  const supabaseProtectedPaths = ["/perfil"]
-  const isSupabaseProtectedPath = supabaseProtectedPaths.some((path) => request.nextUrl.pathname.startsWith(path))
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next()
 
-  if (isSupabaseProtectedPath) {
-    return await updateSession(request)
+  // Si es un favicon o icono, forzar no-cache
+  if (
+    request.nextUrl.pathname.includes("icon") ||
+    request.nextUrl.pathname.includes("favicon") ||
+    request.nextUrl.pathname.includes("apple") ||
+    request.nextUrl.pathname.endsWith(".ico") ||
+    (request.nextUrl.pathname.endsWith(".png") && request.nextUrl.pathname.includes("app-icon"))
+  ) {
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+    response.headers.set("Pragma", "no-cache")
+    response.headers.set("Expires", "0")
+    response.headers.set("Surrogate-Control", "no-store")
   }
 
-  // Para todas las demás rutas, continuar sin procesamiento de Supabase
-  return
+  return response
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - images - .svg, .png, .jpg, .jpeg, .gif, .webp
-     * Feel free to modify this pattern to include more paths.
-     */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/icon.png",
+    "/app-icon.png",
+    "/favicon.ico",
+    "/apple-icon",
+    "/icon",
+    "/((?!api|_next/static|_next/image).*)",
   ],
 }

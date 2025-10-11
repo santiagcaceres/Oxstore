@@ -2,150 +2,122 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { uploadBannerImage, deleteBannerImage, BANNER_SIZE_GUIDE } from "@/lib/storage"
-import { Upload, X, Info } from "lucide-react"
+import { Upload, Trash2, ImageIcon } from "lucide-react"
+import Image from "next/image"
 
 interface ImageUploadProps {
-  bannerId: string
-  currentImageUrl?: string
-  bannerPosition: string
-  onImageUploaded: (url: string) => void
-  onImageDeleted: () => void
+  onImageSelect: (file: File | null) => void
+  currentImage?: string
+  className?: string
 }
 
-export default function ImageUpload({
-  bannerId,
-  currentImageUrl,
-  bannerPosition,
-  onImageUploaded,
-  onImageDeleted,
-}: ImageUploadProps) {
-  const [uploading, setUploading] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
+export function ImageUpload({ onImageSelect, currentImage, className = "" }: ImageUploadProps) {
+  const [preview, setPreview] = useState<string>(currentImage || "")
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Obtener guía de tamaños según la posición
-  const getSizeGuide = () => {
-    if (bannerPosition.startsWith("category-")) return BANNER_SIZE_GUIDE.category
-    if (bannerPosition.startsWith("gender-")) return BANNER_SIZE_GUIDE.gender
-    return BANNER_SIZE_GUIDE[bannerPosition as keyof typeof BANNER_SIZE_GUIDE] || BANNER_SIZE_GUIDE.hero
-  }
-
-  const sizeGuide = getSizeGuide()
-
-  const handleFileUpload = async (file: File) => {
-    try {
-      setUploading(true)
-
-      // Eliminar imagen anterior si existe
-      if (currentImageUrl && !currentImageUrl.includes("placeholder.svg")) {
-        await deleteBannerImage(currentImageUrl)
-      }
-
-      const newImageUrl = await uploadBannerImage(file, bannerId)
-      onImageUploaded(newImageUrl)
-    } catch (error) {
-      alert("Error subiendo imagen: " + (error as Error).message)
-    } finally {
-      setUploading(false)
-    }
-  }
-
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      handleFileUpload(file)
-    }
-  }
-
-  const handleDrop = (event: React.DragEvent) => {
-    event.preventDefault()
-    setDragOver(false)
-
-    const file = event.dataTransfer.files[0]
+  const handleFileSelect = (file: File) => {
     if (file && file.type.startsWith("image/")) {
-      handleFileUpload(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+      onImageSelect(file)
     }
   }
 
-  const handleDeleteImage = async () => {
-    if (!currentImageUrl || currentImageUrl.includes("placeholder.svg")) return
-
-    try {
-      await deleteBannerImage(currentImageUrl)
-      onImageDeleted()
-    } catch (error) {
-      alert("Error eliminando imagen: " + (error as Error).message)
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      handleFileSelect(file)
     }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      handleFileSelect(file)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleRemoveImage = () => {
+    setPreview("")
+    onImageSelect(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleClick = () => {
+    fileInputRef.current?.click()
   }
 
   return (
-    <div className="space-y-4">
-      {/* Guía de tamaños */}
-      <div className="bg-blue-50 p-3 rounded-lg">
-        <div className="flex items-center gap-2 mb-2">
-          <Info className="h-4 w-4 text-blue-600" />
-          <span className="text-sm font-medium text-blue-800">Tamaños recomendados</span>
-        </div>
-        <div className="text-xs text-blue-700 space-y-1">
-          <div>
-            <strong>PC:</strong> {sizeGuide.desktop.width}x{sizeGuide.desktop.height}px ({sizeGuide.desktop.ratio})
-          </div>
-          <div>
-            <strong>Formato:</strong> JPG, PNG, WebP (máx. 5MB)
-          </div>
-        </div>
-      </div>
-
-      {/* Vista previa de imagen actual */}
-      {currentImageUrl && (
+    <div className={`space-y-4 ${className}`}>
+      {preview ? (
         <div className="relative">
-          <img
-            src={currentImageUrl || "/placeholder.svg"}
-            alt="Banner actual"
-            className="w-full h-32 object-cover rounded-lg border"
+          <Image
+            src={preview || "/placeholder.svg"}
+            alt="Preview"
+            width={400}
+            height={300}
+            className="w-full h-48 object-cover rounded-lg border"
           />
-          {!currentImageUrl.includes("placeholder.svg") && (
-            <Button variant="destructive" size="sm" className="absolute top-2 right-2" onClick={handleDeleteImage}>
-              <X className="h-4 w-4" />
-            </Button>
-          )}
+          <button
+            type="button"
+            onClick={handleRemoveImage}
+            className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors shadow-lg"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <div
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+          }`}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onClick={handleClick}
+        >
+          <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-lg font-medium text-gray-700 mb-2">
+            {isDragging ? "Suelta la imagen aquí" : "Arrastra una imagen aquí"}
+          </p>
+          <p className="text-sm text-gray-500 mb-4">o haz clic para seleccionar</p>
+          <Button type="button" variant="outline" size="sm">
+            <ImageIcon className="w-4 h-4 mr-2" />
+            Seleccionar Imagen
+          </Button>
         </div>
       )}
 
-      {/* Área de subida */}
-      <div
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          dragOver ? "border-blue-400 bg-blue-50" : "border-gray-300"
-        }`}
-        onDragOver={(e) => {
-          e.preventDefault()
-          setDragOver(true)
-        }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-      >
-        <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-        <p className="text-sm text-gray-600 mb-2">Arrastra una imagen aquí o haz clic para seleccionar</p>
+      <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
 
-        <Label htmlFor={`file-${bannerId}`}>
-          <Button variant="outline" disabled={uploading} asChild>
-            <span>{uploading ? "Subiendo..." : "Seleccionar imagen"}</span>
+      {preview && (
+        <div className="text-center">
+          <Button type="button" variant="outline" size="sm" onClick={handleClick}>
+            <Upload className="w-4 h-4 mr-2" />
+            Cambiar Imagen
           </Button>
-        </Label>
-
-        <Input
-          id={`file-${bannerId}`}
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          disabled={uploading}
-          className="hidden"
-        />
-      </div>
+        </div>
+      )}
     </div>
   )
 }

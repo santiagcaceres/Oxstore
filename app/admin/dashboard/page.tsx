@@ -1,191 +1,178 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Package, TrendingUp, Users, ShoppingCart, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Palette, Plus, Settings, LogOut, ImageIcon } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { getArtworks, getFeaturedArtworks } from "@/app/actions/artworks"
 
-interface DashboardStats {
-  totalProducts: number
-  totalCategories: number
-  lowStockProducts: number
-  totalValue: number
-  lastSync: string | null
-}
-
-export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalProducts: 0,
-    totalCategories: 0,
-    lowStockProducts: 0,
-    totalValue: 0,
-    lastSync: null,
+export default function AdminDashboard() {
+  const router = useRouter()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [stats, setStats] = useState({
+    totalArtworks: 0,
+    featuredArtworks: 0,
+    categories: 0,
   })
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
 
-  const fetchStats = async () => {
+  useEffect(() => {
+    const token = localStorage.getItem("admin-token")
+    if (!token) {
+      router.push("/admin/login")
+    } else {
+      setIsAuthenticated(true)
+      loadStats()
+    }
+  }, [router])
+
+  const loadStats = async () => {
     try {
-      const response = await fetch("/api/dashboard-stats")
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data)
-      }
+      const [allArtworks, featuredArtworks] = await Promise.all([getArtworks(), getFeaturedArtworks()])
+
+      const categories = new Set(allArtworks.map((artwork) => artwork.category))
+
+      setStats({
+        totalArtworks: allArtworks.length,
+        featuredArtworks: featuredArtworks.length,
+        categories: categories.size,
+      })
     } catch (error) {
-      console.error("Error fetching dashboard stats:", error)
+      console.error("Error loading stats:", error)
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchStats()
-  }, [])
-
-  const handleRefresh = () => {
-    setIsLoading(true)
-    fetchStats()
+  const handleLogout = () => {
+    localStorage.removeItem("admin-token")
+    router.push("/admin/login")
   }
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <Button disabled>
-            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-            Cargando...
-          </Button>
-        </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardHeader className="pb-2">
-                <div className="h-4 bg-muted rounded w-3/4"></div>
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-muted rounded w-1/2 mb-2"></div>
-                <div className="h-3 bg-muted rounded w-full"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
+  if (!isAuthenticated) {
+    return <div>Cargando...</div>
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Resumen de tu tienda Oxstore</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <div className="flex items-center gap-3">
+              <Palette className="w-8 h-8 text-gray-800" />
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">Panel de Administración</h1>
+                <p className="text-sm text-gray-600">Luciano Fulco</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <Button variant="outline" size="sm" onClick={handleLogout}>
+                <LogOut className="w-4 h-4 mr-2" />
+                Cerrar Sesión
+              </Button>
+            </div>
+          </div>
         </div>
-        <Button onClick={handleRefresh} variant="outline">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Actualizar
-        </Button>
-      </div>
+      </header>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Sincronizados desde Zureo</p>
-          </CardContent>
-        </Card>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Bienvenido, Luciano</h2>
+          <p className="text-gray-600">Gestiona tu portafolio artístico desde aquí</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Categorías</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalCategories}</div>
-            <p className="text-xs text-muted-foreground">Rubros disponibles</p>
-          </CardContent>
-        </Card>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total de Obras</p>
+                  <p className="text-2xl font-bold text-gray-900">{loading ? "..." : stats.totalArtworks}</p>
+                </div>
+                <ImageIcon className="w-8 h-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Stock Bajo</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.lowStockProducts}</div>
-            <p className="text-xs text-muted-foreground">Productos con stock ≤ 5</p>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Obras Destacadas</p>
+                  <p className="text-2xl font-bold text-gray-900">{loading ? "..." : stats.featuredArtworks}</p>
+                </div>
+                <Palette className="w-8 h-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${stats.totalValue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Inventario total</p>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Categorías</p>
+                  <p className="text-2xl font-bold text-gray-900">{loading ? "..." : stats.categories}</p>
+                </div>
+                <Settings className="w-8 h-8 text-gray-400" />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Estado de Sincronización</CardTitle>
-            <CardDescription>Información sobre la conexión con Zureo</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span>Estado de API:</span>
-              <Badge variant="default" className="bg-green-500">
-                Conectado
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Última sincronización:</span>
-              <span className="text-sm text-muted-foreground">
-                {stats.lastSync ? new Date(stats.lastSync).toLocaleString("es-ES") : "Nunca"}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Endpoint:</span>
-              <span className="text-sm text-muted-foreground">https://020128150011</span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="w-5 h-5" />
+                Gestión de Obras
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-600">Administra tu colección de obras de arte</p>
+              <div className="flex gap-3">
+                <Link href="/admin/obras/nueva">
+                  <Button className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white">
+                    <Plus className="w-4 h-4" />
+                    Nueva Obra
+                  </Button>
+                </Link>
+                <Link href="/admin/obras">
+                  <Button variant="outline" className="flex items-center gap-2 bg-transparent">
+                    <ImageIcon className="w-4 h-4" />
+                    Ver Todas
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Acciones Rápidas</CardTitle>
-            <CardDescription>Gestiona tu tienda desde aquí</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button className="w-full" asChild>
-              <a href="/admin/sincronizar">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Sincronizar Productos
-              </a>
-            </Button>
-            <Button variant="outline" className="w-full bg-transparent" asChild>
-              <a href="/admin/productos">
-                <Package className="h-4 w-4 mr-2" />
-                Ver Productos
-              </a>
-            </Button>
-            <Button variant="outline" className="w-full bg-transparent" asChild>
-              <a href="/admin/banners">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Gestionar Banners
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="w-5 h-5" />
+                Sitio Web
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-gray-600">Accede a tu sitio web público</p>
+              <div className="flex gap-3">
+                <Link href="/" target="_blank">
+                  <Button className="flex items-center gap-2 bg-black hover:bg-gray-800 text-white">
+                    <Settings className="w-4 h-4" />
+                    Ver Sitio
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </div>
   )
 }
