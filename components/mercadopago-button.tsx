@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface MercadoPagoButtonProps {
   items: Array<{
@@ -37,6 +38,7 @@ export function MercadoPagoButton({
 }: MercadoPagoButtonProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const isMobile = useIsMobile()
 
   const handlePayment = async () => {
     setIsLoading(true)
@@ -72,7 +74,11 @@ export function MercadoPagoButton({
 
       if (data.init_point) {
         console.log("[v0] Redirecting to MercadoPago:", data.init_point)
-        window.open(data.init_point, "_blank", "width=800,height=600,scrollbars=yes,resizable=yes")
+        if (isMobile) {
+          window.location.href = data.init_point
+        } else {
+          window.open(data.init_point, "_blank", "width=800,height=600,scrollbars=yes,resizable=yes")
+        }
       } else {
         throw new Error("No se recibió el enlace de pago")
       }

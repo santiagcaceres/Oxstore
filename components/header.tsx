@@ -38,8 +38,7 @@ interface Subcategory {
 
 export function Header() {
   const pathname = usePathname()
-  const isHomePage = pathname === "/"
-
+  const { state } = useCart()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -53,7 +52,9 @@ export function Header() {
   const [brandsWithProducts, setBrandsWithProducts] = useState<Brand[]>([])
   const [subcategoriesWithProducts, setSubcategoriesWithProducts] = useState<number[]>([])
   const [expandedMobileMenus, setExpandedMobileMenus] = useState<{ [key: string]: boolean }>({})
-  const { state } = useCart()
+
+  const isAdminRoute = pathname?.startsWith("/admin")
+  const isHomePage = pathname === "/"
 
   const toggleMobileMenu = (menuKey: string) => {
     setExpandedMobileMenus((prev) => ({
@@ -63,6 +64,8 @@ export function Header() {
   }
 
   useEffect(() => {
+    if (isAdminRoute) return
+
     const fetchData = async () => {
       try {
         const supabase = createBrowserClient(
@@ -155,7 +158,7 @@ export function Header() {
     }
 
     fetchData()
-  }, [])
+  }, [isAdminRoute])
 
   const getSubcategoriesForCategory = (categorySlug: string, gender?: string) => {
     const category = categories.find((cat) => cat.slug === categorySlug)

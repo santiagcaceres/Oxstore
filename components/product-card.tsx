@@ -36,42 +36,6 @@ export function ProductCard({ product, className = "", index = 0 }: ProductCardP
 
   const animationDelay = `stagger-${Math.min(index + 1, 6)}`
 
-  const getAvailableSizes = () => {
-    if (product.availableSizes && product.availableSizes.length > 0) {
-      return product.availableSizes.sort()
-    }
-
-    if (!product.variants || product.variants.length === 0) {
-      return product.size ? [product.size] : []
-    }
-
-    const sizes = product.variants
-      .map((v) => v.size)
-      .filter((size, index, arr) => size && arr.indexOf(size) === index)
-      .sort()
-
-    return sizes
-  }
-
-  const getAvailableColors = () => {
-    if (product.availableColors && product.availableColors.length > 0) {
-      return product.availableColors
-    }
-
-    if (!product.variants || product.variants.length === 0) {
-      return product.color ? [product.color] : []
-    }
-
-    const colors = product.variants
-      .map((v) => v.color)
-      .filter((color, index, arr) => color && arr.indexOf(color) === index)
-
-    return colors
-  }
-
-  const availableSizes = getAvailableSizes()
-  const availableColors = getAvailableColors()
-
   const handleAddToCart = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -137,38 +101,6 @@ export function ProductCard({ product, className = "", index = 0 }: ProductCardP
             </h3>
           </Link>
         </div>
-
-        {availableColors.length > 1 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            <span className="text-xs text-muted-foreground">Colores:</span>
-            {availableColors.slice(0, 3).map((color) => (
-              <Badge key={color} variant="secondary" className="text-xs px-1.5 py-0.5 h-auto font-normal">
-                {color.toUpperCase()}
-              </Badge>
-            ))}
-            {availableColors.length > 3 && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0.5 h-auto font-normal">
-                +{availableColors.length - 3}
-              </Badge>
-            )}
-          </div>
-        )}
-
-        {availableSizes.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            <span className="text-xs text-muted-foreground">Talles:</span>
-            {availableSizes.slice(0, 4).map((size) => (
-              <Badge key={size} variant="outline" className="text-xs px-1.5 py-0.5 h-auto font-normal">
-                {size.toUpperCase()}
-              </Badge>
-            ))}
-            {availableSizes.length > 4 && (
-              <Badge variant="outline" className="text-xs px-1.5 py-0.5 h-auto font-normal">
-                +{availableSizes.length - 4}
-              </Badge>
-            )}
-          </div>
-        )}
 
         {/* Price */}
         <div className="flex items-center gap-2">

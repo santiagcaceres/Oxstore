@@ -33,16 +33,8 @@ export default function Page() {
       return
     }
 
-    const { data: existingUser } = await supabase.from("users").select("email").eq("email", email).single()
-
-    if (existingUser) {
-      setError("Ya existe una cuenta con este email")
-      setIsLoading(false)
-      return
-    }
-
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -56,21 +48,7 @@ export default function Page() {
 
       if (error) throw error
 
-      if (data.user) {
-        const { error: profileError } = await supabase.from("users").insert({
-          id: data.user.id,
-          email: email,
-          first_name: firstName,
-          last_name: lastName,
-          role: "customer",
-        })
-
-        if (profileError) {
-          console.error("Error creating profile:", profileError)
-        }
-
-        router.push("/cuenta")
-      }
+      router.push("/auth/registro-exitoso")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Ocurrió un error")
     } finally {
@@ -79,7 +57,7 @@ export default function Page() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Card>
           <CardHeader className="text-center">
@@ -127,9 +105,11 @@ export default function Page() {
                   id="password"
                   type="password"
                   required
+                  minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">CONFIRMAR CONTRASEÑA</Label>

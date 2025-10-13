@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { User, Package, LogOut, Mail, Phone, Calendar, Eye, Edit, Save, X } from "lucide-react"
+import { User, Package, LogOut, Mail, Phone, Calendar, Eye, Edit, Save, X, MapPin } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/client"
@@ -35,15 +36,20 @@ interface Order {
 
 interface UserProfile {
   id: string
-  email: string
   first_name: string
   last_name: string
   phone?: string
+  dni?: string
+  address?: string
+  city?: string
+  province?: string
+  postal_code?: string
   created_at: string
 }
 
 export default function CuentaPage() {
   const [user, setUser] = useState<UserProfile | null>(null)
+  const [email, setEmail] = useState("")
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -52,6 +58,11 @@ export default function CuentaPage() {
     first_name: "",
     last_name: "",
     phone: "",
+    dni: "",
+    address: "",
+    city: "",
+    province: "",
+    postal_code: "",
   })
   const router = useRouter()
   const supabase = createClient()
@@ -71,7 +82,9 @@ export default function CuentaPage() {
         return
       }
 
-      const { data: profile } = await supabase.from("users").select("*").eq("id", authUser.id).single()
+      setEmail(authUser.email || "")
+
+      const { data: profile } = await supabase.from("user_profiles").select("*").eq("id", authUser.id).single()
 
       if (profile) {
         setUser(profile)
@@ -79,32 +92,14 @@ export default function CuentaPage() {
           first_name: profile.first_name || "",
           last_name: profile.last_name || "",
           phone: profile.phone || "",
+          dni: profile.dni || "",
+          address: profile.address || "",
+          city: profile.city || "",
+          province: profile.province || "",
+          postal_code: profile.postal_code || "",
         })
-      } else {
-        // Si no existe el perfil, crearlo con los datos de auth
-        const { data: newProfile } = await supabase
-          .from("users")
-          .insert({
-            id: authUser.id,
-            email: authUser.email || "",
-            first_name: authUser.user_metadata?.first_name || "",
-            last_name: authUser.user_metadata?.last_name || "",
-            role: "customer",
-          })
-          .select()
-          .single()
-
-        if (newProfile) {
-          setUser(newProfile)
-          setEditData({
-            first_name: newProfile.first_name || "",
-            last_name: newProfile.last_name || "",
-            phone: newProfile.phone || "",
-          })
-        }
       }
 
-      // Obtener pedidos del usuario
       const { data: userOrders } = await supabase
         .from("orders")
         .select(`
@@ -136,11 +131,16 @@ export default function CuentaPage() {
 
     try {
       const { error } = await supabase
-        .from("users")
+        .from("user_profiles")
         .update({
           first_name: editData.first_name,
           last_name: editData.last_name,
           phone: editData.phone,
+          dni: editData.dni,
+          address: editData.address,
+          city: editData.city,
+          province: editData.province,
+          postal_code: editData.postal_code,
         })
         .eq("id", user.id)
 
@@ -150,9 +150,7 @@ export default function CuentaPage() {
         prev
           ? {
               ...prev,
-              first_name: editData.first_name,
-              last_name: editData.last_name,
-              phone: editData.phone,
+              ...editData,
             }
           : null,
       )
@@ -169,8 +167,6 @@ export default function CuentaPage() {
     await supabase.auth.signOut()
     router.push("/")
   }
-
-  // ... existing helper functions ...
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -267,7 +263,6 @@ export default function CuentaPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Profile Information */}
             <div className="lg:col-span-1">
               <Card>
                 <CardHeader>
@@ -297,7 +292,7 @@ export default function CuentaPage() {
                     <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
                       <User className="h-6 w-6 text-primary" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       {isEditing ? (
                         <div className="space-y-2">
                           <div className="grid grid-cols-2 gap-2">
@@ -341,7 +336,7 @@ export default function CuentaPage() {
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{user.email}</span>
+                      <span className="text-sm">{email}</span>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -360,6 +355,86 @@ export default function CuentaPage() {
                       )}
                     </div>
 
+                    {isEditing && (
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="dni" className="text-xs">
+                            DNI
+                          </Label>
+                          <Input
+                            id="dni"
+                            value={editData.dni}
+                            onChange={(e) => setEditData((prev) => ({ ...prev, dni: e.target.value }))}
+                            placeholder="DNI"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="address" className="text-xs">
+                            Dirección
+                          </Label>
+                          <Textarea
+                            id="address"
+                            value={editData.address}
+                            onChange={(e) => setEditData((prev) => ({ ...prev, address: e.target.value }))}
+                            placeholder="Calle y número"
+                            className="text-sm"
+                            rows={2}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-2">
+                            <Label htmlFor="city" className="text-xs">
+                              Ciudad
+                            </Label>
+                            <Input
+                              id="city"
+                              value={editData.city}
+                              onChange={(e) => setEditData((prev) => ({ ...prev, city: e.target.value }))}
+                              placeholder="Ciudad"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="province" className="text-xs">
+                              Provincia
+                            </Label>
+                            <Input
+                              id="province"
+                              value={editData.province}
+                              onChange={(e) => setEditData((prev) => ({ ...prev, province: e.target.value }))}
+                              placeholder="Provincia"
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="postal_code" className="text-xs">
+                            Código Postal
+                          </Label>
+                          <Input
+                            id="postal_code"
+                            value={editData.postal_code}
+                            onChange={(e) => setEditData((prev) => ({ ...prev, postal_code: e.target.value }))}
+                            placeholder="Código Postal"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {!isEditing && user.address && (
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div className="text-sm">
+                          <p>{user.address}</p>
+                          <p>
+                            {user.city}, {user.province} {user.postal_code}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">Miembro desde {new Date(user.created_at).toLocaleDateString()}</span>
@@ -369,7 +444,6 @@ export default function CuentaPage() {
               </Card>
             </div>
 
-            {/* Orders History */}
             <div className="lg:col-span-2">
               <Card>
                 <CardHeader>
