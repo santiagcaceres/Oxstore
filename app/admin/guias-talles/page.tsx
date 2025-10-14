@@ -22,7 +22,11 @@ import {
 } from "@/components/ui/dialog"
 
 interface Subcategory {
-  subcategory: string
+  id: number
+  name: string
+  slug: string
+  category_id: number
+  gender: string | null
   product_count: number
   size_guide_url?: string
 }
@@ -52,29 +56,44 @@ export default function SizeGuidesPage() {
       setLoading(true)
       setError(null)
 
-      console.log("[v0] Loading all subcategories from products_in_stock...")
+      console.log("[v0] Loading ALL subcategories from subcategories table...")
 
-      // Obtener todas las subcategorías únicas con conteo de productos
+      const { data: subcategoriesData, error: subcategoriesError } = await supabase
+        .from("subcategories")
+        .select("id, name, slug, category_id, gender")
+        .eq("is_active", true)
+        .order("name")
+
+      if (subcategoriesError) {
+        throw new Error(`Error cargando subcategorías: ${subcategoriesError.message}`)
+      }
+
+      console.log(`[v0] Loaded ${subcategoriesData?.length || 0} subcategories from database`)
+
       const { data: productsData, error: productsError } = await supabase
         .from("products_in_stock")
         .select("subcategory")
         .eq("is_active", true)
 
       if (productsError) {
-        throw new Error(`Error cargando subcategorías: ${productsError.message}`)
+        console.error("Error loading products:", productsError)
       }
 
-      // Contar productos por subcategoría
-      const subcategoryCounts = productsData.reduce(
-        (acc, product) => {
-          const subcategory = product.subcategory || "Sin subcategoría"
-          acc[subcategory] = (acc[subcategory] || 0) + 1
-          return acc
-        },
-        {} as Record<string, number>,
-      )
+      // Crear mapa de conteo de productos por subcategoría
+      const productCounts =
+        productsData?.reduce(
+          (acc, product) => {
+            const subcategory = product.subcategory
+            if (subcategory) {
+              acc[subcategory] = (acc[subcategory] || 0) + 1
+            }
+            return acc
+          },
+          {} as Record<string, number>,
+        ) || {}
 
-      // Obtener guías de talles existentes
+      console.log("[v0] Product counts by subcategory:", productCounts)
+
       const { data: guidesData, error: guidesError } = await supabase
         .from("size_guides")
         .select("subcategory, image_url")
@@ -83,20 +102,34 @@ export default function SizeGuidesPage() {
         console.error("Error loading size guides:", guidesError)
       }
 
-      // Crear mapa de guías de talles
-      const guidesMap = new Map(guidesData?.map((guide) => [guide.subcategory, guide.image_url]) || [])
+      // Crear mapa de guías de talles por nombre de subcategoría
+      const guidesMap = new Map(guidesData?.map((guide) => [guide.subcategory.toLowerCase(), guide.image_url]) || [])
 
-      // Combinar datos
-      const subcategoriesWithGuides: Subcategory[] = Object.entries(subcategoryCounts)
-        .map(([subcategory, count]) => ({
-          subcategory,
-          product_count: count,
-          size_guide_url: guidesMap.get(subcategory),
-        }))
-        .sort((a, b) => b.product_count - a.product_count)
+      console.log("[v0] Size guides map:", Array.from(guidesMap.entries()))
 
-      console.log(`[v0] Loaded ${subcategoriesWithGuides.length} subcategories`)
-      setSubcategories(subcategoriesWithGuides)
+      const subcategoriesWithData: Subcategory[] = (subcategoriesData || []).map((sub) => ({
+        id: sub.id,
+        name: sub.name,
+        slug: sub.slug,
+        category_id: sub.category_id,
+        gender: sub.gender,
+        product_count: productCounts[sub.name] || 0,
+        size_guide_url: guidesMap.get(sub.name.toLowerCase()),
+      }))
+
+      // Ordenar por cantidad de productos (descendente) y luego por nombre
+      subcategoriesWithData.sort((a, b) => {
+        if (b.product_count !== a.product_count) {
+          return b.product_count - a.product_count
+        }
+        return a.name.localeCompare(b.name)
+      })
+
+      console.log(`[v0] Final subcategories with data: ${subcategoriesWithData.length}`)
+      console.log("[v0] Subcategories with guides:", subcategoriesWithData.filter((s) => s.size_guide_url).length)
+      console.log("[v0] Subcategories without guides:", subcategoriesWithData.filter((s) => !s.size_guide_url).length)
+
+      setSubcategories(subcategoriesWithData)
     } catch (error) {
       console.error("Error loading subcategories:", error)
       setError(error instanceof Error ? error.message : "Error cargando subcategorías")
@@ -112,20 +145,20 @@ export default function SizeGuidesPage() {
       return
     }
 
-    const filtered = subcategories.filter((sub) => sub.subcategory.toLowerCase().includes(searchTerm.toLowerCase()))
+    const filtered = subcategories.filter((sub) => sub.name.toLowerCase().includes(searchTerm.toLowerCase()))
     setFilteredSubcategories(filtered)
   }
 
-  const handleFileUpload = async (subcategory: string, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (subcategoryName: string, event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     try {
-      setUploading(subcategory)
+      setUploading(subcategoryName)
       setError(null)
       setSuccess(null)
 
-      console.log(`[v0] Uploading size guide for subcategory: ${subcategory}`)
+      console.log(`[v0] Uploading size guide for subcategory: ${subcategoryName}`)
 
       // Validar tipo de archivo
       if (!file.type.startsWith("image/")) {
@@ -138,7 +171,7 @@ export default function SizeGuidesPage() {
       }
 
       // Subir imagen a Supabase Storage
-      const fileName = `size-guide-${subcategory.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.${file.name.split(".").pop()}`
+      const fileName = `size-guide-${subcategoryName.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}.${file.name.split(".").pop()}`
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("size-guides")
         .upload(fileName, file, {
@@ -160,7 +193,7 @@ export default function SizeGuidesPage() {
       // Guardar o actualizar en la base de datos
       const { error: upsertError } = await supabase.from("size_guides").upsert(
         {
-          subcategory,
+          subcategory: subcategoryName,
           image_url: publicUrl,
           updated_at: new Date().toISOString(),
         },
@@ -173,7 +206,7 @@ export default function SizeGuidesPage() {
         throw new Error(`Error guardando guía de talles: ${upsertError.message}`)
       }
 
-      setSuccess(`Guía de talles actualizada para ${subcategory}`)
+      setSuccess(`Guía de talles actualizada para ${subcategoryName}`)
       await loadSubcategories()
 
       setTimeout(() => setSuccess(null), 3000)
@@ -186,8 +219,8 @@ export default function SizeGuidesPage() {
     }
   }
 
-  const handleDeleteGuide = async (subcategory: string, imageUrl: string) => {
-    if (!confirm(`¿Estás seguro de eliminar la guía de talles de ${subcategory}?`)) {
+  const handleDeleteGuide = async (subcategoryName: string, imageUrl: string) => {
+    if (!confirm(`¿Estás seguro de eliminar la guía de talles de ${subcategoryName}?`)) {
       return
     }
 
@@ -195,10 +228,10 @@ export default function SizeGuidesPage() {
       setError(null)
       setSuccess(null)
 
-      console.log(`[v0] Deleting size guide for subcategory: ${subcategory}`)
+      console.log(`[v0] Deleting size guide for subcategory: ${subcategoryName}`)
 
       // Eliminar de la base de datos
-      const { error: deleteError } = await supabase.from("size_guides").delete().eq("subcategory", subcategory)
+      const { error: deleteError } = await supabase.from("size_guides").delete().eq("subcategory", subcategoryName)
 
       if (deleteError) {
         throw new Error(`Error eliminando guía: ${deleteError.message}`)
@@ -210,7 +243,7 @@ export default function SizeGuidesPage() {
         await supabase.storage.from("size-guides").remove([fileName])
       }
 
-      setSuccess(`Guía de talles eliminada para ${subcategory}`)
+      setSuccess(`Guía de talles eliminada para ${subcategoryName}`)
       await loadSubcategories()
 
       setTimeout(() => setSuccess(null), 3000)
@@ -315,6 +348,7 @@ export default function SizeGuidesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Subcategoría</TableHead>
+                  <TableHead>Género</TableHead>
                   <TableHead>Productos</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Guía de Talles</TableHead>
@@ -323,12 +357,23 @@ export default function SizeGuidesPage() {
               </TableHeader>
               <TableBody>
                 {filteredSubcategories.map((subcategory) => (
-                  <TableRow key={subcategory.subcategory}>
+                  <TableRow key={subcategory.id}>
                     <TableCell>
-                      <div className="font-medium capitalize">{subcategory.subcategory}</div>
+                      <div className="font-medium capitalize">{subcategory.name}</div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{subcategory.product_count} productos</Badge>
+                      {subcategory.gender ? (
+                        <Badge variant="outline" className="capitalize">
+                          {subcategory.gender}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {subcategory.product_count} {subcategory.product_count === 1 ? "producto" : "productos"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       {subcategory.size_guide_url ? (
@@ -354,13 +399,13 @@ export default function SizeGuidesPage() {
                           </DialogTrigger>
                           <DialogContent className="max-w-4xl">
                             <DialogHeader>
-                              <DialogTitle>Guía de Talles - {subcategory.subcategory}</DialogTitle>
+                              <DialogTitle>Guía de Talles - {subcategory.name}</DialogTitle>
                               <DialogDescription>Vista previa de la guía de talles</DialogDescription>
                             </DialogHeader>
                             <div className="relative w-full h-[600px]">
                               <Image
                                 src={subcategory.size_guide_url || "/placeholder.svg"}
-                                alt={`Guía de talles ${subcategory.subcategory}`}
+                                alt={`Guía de talles ${subcategory.name}`}
                                 fill
                                 className="object-contain"
                                 unoptimized
@@ -372,34 +417,34 @@ export default function SizeGuidesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <label htmlFor={`upload-${subcategory.subcategory}`}>
+                        <label htmlFor={`upload-${subcategory.id}`}>
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={uploading === subcategory.subcategory}
-                            onClick={() => document.getElementById(`upload-${subcategory.subcategory}`)?.click()}
+                            disabled={uploading === subcategory.name}
+                            onClick={() => document.getElementById(`upload-${subcategory.id}`)?.click()}
                           >
                             <Upload className="h-4 w-4 mr-2" />
-                            {uploading === subcategory.subcategory
+                            {uploading === subcategory.name
                               ? "Subiendo..."
                               : subcategory.size_guide_url
                                 ? "Cambiar"
                                 : "Subir"}
                           </Button>
                           <input
-                            id={`upload-${subcategory.subcategory}`}
+                            id={`upload-${subcategory.id}`}
                             type="file"
                             accept="image/*"
                             className="hidden"
-                            onChange={(e) => handleFileUpload(subcategory.subcategory, e)}
-                            disabled={uploading === subcategory.subcategory}
+                            onChange={(e) => handleFileUpload(subcategory.name, e)}
+                            disabled={uploading === subcategory.name}
                           />
                         </label>
                         {subcategory.size_guide_url && (
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteGuide(subcategory.subcategory, subcategory.size_guide_url!)}
+                            onClick={() => handleDeleteGuide(subcategory.name, subcategory.size_guide_url!)}
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>

@@ -200,28 +200,57 @@ export function ProductGrid({
       console.log("[v0] Loaded products from database:", productsData?.length || 0)
 
       const convertedProducts: Product[] = []
-      const processedCodes = new Set()
+      const processedCodes = new Set<string>()
 
       for (const p of productsData || []) {
-        if (processedCodes.has(p.zureo_code)) continue
+        // Skip si ya procesamos este zureo_code
+        if (processedCodes.has(p.zureo_code)) {
+          console.log("[v0] Skipping duplicate zureo_code:", p.zureo_code)
+          continue
+        }
         processedCodes.add(p.zureo_code)
 
-        const { data: productImages } = await supabase
-          .from("product_images")
-          .select("*")
-          .eq("product_id", p.id)
-          .order("sort_order")
-
-        console.log("[v0] ProductGrid - Product:", p.name)
-        console.log("[v0] ProductGrid - zureo_code:", p.zureo_code)
-        console.log("[v0] ProductGrid - Images from product_images:", productImages)
-
+        // Obtener TODAS las variantes de este producto (mismo zureo_code)
         const { data: variants } = await supabase
           .from("products_in_stock")
           .select("id, color, size, stock_quantity, price")
           .eq("zureo_code", p.zureo_code)
           .gt("stock_quantity", 0)
+          .eq("is_active", true)
+          .order("color")
           .order("size")
+
+        console.log("[v0] Found variants for", p.zureo_code, ":", variants?.length || 0)
+
+        // Agrupar variantes por color+talle y sumar stock
+        const groupedVariants = new Map<string, any>()
+        for (const variant of variants || []) {
+          const key = `${variant.color}-${variant.size}`
+          if (groupedVariants.has(key)) {
+            // Sumar stock si ya existe esta combinación
+            const existing = groupedVariants.get(key)
+            existing.stock_quantity += variant.stock_quantity
+          } else {
+            groupedVariants.set(key, { ...variant })
+          }
+        }
+
+        const uniqueVariants = Array.from(groupedVariants.values())
+        console.log("[v0] Unique variants after grouping:", uniqueVariants.length)
+
+        // Obtener IDs de todas las variantes para buscar imágenes
+        const variantIds = variants?.map((v) => v.id) || [p.id]
+
+        const { data: productImages } = await supabase
+          .from("product_images")
+          .select("*")
+          .in("product_id", variantIds)
+          .order("sort_order")
+
+        console.log("[v0] ProductGrid - Product:", p.name)
+        console.log("[v0] ProductGrid - zureo_code:", p.zureo_code)
+        console.log("[v0] ProductGrid - Variant IDs:", variantIds)
+        console.log("[v0] ProductGrid - Images from product_images:", productImages?.length || 0)
 
         const product: Product & { variants?: any[] } = {
           id: p.id,
@@ -244,7 +273,7 @@ export function ProductGrid({
           created_at: p.created_at,
           updated_at: p.updated_at,
           size: p.size,
-          variants: variants || [],
+          variants: uniqueVariants || [],
           images:
             productImages && productImages.length > 0
               ? productImages
@@ -261,7 +290,13 @@ export function ProductGrid({
                 ],
         }
 
-        console.log("[v0] ProductGrid - Final product images:", product.images)
+        console.log(
+          "[v0] ProductGrid - Final product with",
+          product.variants?.length,
+          "variants and",
+          product.images?.length,
+          "images",
+        )
 
         convertedProducts.push(product)
       }
@@ -297,6 +332,7 @@ export function ProductGrid({
       gender,
       featured,
       search,
+      limit,
       sortBy,
       filterBrand,
       filterColor,

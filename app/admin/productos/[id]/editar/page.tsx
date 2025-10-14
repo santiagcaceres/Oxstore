@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, X, Save, ArrowLeft, AlertCircle } from "lucide-react"
+import { Upload, X, Save, ArrowLeft, AlertCircle, Star } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
+import { useToast } from "@/hooks/use-toast"
 
 interface Product {
   id: number
@@ -85,6 +86,7 @@ interface ProductVariant {
 
 export default function EditProductPage({ params }: { params: { id: string } }) {
   const router = useRouter()
+  const { toast } = useToast()
   const [product, setProduct] = useState<Product | null>(null)
   const [brands, setBrands] = useState<Brand[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -106,11 +108,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [selectedSubSubcategory, setSelectedSubSubcategory] = useState("")
   const [isFeatured, setIsFeatured] = useState(false)
   const [uploading, setUploading] = useState(false)
-
+  const [selectedColorForUpload, setSelectedColorForUpload] = useState("")
   const [variants, setVariants] = useState<ProductVariant[]>([])
   const [loadingVariants, setLoadingVariants] = useState(false)
+  const [totalStock, setTotalStock] = useState(0)
 
-  const [selectedColorForUpload, setSelectedColorForUpload] = useState<string>("")
   const [availableColors, setAvailableColors] = useState<string[]>([])
 
   const supabase = createBrowserClient(
@@ -171,6 +173,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const setPrimaryImage = async (imageId: number) => {
     try {
+      console.log("[v0] Setting primary image:", imageId)
+
       const { error: unmarkError } = await supabase
         .from("product_images")
         .update({ is_primary: false })
@@ -204,11 +208,24 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       }
 
       await loadProductImages()
+
+      toast({
+        title: "✓ Imagen principal actualizada",
+        description: "La imagen ha sido marcada como principal correctamente",
+        className: "bg-green-50 border-green-200",
+      })
+
       console.log("[v0] Image marked as primary successfully")
     } catch (error) {
       console.error("[v0] Set primary image error:", error)
       const errorMessage = error instanceof Error ? error.message : "Error al marcar imagen como principal"
       setError(errorMessage)
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
 
@@ -290,6 +307,10 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
       console.log("[v0] Loaded variants:", data?.length || 0)
       setVariants(data || [])
+
+      const total = data?.reduce((sum, variant) => sum + variant.stock_quantity, 0) || 0
+      setTotalStock(total)
+      console.log("[v0] Total stock calculated:", total)
 
       const colors = [...new Set(data?.map((v) => v.color).filter(Boolean) as string[])]
       setAvailableColors(colors)
@@ -384,6 +405,11 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
     if (availableColors.length > 0 && !selectedColorForUpload) {
       setError("Por favor selecciona un color antes de subir imágenes")
+      toast({
+        title: "Selecciona un color",
+        description: "Por favor selecciona un color antes de subir imágenes",
+        variant: "destructive",
+      })
       return
     }
 
@@ -405,6 +431,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           console.log(`[v0] Found ${variantIdsForColor.length} variants for color ${selectedColorForUpload}`)
         }
       }
+
+      let successCount = 0
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
@@ -477,6 +505,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             console.log(`[v0] Updated image_url for all ${selectedColorForUpload} variants`)
           }
         }
+
+        successCount++
       }
 
       await loadProductImages()
@@ -485,11 +515,23 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       }
       console.log("[v0] All images uploaded and saved successfully")
 
+      toast({
+        title: "✓ Imágenes cargadas exitosamente",
+        description: `${successCount} imagen${successCount > 1 ? "es" : ""} ${successCount > 1 ? "fueron" : "fue"} ${successCount > 1 ? "cargadas" : "cargada"} para el color: ${selectedColorForUpload || "predeterminado"}`,
+        className: "bg-green-50 border-green-200",
+      })
+
       event.target.value = ""
     } catch (error) {
       console.error("[v0] Complete image upload error:", error)
       const errorMessage = error instanceof Error ? error.message : "Error desconocido al subir imagen"
       setError(errorMessage)
+
+      toast({
+        title: "Error al cargar imágenes",
+        description: errorMessage,
+        variant: "destructive",
+      })
     } finally {
       setUploading(false)
     }
@@ -532,11 +574,24 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       }
 
       await loadProductImages()
+
+      toast({
+        title: "✓ Imagen eliminada",
+        description: "La imagen ha sido eliminada correctamente",
+        className: "bg-green-50 border-green-200",
+      })
+
       console.log("[v0] Image removed successfully")
     } catch (error) {
       console.error("[v0] Remove image error:", error)
       const errorMessage = error instanceof Error ? error.message : "Error al eliminar imagen"
       setError(errorMessage)
+
+      toast({
+        title: "Error al eliminar imagen",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
 
@@ -605,7 +660,18 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         if (!acc[color]) {
           acc[color] = []
         }
-        acc[color].push(variant)
+
+        // Buscar si ya existe una variante con el mismo talle
+        const existingVariant = acc[color].find((v) => v.size === variant.size)
+
+        if (existingVariant) {
+          // Si existe, sumar el stock
+          existingVariant.stock_quantity += variant.stock_quantity
+        } else {
+          // Si no existe, agregar la variante
+          acc[color].push({ ...variant })
+        }
+
         return acc
       },
       {} as Record<string, ProductVariant[]>,
@@ -679,16 +745,8 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
             </div>
             <div>
               <Label className="text-sm font-medium text-muted-foreground">Stock</Label>
-              <Badge
-                variant={
-                  (product?.stock_quantity || 0) > 5
-                    ? "default"
-                    : (product?.stock_quantity || 0) > 0
-                      ? "secondary"
-                      : "destructive"
-                }
-              >
-                {product?.stock_quantity || 0} unidades
+              <Badge variant={totalStock > 5 ? "default" : totalStock > 0 ? "secondary" : "destructive"}>
+                {totalStock} unidades
               </Badge>
             </div>
           </CardContent>
@@ -985,34 +1043,38 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {productImages.map((image) => (
                     <div key={image.id} className="relative group">
-                      <div className="relative w-full h-32">
+                      <div className="relative w-full h-32 border-2 rounded-lg overflow-hidden transition-all hover:border-primary">
                         <Image
                           src={image.image_url || "/placeholder.svg"}
                           alt={image.alt_text}
                           fill
-                          className="object-cover rounded-lg"
+                          className="object-cover"
                         />
                         {image.is_primary && (
-                          <Badge className="absolute top-2 left-2 text-xs bg-primary">★ Principal</Badge>
+                          <Badge className="absolute top-2 left-2 text-xs bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-current" />
+                            Principal
+                          </Badge>
                         )}
                       </div>
-                      <div className="absolute top-2 right-2 flex gap-1">
+                      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {!image.is_primary && (
                           <Button
                             variant="secondary"
                             size="sm"
                             onClick={() => setPrimaryImage(image.id)}
-                            className="h-7 px-2 text-xs"
+                            className="h-8 px-2 text-xs bg-white hover:bg-gray-100 shadow-md"
                             title="Marcar como imagen principal"
                           >
-                            ★ Principal
+                            <Star className="h-3 w-3 mr-1" />
+                            Principal
                           </Button>
                         )}
                         <Button
                           variant="destructive"
                           size="sm"
                           onClick={() => removeImage(image.id)}
-                          className="h-7 w-7 p-0"
+                          className="h-8 w-8 p-0 shadow-md"
                           title="Eliminar imagen"
                         >
                           <X className="h-3 w-3" />
