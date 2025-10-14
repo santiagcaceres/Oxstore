@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { CartProvider } from "@/contexts/cart-context"
 import { FloatingCart } from "@/components/floating-cart"
 import { Header } from "@/components/header"
+import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
   title: "Oxstore",
@@ -30,6 +31,7 @@ export default function RootLayout({
             <Header />
             {children}
             <FloatingCart />
+            <Toaster />
           </CartProvider>
         </ThemeProvider>
       </body>

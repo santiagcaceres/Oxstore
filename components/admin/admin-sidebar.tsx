@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Percent,
   Ruler,
+  Users,
 } from "lucide-react"
 
 const navigation = [
@@ -29,6 +30,11 @@ const navigation = [
     name: "Productos",
     href: "/admin/productos",
     icon: Package,
+  },
+  {
+    name: "Usuarios",
+    href: "/admin/usuarios",
+    icon: Users,
   },
   {
     name: "Guías de Talles",

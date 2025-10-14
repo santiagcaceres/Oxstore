@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { useCart } from "@/contexts/cart-context"
-import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 
 export default function CarritoPage() {
@@ -26,7 +25,6 @@ export default function CarritoPage() {
   if (state.items.length === 0) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto text-center">
             <ShoppingBag className="h-24 w-24 mx-auto text-muted-foreground mb-6" />
@@ -44,7 +42,6 @@ export default function CarritoPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">Carrito de Compras</h1>

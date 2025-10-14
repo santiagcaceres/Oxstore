@@ -13,7 +13,6 @@ import { Separator } from "@/components/ui/separator"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/contexts/cart-context"
-import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { MercadoPagoButton } from "@/components/mercadopago-button"
 import { createClient } from "@/lib/supabase/client"
@@ -314,7 +313,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-3xl font-bold mb-8">Finalizar Compra</h1>

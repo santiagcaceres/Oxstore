@@ -30,6 +30,12 @@ interface ProductCardProps {
 export function ProductCard({ product, className = "", index = 0 }: ProductCardProps) {
   const { addItem } = useCart()
   const primaryImage = product.images?.find((img) => img.is_primary) || product.images?.[0]
+
+  console.log("[v0] ProductCard - Product:", product.name)
+  console.log("[v0] ProductCard - Images array:", product.images)
+  console.log("[v0] ProductCard - Primary image:", primaryImage)
+  console.log("[v0] ProductCard - Image URL:", primaryImage?.image_url)
+
   const hasDiscount = product.sale_price && product.sale_price < product.price && product.discount_percentage > 0
   const discountPercentage = hasDiscount ? product.discount_percentage : 0
   const displayPrice = hasDiscount ? product.sale_price : product.price

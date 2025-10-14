@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import { toast } from "@/hooks/use-toast"
 
 export default function Page() {
   const [email, setEmail] = useState("")
@@ -17,7 +18,6 @@ export default function Page() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
@@ -25,32 +25,67 @@ export default function Page() {
     e.preventDefault()
     const supabase = createClient()
     setIsLoading(true)
-    setError(null)
 
     if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden")
+      toast({
+        title: "Error",
+        description: "Las contraseñas no coinciden",
+        variant: "destructive",
+      })
       setIsLoading(false)
       return
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: existingUser } = await supabase.from("user_profiles").select("id").eq("email", email).single()
+
+      if (existingUser) {
+        toast({
+          title: "Email ya registrado",
+          description: "Este email ya está en uso. Por favor, inicia sesión o usa otro email.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/cuenta`,
           data: {
             first_name: firstName,
             last_name: lastName,
           },
+          emailRedirectTo: `${window.location.origin}/cuenta`,
         },
       })
 
-      if (error) throw error
+      if (authError) throw authError
+      if (!authData.user) throw new Error("Error creando usuario")
 
-      router.push("/auth/registro-exitoso")
+      const response = await fetch("/api/auth/send-verification-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Error enviando código de verificación")
+      }
+
+      toast({
+        title: "Cuenta creada",
+        description: "Revisa tu email para verificar tu cuenta",
+      })
+
+      router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Ocurrió un error")
+      toast({
+        title: "Error al crear cuenta",
+        description: error instanceof Error ? error.message : "Ocurrió un error inesperado",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -121,7 +156,6 @@ export default function Page() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "CREANDO CUENTA..." : "CREAR CUENTA"}
               </Button>

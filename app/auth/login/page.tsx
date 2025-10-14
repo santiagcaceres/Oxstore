@@ -8,31 +8,68 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { toast } from "@/hooks/use-toast"
 
-export default function Page() {
+function LoginContent() {
+  const searchParams = useSearchParams()
+  const verified = searchParams.get("verified")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    if (verified === "true") {
+      toast({
+        title: "Email verificado",
+        description: "¡Email verificado exitosamente! Ahora puedes iniciar sesión.",
+      })
+    }
+  }, [verified])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     const supabase = createClient()
     setIsLoading(true)
-    setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-      if (error) throw error
+      if (authError) throw authError
+
+      const { data: profile, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("is_verified")
+        .eq("id", authData.user.id)
+        .single()
+
+      if (profileError) throw profileError
+
+      if (!profile.is_verified) {
+        toast({
+          title: "Email no verificado",
+          description: "Por favor, verifica tu email antes de continuar",
+          variant: "destructive",
+        })
+        router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
+        return
+      }
+
+      toast({
+        title: "Sesión iniciada",
+        description: "Bienvenido de vuelta",
+      })
       router.push("/cuenta")
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "Ocurrió un error")
+      toast({
+        title: "Error al iniciar sesión",
+        description: error instanceof Error ? error.message : "Credenciales incorrectas",
+        variant: "destructive",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -69,7 +106,6 @@ export default function Page() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "INICIANDO SESIÓN..." : "INICIAR SESIÓN"}
               </Button>
@@ -84,5 +120,13 @@ export default function Page() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Cargando...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }
