@@ -1,6 +1,6 @@
+import { NextResponse } from "next/server"
 import { Resend } from "resend"
 import { createClient } from "@/lib/supabase/server"
-import { NextResponse } from "next/server"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -12,76 +12,51 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Email es requerido" }, { status: 400 })
     }
 
-    // Generar código de 6 dígitos
-    const code = Math.floor(100000 + Math.random() * 900000).toString()
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutos
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
 
-    // Guardar código en la base de datos
     const supabase = await createClient()
     const { error: updateError } = await supabase
       .from("user_profiles")
       .update({
-        verification_code: code,
-        verification_code_expires_at: expiresAt.toISOString(),
+        verification_code: verificationCode,
+        verification_code_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
       })
       .eq("email", email)
 
     if (updateError) {
-      console.error("[v0] Error guardando código:", updateError)
-      return NextResponse.json({ error: "Error guardando código" }, { status: 500 })
+      console.error("Error updating verification code:", updateError)
+      return NextResponse.json({ error: "Error guardando código de verificación" }, { status: 500 })
     }
 
-    // Enviar email con Resend
-    const { data, error } = await resend.emails.send({
-      from: "Oxstore <info@oxstoreuy.com>",
-      to: [email],
-      subject: "Código de verificación - Oxstore",
+    const { error: emailError } = await resend.emails.send({
+      from: "OXSTORE <info@oxstoreuy.com>",
+      to: email,
+      subject: "Código de Verificación - OXSTORE",
       html: `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-              .header { background: #000; color: #fff; padding: 20px; text-align: center; }
-              .content { background: #f9f9f9; padding: 30px; border-radius: 5px; margin: 20px 0; }
-              .code { font-size: 32px; font-weight: bold; letter-spacing: 5px; text-align: center; 
-                      background: #fff; padding: 20px; border-radius: 5px; margin: 20px 0; }
-              .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h1>Oxstore</h1>
-              </div>
-              <div class="content">
-                <h2>Verificá tu email</h2>
-                <p>Gracias por registrarte en Oxstore. Para completar tu registro, ingresá el siguiente código de verificación:</p>
-                <div class="code">${code}</div>
-                <p>Este código expira en 15 minutos.</p>
-                <p>Si no solicitaste este código, podés ignorar este email.</p>
-              </div>
-              <div class="footer">
-                <p>© ${new Date().getFullYear()} Oxstore. Todos los derechos reservados.</p>
-                <p>info@oxstoreuy.com</p>
-              </div>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #000; text-align: center; margin-bottom: 30px;">OXSTORE</h1>
+          <div style="background-color: #f5f5f5; padding: 30px; border-radius: 8px; text-align: center;">
+            <h2 style="color: #000; margin-bottom: 20px;">Tu Código de Verificación</h2>
+            <div style="background-color: #fff; padding: 20px; border-radius: 4px; margin: 20px 0;">
+              <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 0; color: #000;">
+                ${verificationCode}
+              </p>
             </div>
-          </body>
-        </html>
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">Este código expira en 15 minutos</p>
+            <p style="color: #666; font-size: 14px;">Si no solicitaste este código, puedes ignorar este email</p>
+          </div>
+        </div>
       `,
     })
 
-    if (error) {
-      console.error("[v0] Error enviando email:", error)
+    if (emailError) {
+      console.error("Error sending email:", emailError)
       return NextResponse.json({ error: "Error enviando email" }, { status: 500 })
     }
 
-    console.log("[v0] Email enviado exitosamente:", data)
-    return NextResponse.json({ success: true, message: "Código enviado" })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error("[v0] Error en send-verification-code:", error)
+    console.error("Error in send-verification-code:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }

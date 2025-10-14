@@ -17,7 +17,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
-import { createClient } from "@/lib/supabase/client"
 import { toast } from "@/hooks/use-toast"
 import { Search, Trash2, Mail, Phone, MapPin, Calendar } from "lucide-react"
 
@@ -33,7 +32,7 @@ interface UserProfile {
   postal_code: string | null
   dni: string | null
   created_at: string
-  email_confirmed_at: string | null
+  email_verified: boolean
 }
 
 export default function UsuariosAdminPage() {
@@ -46,60 +45,20 @@ export default function UsuariosAdminPage() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const supabase = createClient()
+      const response = await fetch("/api/admin/users")
 
-      // Obtener usuarios de auth.users con sus perfiles
-      const {
-        data: { users: authUsers },
-        error: authError,
-      } = await supabase.auth.admin.listUsers()
-
-      if (authError) {
-        console.error("Error loading auth users:", authError)
-        toast({
-          title: "Error al cargar usuarios",
-          description: "No se pudieron cargar los usuarios de autenticación",
-          variant: "destructive",
-        })
-        return
+      if (!response.ok) {
+        throw new Error("Error al cargar usuarios")
       }
 
-      // Obtener perfiles de user_profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from("user_profiles")
-        .select("*")
-        .order("created_at", { ascending: false })
-
-      if (profilesError) {
-        console.error("Error loading profiles:", profilesError)
-      }
-
-      // Combinar datos de auth.users con user_profiles
-      const combinedUsers: UserProfile[] = authUsers.map((authUser) => {
-        const profile = profiles?.find((p) => p.id === authUser.id)
-        return {
-          id: authUser.id,
-          email: authUser.email || "",
-          first_name: profile?.first_name || null,
-          last_name: profile?.last_name || null,
-          phone: profile?.phone || null,
-          address: profile?.address || null,
-          city: profile?.city || null,
-          province: profile?.province || null,
-          postal_code: profile?.postal_code || null,
-          dni: profile?.dni || null,
-          created_at: authUser.created_at,
-          email_confirmed_at: authUser.email_confirmed_at,
-        }
-      })
-
-      setUsers(combinedUsers)
-      setFilteredUsers(combinedUsers)
+      const data = await response.json()
+      setUsers(data.users)
+      setFilteredUsers(data.users)
     } catch (error) {
       console.error("Error loading users:", error)
       toast({
         title: "Error al cargar usuarios",
-        description: "Ocurrió un error inesperado",
+        description: "No se pudieron cargar los usuarios",
         variant: "destructive",
       })
     } finally {
@@ -127,13 +86,12 @@ export default function UsuariosAdminPage() {
   const handleDeleteUser = async (userId: string) => {
     try {
       setDeleting(userId)
-      const supabase = createClient()
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      })
 
-      // Eliminar usuario de auth.users (esto también eliminará el perfil por CASCADE)
-      const { error } = await supabase.auth.admin.deleteUser(userId)
-
-      if (error) {
-        throw error
+      if (!response.ok) {
+        throw new Error("Error al eliminar usuario")
       }
 
       toast({
@@ -141,7 +99,6 @@ export default function UsuariosAdminPage() {
         description: "El usuario ha sido eliminado correctamente",
       })
 
-      // Recargar lista de usuarios
       await loadUsers()
     } catch (error) {
       console.error("Error deleting user:", error)
@@ -249,7 +206,7 @@ export default function UsuariosAdminPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {user.email_confirmed_at ? (
+                        {user.email_verified ? (
                           <Badge variant="default" className="bg-green-500">
                             Verificado
                           </Badge>
