@@ -1,15 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Search, RefreshCw, Package, Eye, Download, Truck } from "lucide-react"
 import Link from "next/link"
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([])
@@ -39,6 +37,8 @@ export default function AdminOrdersPage() {
   const loadOrders = async () => {
     try {
       setLoading(true)
+
+      const supabase = createClient()
 
       const { data: ordersData, error } = await supabase
         .from("orders")

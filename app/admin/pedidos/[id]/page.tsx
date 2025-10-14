@@ -2,15 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { createClient } from "@supabase/supabase-js"
+import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Download, Truck, Package, User, MapPin, CreditCard } from "lucide-react"
 import Link from "next/link"
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 export default function OrderDetailPage() {
   const params = useParams()
@@ -28,6 +26,8 @@ export default function OrderDetailPage() {
   const loadOrder = async () => {
     try {
       setLoading(true)
+
+      const supabase = createClient()
 
       const { data: orderData, error } = await supabase
         .from("orders")
@@ -60,11 +60,13 @@ export default function OrderDetailPage() {
 
       console.log("[v0] Updating order status to:", newStatus)
 
+      const supabase = createClient()
+
       const { data, error } = await supabase
         .from("orders")
         .update({
           order_status: newStatus,
-          status: newStatus, // también actualizar el campo status por compatibilidad
+          status: newStatus,
         })
         .eq("id", params.id)
         .select()
@@ -92,6 +94,8 @@ export default function OrderDetailPage() {
       setUpdating(true)
 
       console.log("[v0] Updating payment status to:", newStatus)
+
+      const supabase = createClient()
 
       const { data, error } = await supabase
         .from("orders")

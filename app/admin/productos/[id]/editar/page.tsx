@@ -642,12 +642,20 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
       await Promise.all([loadProduct(), loadProductImages()])
       setError(null)
 
-      setTimeout(() => {
-        router.push("/admin/productos")
-      }, 1000)
+      toast({
+        title: "✓ Cambios guardados exitosamente",
+        description: "Los cambios en el producto han sido guardados correctamente",
+        className: "bg-green-50 border-green-200",
+      })
     } catch (error) {
       console.error("[v0] Save error:", error)
       setError(error instanceof Error ? error.message : "Error desconocido")
+
+      toast({
+        title: "Error al guardar cambios",
+        description: error instanceof Error ? error.message : "Error desconocido",
+        variant: "destructive",
+      })
     } finally {
       setSaving(false)
     }

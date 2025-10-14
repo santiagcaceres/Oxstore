@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Edit, RefreshCw, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Edit, RefreshCw, AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase/client"
 
@@ -62,6 +62,7 @@ export default function AdminProductsPage() {
   const [totalProducts, setTotalProducts] = useState(0)
   const [totalUniqueProducts, setTotalUniqueProducts] = useState(0)
   const [totalAllVariants, setTotalAllVariants] = useState(0)
+  const [lastUpdateDate, setLastUpdateDate] = useState<string | null>(null)
 
   useEffect(() => {
     loadLocalProducts()
@@ -129,6 +130,14 @@ export default function AdminProductsPage() {
 
       console.log("[v0] Loaded products from database:", products?.length || 0, "of", totalVariantsCount || 0)
       setProducts(products || [])
+
+      if (products && products.length > 0) {
+        const mostRecentUpdate = products.reduce((latest, product) => {
+          const productDate = new Date(product.updated_at || product.created_at)
+          return productDate > latest ? productDate : latest
+        }, new Date(0))
+        setLastUpdateDate(mostRecentUpdate.toISOString())
+      }
 
       const grouped = groupProductsByCode(products || [])
       setGroupedProducts(grouped)
@@ -260,6 +269,21 @@ export default function AdminProductsPage() {
               </span>
             )}
           </p>
+          {lastUpdateDate && (
+            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>
+                Última actualización de productos:{" "}
+                {new Date(lastUpdateDate).toLocaleString("es-ES", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={manualSync} disabled={syncing || loading}>
