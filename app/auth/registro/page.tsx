@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,6 +17,8 @@ export default function Page() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
+  const [phone, setPhone] = useState("")
+  const [dni, setDni] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
@@ -37,18 +38,6 @@ export default function Page() {
     }
 
     try {
-      const { data: existingUser } = await supabase.from("user_profiles").select("id").eq("email", email).single()
-
-      if (existingUser) {
-        toast({
-          title: "Email ya registrado",
-          description: "Este email ya está en uso. Por favor, inicia sesión o usa otro email.",
-          variant: "destructive",
-        })
-        setIsLoading(false)
-        return
-      }
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -56,31 +45,66 @@ export default function Page() {
           data: {
             first_name: firstName,
             last_name: lastName,
+            phone,
+            dni,
           },
-          emailRedirectTo: `${window.location.origin}/cuenta`,
         },
       })
 
-      if (authError) throw authError
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          toast({
+            title: "Email ya registrado",
+            description: "Este email ya está en uso. Por favor, inicia sesión.",
+            variant: "destructive",
+          })
+          setIsLoading(false)
+          return
+        }
+        throw authError
+      }
+
       if (!authData.user) throw new Error("Error creando usuario")
+
+      const code = Math.floor(100000 + Math.random() * 900000).toString()
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
+
+      const { error: profileError } = await supabase.from("user_profiles").upsert({
+        id: authData.user.id,
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        dni,
+        verification_code: code,
+        verification_code_expires_at: expiresAt.toISOString(),
+        is_verified: false,
+      })
+
+      if (profileError) {
+        console.error("[v0] Error guardando perfil:", profileError)
+        throw profileError
+      }
 
       const response = await fetch("/api/auth/send-verification-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, code }),
       })
 
       if (!response.ok) {
+        const errorData = await response.json()
+        console.error("[v0] Error enviando código:", errorData)
         throw new Error("Error enviando código de verificación")
       }
 
       toast({
         title: "Cuenta creada",
-        description: "Revisa tu email para verificar tu cuenta",
+        description: "Revisa tu email para obtener el código de verificación",
       })
 
       router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
     } catch (error: unknown) {
+      console.error("[v0] Error en registro:", error)
       toast({
         title: "Error al crear cuenta",
         description: error instanceof Error ? error.message : "Ocurrió un error inesperado",
@@ -103,7 +127,7 @@ export default function Page() {
             <form onSubmit={handleSignUp} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">NOMBRE</Label>
+                  <Label htmlFor="firstName">NOMBRE *</Label>
                   <Input
                     id="firstName"
                     type="text"
@@ -113,7 +137,7 @@ export default function Page() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">APELLIDO</Label>
+                  <Label htmlFor="lastName">APELLIDO *</Label>
                   <Input
                     id="lastName"
                     type="text"
@@ -123,8 +147,32 @@ export default function Page() {
                   />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">TELÉFONO *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    required
+                    placeholder="099 123 456"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dni">DNI/CI *</Label>
+                  <Input
+                    id="dni"
+                    type="text"
+                    required
+                    placeholder="12345678"
+                    value={dni}
+                    onChange={(e) => setDni(e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="email">EMAIL</Label>
+                <Label htmlFor="email">EMAIL *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -135,7 +183,7 @@ export default function Page() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">CONTRASEÑA</Label>
+                <Label htmlFor="password">CONTRASEÑA *</Label>
                 <Input
                   id="password"
                   type="password"
@@ -147,7 +195,7 @@ export default function Page() {
                 <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">CONFIRMAR CONTRASEÑA</Label>
+                <Label htmlFor="confirmPassword">CONFIRMAR CONTRASEÑA *</Label>
                 <Input
                   id="confirmPassword"
                   type="password"

@@ -32,7 +32,8 @@ interface UserProfile {
   postal_code: string | null
   dni: string | null
   created_at: string
-  email_verified: boolean
+  is_verified: boolean
+  verified_at: string | null
 }
 
 export default function UsuariosAdminPage() {
@@ -206,7 +207,7 @@ export default function UsuariosAdminPage() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {user.email_verified ? (
+                        {user.is_verified ? (
                           <Badge variant="default" className="bg-green-500">
                             Verificado
                           </Badge>

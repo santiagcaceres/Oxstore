@@ -206,6 +206,16 @@ export function ProductGrid({
         if (processedCodes.has(p.zureo_code)) continue
         processedCodes.add(p.zureo_code)
 
+        const { data: productImages } = await supabase
+          .from("product_images")
+          .select("*")
+          .eq("product_id", p.id)
+          .order("sort_order")
+
+        console.log("[v0] ProductGrid - Product:", p.name)
+        console.log("[v0] ProductGrid - zureo_code:", p.zureo_code)
+        console.log("[v0] ProductGrid - Images from product_images:", productImages)
+
         const { data: variants } = await supabase
           .from("products_in_stock")
           .select("id, color, size, stock_quantity, price")
@@ -235,18 +245,23 @@ export function ProductGrid({
           updated_at: p.updated_at,
           size: p.size,
           variants: variants || [],
-          images: [
-            {
-              id: p.id,
-              product_id: p.id,
-              image_url: p.image_url || "/placeholder.svg?height=400&width=400",
-              alt_text: p.name,
-              sort_order: 0,
-              is_primary: true,
-              created_at: p.created_at,
-            },
-          ],
+          images:
+            productImages && productImages.length > 0
+              ? productImages
+              : [
+                  {
+                    id: p.id,
+                    product_id: p.id,
+                    image_url: "/placeholder.svg?height=400&width=400",
+                    alt_text: p.name,
+                    sort_order: 0,
+                    is_primary: true,
+                    created_at: p.created_at,
+                  },
+                ],
         }
+
+        console.log("[v0] ProductGrid - Final product images:", product.images)
 
         convertedProducts.push(product)
       }

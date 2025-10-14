@@ -1,62 +1,49 @@
 import { NextResponse } from "next/server"
 import { Resend } from "resend"
-import { createClient } from "@/lib/supabase/server"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json()
+    const { email, code } = await request.json()
 
-    if (!email) {
-      return NextResponse.json({ error: "Email es requerido" }, { status: 400 })
+    console.log("[v0] Enviando código de verificación:", { email, code })
+
+    if (!email || !code) {
+      return NextResponse.json({ error: "Email y código son requeridos" }, { status: 400 })
     }
 
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
-
-    const supabase = await createClient()
-    const { error: updateError } = await supabase
-      .from("user_profiles")
-      .update({
-        verification_code: verificationCode,
-        verification_code_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      })
-      .eq("email", email)
-
-    if (updateError) {
-      console.error("Error updating verification code:", updateError)
-      return NextResponse.json({ error: "Error guardando código de verificación" }, { status: 500 })
-    }
-
-    const { error: emailError } = await resend.emails.send({
-      from: "OXSTORE <info@oxstoreuy.com>",
-      to: email,
-      subject: "Código de Verificación - OXSTORE",
+    const { data, error: emailError } = await resend.emails.send({
+      from: "Oxstore <info@oxstoreuy.com>",
+      to: [email],
+      subject: "Código de verificación - Oxstore",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #000; text-align: center; margin-bottom: 30px;">OXSTORE</h1>
-          <div style="background-color: #f5f5f5; padding: 30px; border-radius: 8px; text-align: center;">
-            <h2 style="color: #000; margin-bottom: 20px;">Tu Código de Verificación</h2>
-            <div style="background-color: #fff; padding: 20px; border-radius: 4px; margin: 20px 0;">
-              <p style="font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 0; color: #000;">
-                ${verificationCode}
-              </p>
+          <h2 style="color: #000; margin-bottom: 20px;">Verifica tu cuenta en Oxstore</h2>
+          <p style="color: #333; margin-bottom: 20px;">Gracias por registrarte. Tu código de verificación es:</p>
+          <div style="background-color: #f5f5f5; padding: 30px; text-align: center; border-radius: 8px; margin: 30px 0;">
+            <div style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #000;">
+              ${code}
             </div>
-            <p style="color: #666; font-size: 14px; margin-top: 20px;">Este código expira en 15 minutos</p>
-            <p style="color: #666; font-size: 14px;">Si no solicitaste este código, puedes ignorar este email</p>
           </div>
+          <p style="color: #666; font-size: 14px; margin-top: 20px;">Este código expira en 15 minutos.</p>
+          <p style="color: #999; font-size: 12px; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+            Si no solicitaste este código, puedes ignorar este email.
+          </p>
         </div>
       `,
     })
 
     if (emailError) {
-      console.error("Error sending email:", emailError)
-      return NextResponse.json({ error: "Error enviando email" }, { status: 500 })
+      console.error("[v0] Error enviando email:", emailError)
+      return NextResponse.json({ error: "Error al enviar el email" }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true })
+    console.log("[v0] Código enviado exitosamente:", data)
+
+    return NextResponse.json({ success: true, message: "Código enviado correctamente" })
   } catch (error) {
-    console.error("Error in send-verification-code:", error)
+    console.error("[v0] Error en send-verification-code:", error)
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
