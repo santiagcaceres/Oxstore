@@ -45,18 +45,30 @@ export default function UsuariosAdminPage() {
 
   const loadUsers = async () => {
     try {
+      console.log("[v0] Starting loadUsers function")
       setLoading(true)
+
+      console.log("[v0] Fetching from /api/admin/users")
       const response = await fetch("/api/admin/users")
+      console.log("[v0] Response status:", response.status)
+      console.log("[v0] Response ok:", response.ok)
 
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error("[v0] Error response:", errorText)
         throw new Error("Error al cargar usuarios")
       }
 
       const data = await response.json()
+      console.log("[v0] Response data:", data)
+      console.log("[v0] Users count:", data.users?.length || 0)
+
       setUsers(data.users)
       setFilteredUsers(data.users)
+
+      console.log("[v0] Users loaded successfully:", data.users.length)
     } catch (error) {
-      console.error("Error loading users:", error)
+      console.error("[v0] Error loading users:", error)
       toast({
         title: "Error al cargar usuarios",
         description: "No se pudieron cargar los usuarios",
@@ -64,6 +76,7 @@ export default function UsuariosAdminPage() {
       })
     } finally {
       setLoading(false)
+      console.log("[v0] loadUsers function completed")
     }
   }
 

@@ -36,10 +36,13 @@ export default function AdminOrdersPage() {
 
   const loadOrders = async () => {
     try {
+      console.log("[v0] Starting loadOrders function")
       setLoading(true)
 
       const supabase = createClient()
+      console.log("[v0] Supabase client created")
 
+      console.log("[v0] Querying orders table")
       const { data: ordersData, error } = await supabase
         .from("orders")
         .select(`
@@ -51,11 +54,16 @@ export default function AdminOrdersPage() {
         `)
         .order("created_at", { ascending: false })
 
+      console.log("[v0] Query completed")
+      console.log("[v0] Error:", error)
+      console.log("[v0] Orders count:", ordersData?.length || 0)
+
       if (error) {
-        console.error("Error loading orders:", error)
+        console.error("[v0] Error loading orders:", error)
         return
       }
 
+      console.log("[v0] Orders data:", ordersData)
       setOrders(ordersData || [])
 
       const totalOrders = ordersData?.length || 0
@@ -69,10 +77,18 @@ export default function AdminOrdersPage() {
         confirmed: confirmedOrders,
         totalAmount,
       })
+
+      console.log("[v0] Stats calculated:", {
+        total: totalOrders,
+        pending: pendingOrders,
+        confirmed: confirmedOrders,
+        totalAmount,
+      })
     } catch (error) {
-      console.error("Error loading orders:", error)
+      console.error("[v0] Exception in loadOrders:", error)
     } finally {
       setLoading(false)
+      console.log("[v0] loadOrders function completed")
     }
   }
 
