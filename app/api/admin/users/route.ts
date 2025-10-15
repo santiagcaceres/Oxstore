@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 export async function GET() {
   try {
     console.log("[v0] GET /api/admin/users - Starting request")
-    const supabase = await createClient()
+    const supabase = createClient()
 
     console.log("[v0] Supabase client created successfully")
 
@@ -15,6 +15,7 @@ export async function GET() {
 
     console.log("[v0] Query executed")
     console.log("[v0] Query error:", error)
+    console.log("[v0] Query data:", profiles)
     console.log("[v0] Query data count:", profiles?.length || 0)
 
     if (error) {
@@ -27,6 +28,8 @@ export async function GET() {
       return NextResponse.json({ users: [] })
     }
 
+    console.log("[v0] Found profiles, getting emails from auth.users")
+
     const profilesWithEmails = await Promise.all(
       profiles.map(async (profile) => {
         try {
@@ -34,6 +37,8 @@ export async function GET() {
             data: { user },
             error: authError,
           } = await supabase.auth.admin.getUserById(profile.id)
+
+          console.log(`[v0] Getting email for profile ${profile.id}:`, user?.email || "No email")
 
           if (authError || !user) {
             console.error(`[v0] Error getting auth user for profile ${profile.id}:`, authError)

@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,37 +38,31 @@ export default function AdminOrdersPage() {
       console.log("[v0] Starting loadOrders function")
       setLoading(true)
 
-      const supabase = createClient()
-      console.log("[v0] Supabase client created")
+      console.log("[v0] Fetching from /api/admin/orders")
+      const response = await fetch("/api/admin/orders")
 
-      console.log("[v0] Querying orders table")
-      const { data: ordersData, error } = await supabase
-        .from("orders")
-        .select(`
-          *,
-          order_items (
-            *,
-            products_in_stock (name, image_url, brand)
-          )
-        `)
-        .order("created_at", { ascending: false })
+      console.log("[v0] Response status:", response.status)
+      console.log("[v0] Response ok:", response.ok)
 
-      console.log("[v0] Query completed")
-      console.log("[v0] Error:", error)
-      console.log("[v0] Orders count:", ordersData?.length || 0)
-
-      if (error) {
-        console.error("[v0] Error loading orders:", error)
+      if (!response.ok) {
+        console.error("[v0] Error response from API")
         return
       }
 
-      console.log("[v0] Orders data:", ordersData)
-      setOrders(ordersData || [])
+      const data = await response.json()
+      console.log("[v0] Response data:", data)
+      console.log("[v0] Orders count:", data.orders?.length || 0)
 
-      const totalOrders = ordersData?.length || 0
-      const pendingOrders = ordersData?.filter((order) => order.status === "pending").length || 0
-      const confirmedOrders = ordersData?.filter((order) => order.status === "confirmed").length || 0
-      const totalAmount = ordersData?.reduce((sum, order) => sum + Number.parseFloat(order.total_amount || 0), 0) || 0
+      const ordersData = data.orders || []
+      setOrders(ordersData)
+
+      const totalOrders = ordersData.length
+      const pendingOrders = ordersData.filter((order: any) => order.status === "pending").length
+      const confirmedOrders = ordersData.filter((order: any) => order.status === "confirmed").length
+      const totalAmount = ordersData.reduce(
+        (sum: number, order: any) => sum + Number.parseFloat(order.total_amount || 0),
+        0,
+      )
 
       setStats({
         total: totalOrders,
@@ -84,6 +77,7 @@ export default function AdminOrdersPage() {
         confirmed: confirmedOrders,
         totalAmount,
       })
+      console.log("[v0] Orders loaded successfully:", ordersData.length)
     } catch (error) {
       console.error("[v0] Exception in loadOrders:", error)
     } finally {
