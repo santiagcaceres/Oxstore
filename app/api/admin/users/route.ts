@@ -8,62 +8,82 @@ export async function GET() {
 
     console.log("[v0] Supabase client created successfully")
 
-    const { data: profiles, error } = await supabase
-      .from("user_profiles")
-      .select("*")
-      .order("created_at", { ascending: false })
+    const {
+      data: { users: authUsers },
+      error: authError,
+    } = await supabase.auth.admin.listUsers()
 
-    console.log("[v0] Query executed")
-    console.log("[v0] Query error:", error)
-    console.log("[v0] Query data:", profiles)
-    console.log("[v0] Query data count:", profiles?.length || 0)
+    console.log("[v0] Auth users query executed")
+    console.log("[v0] Auth users error:", authError)
+    console.log("[v0] Auth users count:", authUsers?.length || 0)
 
-    if (error) {
-      console.error("[v0] Error loading profiles:", error)
-      return NextResponse.json({ error: "Error al cargar usuarios: " + error.message }, { status: 500 })
+    if (authError) {
+      console.error("[v0] Error loading auth users:", authError)
+      return NextResponse.json({ error: "Error al cargar usuarios: " + authError.message }, { status: 500 })
     }
 
-    if (!profiles || profiles.length === 0) {
-      console.log("[v0] No profiles found in user_profiles table")
+    if (!authUsers || authUsers.length === 0) {
+      console.log("[v0] No users found in auth.users table")
       return NextResponse.json({ users: [] })
     }
 
-    console.log("[v0] Found profiles, getting emails from auth.users")
+    console.log("[v0] Found auth users, getting profiles from user_profiles")
 
-    const profilesWithEmails = await Promise.all(
-      profiles.map(async (profile) => {
+    const usersWithProfiles = await Promise.all(
+      authUsers.map(async (authUser) => {
         try {
-          const {
-            data: { user },
-            error: authError,
-          } = await supabase.auth.admin.getUserById(profile.id)
+          const { data: profile, error: profileError } = await supabase
+            .from("user_profiles")
+            .select("*")
+            .eq("id", authUser.id)
+            .single()
 
-          console.log(`[v0] Getting email for profile ${profile.id}:`, user?.email || "No email")
-
-          if (authError || !user) {
-            console.error(`[v0] Error getting auth user for profile ${profile.id}:`, authError)
+          if (profileError || !profile) {
+            console.log(`[v0] No profile found for user ${authUser.id}`)
             return {
-              ...profile,
-              email: "Sin email",
+              id: authUser.id,
+              email: authUser.email || "Sin email",
+              first_name: null,
+              last_name: null,
+              phone: null,
+              address: null,
+              city: null,
+              province: null,
+              postal_code: null,
+              dni: null,
+              created_at: authUser.created_at,
+              is_verified: authUser.email_confirmed_at !== null,
+              verified_at: authUser.email_confirmed_at,
             }
           }
 
           return {
             ...profile,
-            email: user.email || "Sin email",
+            email: authUser.email || "Sin email",
           }
         } catch (error) {
-          console.error(`[v0] Exception getting email for profile ${profile.id}:`, error)
+          console.error(`[v0] Exception getting profile for user ${authUser.id}:`, error)
           return {
-            ...profile,
-            email: "Sin email",
+            id: authUser.id,
+            email: authUser.email || "Sin email",
+            first_name: null,
+            last_name: null,
+            phone: null,
+            address: null,
+            city: null,
+            province: null,
+            postal_code: null,
+            dni: null,
+            created_at: authUser.created_at,
+            is_verified: authUser.email_confirmed_at !== null,
+            verified_at: authUser.email_confirmed_at,
           }
         }
       }),
     )
 
-    console.log(`[v0] Returning ${profilesWithEmails.length} users with emails`)
-    return NextResponse.json({ users: profilesWithEmails })
+    console.log(`[v0] Returning ${usersWithProfiles.length} users with profiles`)
+    return NextResponse.json({ users: usersWithProfiles })
   } catch (error) {
     console.error("[v0] Error in GET /api/admin/users:", error)
     return NextResponse.json(

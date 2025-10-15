@@ -26,27 +26,19 @@ export default function OrderDetailPage() {
   const loadOrder = async () => {
     try {
       setLoading(true)
+      console.log("[v0] Loading order from API:", params.id)
 
-      const supabase = createClient()
+      const response = await fetch(`/api/admin/orders/${params.id}`)
 
-      const { data: orderData, error } = await supabase
-        .from("orders")
-        .select(`
-          *,
-          order_items (
-            *,
-            products_in_stock (name, image_url, brand)
-          )
-        `)
-        .eq("id", params.id)
-        .single()
-
-      if (error) {
-        console.error("Error loading order:", error)
-        return
+      if (!response.ok) {
+        console.error("[v0] Error response:", response.status)
+        throw new Error("Error al cargar el pedido")
       }
 
-      setOrder(orderData)
+      const data = await response.json()
+      console.log("[v0] Order loaded:", data.order)
+
+      setOrder(data.order)
     } catch (error) {
       console.error("Error loading order:", error)
     } finally {
@@ -60,27 +52,23 @@ export default function OrderDetailPage() {
 
       console.log("[v0] Updating order status to:", newStatus)
 
-      const supabase = createClient()
+      const response = await fetch(`/api/admin/orders/${params.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newStatus }),
+      })
 
-      const { data, error } = await supabase
-        .from("orders")
-        .update({
-          order_status: newStatus,
-          status: newStatus,
-        })
-        .eq("id", params.id)
-        .select()
-
-      if (error) {
-        console.error("Error updating order status:", error)
-        alert("Error al actualizar el estado del pedido")
-        return
+      if (!response.ok) {
+        throw new Error("Error al actualizar el estado del pedido")
       }
 
-      console.log("[v0] Order status updated successfully:", data)
+      const data = await response.json()
+      console.log("[v0] Order status updated successfully:", data.order)
 
-      setOrder({ ...order, order_status: newStatus, status: newStatus })
-      alert("Estado del pedido actualizado correctamente")
+      setOrder(data.order)
+      alert("Estado del pedido actualizado correctamente. Se ha enviado un email al cliente.")
     } catch (error) {
       console.error("Error updating order status:", error)
       alert("Error al actualizar el estado del pedido")
