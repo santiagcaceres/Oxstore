@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { toast } from "@/hooks/use-toast"
+import { Popup } from "@/components/ui/popup"
+import { AlertCircle } from "lucide-react"
 
 export default function Page() {
   const [email, setEmail] = useState("")
@@ -20,6 +21,8 @@ export default function Page() {
   const [phone, setPhone] = useState("")
   const [dni, setDni] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showErrorPopup, setShowErrorPopup] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -28,11 +31,8 @@ export default function Page() {
     setIsLoading(true)
 
     if (password !== confirmPassword) {
-      toast({
-        title: "Error",
-        description: "Las contraseñas no coinciden",
-        variant: "destructive",
-      })
+      setErrorMessage("Las contraseñas no coinciden")
+      setShowErrorPopup(true)
       setIsLoading(false)
       return
     }
@@ -53,11 +53,8 @@ export default function Page() {
 
       if (authError) {
         if (authError.message.includes("already registered")) {
-          toast({
-            title: "Email ya registrado",
-            description: "Este email ya está en uso. Por favor, inicia sesión.",
-            variant: "destructive",
-          })
+          setErrorMessage("Este email ya está en uso. Por favor, inicia sesión.")
+          setShowErrorPopup(true)
           setIsLoading(false)
           return
         }
@@ -97,19 +94,11 @@ export default function Page() {
         throw new Error("Error enviando código de verificación")
       }
 
-      toast({
-        title: "Cuenta creada",
-        description: "Revisa tu email para obtener el código de verificación",
-      })
-
       router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
     } catch (error: unknown) {
       console.error("[v0] Error en registro:", error)
-      toast({
-        title: "Error al crear cuenta",
-        description: error instanceof Error ? error.message : "Ocurrió un error inesperado",
-        variant: "destructive",
-      })
+      setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error inesperado")
+      setShowErrorPopup(true)
     } finally {
       setIsLoading(false)
     }
@@ -217,6 +206,17 @@ export default function Page() {
           </CardContent>
         </Card>
       </div>
+      <Popup isOpen={showErrorPopup} onClose={() => setShowErrorPopup(false)} title="Error al crear cuenta">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+          </div>
+          <Button onClick={() => setShowErrorPopup(false)} className="w-full">
+            Entendido
+          </Button>
+        </div>
+      </Popup>
     </div>
   )
 }

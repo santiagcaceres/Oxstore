@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, Suspense } from "react"
-import { toast } from "@/hooks/use-toast"
+import { Popup } from "@/components/ui/popup"
+import { AlertCircle } from "lucide-react"
 
 function VerifyContent() {
   const searchParams = useSearchParams()
@@ -17,6 +18,8 @@ function VerifyContent() {
   const [code, setCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)
+  const [showErrorPopup, setShowErrorPopup] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -53,18 +56,10 @@ function VerifyContent() {
 
       if (updateError) throw updateError
 
-      toast({
-        title: "Email verificado",
-        description: "Tu cuenta ha sido verificada exitosamente",
-      })
-
       router.push("/auth/login?verified=true")
     } catch (error: unknown) {
-      toast({
-        title: "Error al verificar",
-        description: error instanceof Error ? error.message : "Ocurrió un error",
-        variant: "destructive",
-      })
+      setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error")
+      setShowErrorPopup(true)
     } finally {
       setIsLoading(false)
     }
@@ -83,17 +78,9 @@ function VerifyContent() {
       if (!response.ok) {
         throw new Error("Error enviando código")
       }
-
-      toast({
-        title: "Código reenviado",
-        description: "Se ha enviado un nuevo código a tu email",
-      })
     } catch (error: unknown) {
-      toast({
-        title: "Error al reenviar código",
-        description: error instanceof Error ? error.message : "Ocurrió un error",
-        variant: "destructive",
-      })
+      setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error")
+      setShowErrorPopup(true)
     } finally {
       setIsResending(false)
     }
@@ -137,6 +124,18 @@ function VerifyContent() {
           </CardContent>
         </Card>
       </div>
+
+      <Popup isOpen={showErrorPopup} onClose={() => setShowErrorPopup(false)} title="Error al verificar">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+          </div>
+          <Button onClick={() => setShowErrorPopup(false)} className="w-full">
+            Entendido
+          </Button>
+        </div>
+      </Popup>
     </div>
   )
 }

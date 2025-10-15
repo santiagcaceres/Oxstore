@@ -423,20 +423,35 @@ export default function OrderDetailPage() {
               { value: "processing", label: "En Proceso" },
               { value: "shipped", label: "Enviado" },
               { value: "delivered", label: "Entregado" },
-            ].map((status) => (
-              <button
-                key={status.value}
-                onClick={() => setSelectedOrderStatus(status.value)}
-                className={`w-full p-3 text-left border rounded-lg transition-colors ${
-                  selectedOrderStatus === status.value
-                    ? "border-primary bg-primary/10"
-                    : "border-gray-200 hover:border-primary/50"
-                }`}
-              >
-                {status.label}
-              </button>
-            ))}
+            ].map((status) => {
+              const currentStatus = order.order_status || order.status
+              const isDelivered = currentStatus === "delivered"
+              const isDisabled = isDelivered && status.value !== "delivered"
+
+              return (
+                <button
+                  key={status.value}
+                  onClick={() => !isDisabled && setSelectedOrderStatus(status.value)}
+                  disabled={isDisabled}
+                  className={`w-full p-3 text-left border rounded-lg transition-colors ${
+                    isDisabled
+                      ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
+                      : selectedOrderStatus === status.value
+                        ? "border-primary bg-primary/10"
+                        : "border-gray-200 hover:border-primary/50"
+                  }`}
+                >
+                  {status.label}
+                  {isDisabled && " (No disponible)"}
+                </button>
+              )
+            })}
           </div>
+          {(order.order_status || order.status) === "delivered" && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">ℹ️ Los pedidos entregados no pueden volver a estados anteriores.</p>
+            </div>
+          )}
           <div className="flex gap-2">
             <Button
               onClick={() => updateOrderStatus(selectedOrderStatus)}

@@ -8,13 +8,11 @@ export async function GET() {
 
     const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-    // Verificar última sincronización
     const { data: syncStatus } = await supabase.from("sync_status").select("*").eq("sync_type", "products").single()
 
     const now = new Date()
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
-    // Si hay sincronización reciente (menos de 24 horas), devolver productos existentes
     if (syncStatus && new Date(syncStatus.last_sync_at) > twentyFourHoursAgo) {
       console.log("[v0] Using cached products (sync within 24 hours)")
 
@@ -173,10 +171,7 @@ export async function GET() {
 
     console.log(`[v0] Products with stock: ${productsWithStock.length}`)
 
-    console.log("[v0] Cleaning existing products...")
-    await supabase.from("products_in_stock").delete().neq("id", 0)
-    await supabase.from("product_variants").delete().neq("id", 0)
-    await supabase.from("products").delete().neq("id", 0)
+    console.log("[v0] Using UPSERT to sync products (no accumulation)...")
 
     function extractColorAndSize(variety: any): { color: string | null; size: string | null } {
       let color = null
@@ -199,7 +194,6 @@ export async function GET() {
         }
       }
 
-      // Si no hay atributos, intentar extraer del nombre
       if (!color && !size && variety.nombre) {
         const nombre = variety.nombre.toLowerCase()
 
@@ -233,12 +227,10 @@ export async function GET() {
 
       const categoryLower = zureoCategory.toLowerCase().trim()
 
-      // Direct mapping
       if (subcategoriesMap.has(categoryLower)) {
         return subcategoriesMap.get(categoryLower)!.name
       }
 
-      // Fuzzy matching for common variations
       const mappings: { [key: string]: string } = {
         remera: "Remeras",
         remeras: "Remeras",
@@ -307,9 +299,7 @@ export async function GET() {
             const varietyPrice = variety.precio || basePrice
             const finalPrice = Math.round(varietyPrice * impuestoMultiplier)
 
-            console.log(
-              `[v0] Product ${product.codigo} - Variety: color=${color}, size=${size}, price=${finalPrice}, stock=${variety.stock}, subcategory=${subcategory}`,
-            )
+            const uniqueKey = `${product.codigo || `ZUR-${product.id}`}-${variety.id}`
 
             allProductRecords.push({
               zureo_id: product.id,
@@ -323,7 +313,7 @@ export async function GET() {
               stock_quantity: variety.stock,
               category: product.tipo?.nombre || "Sin categoría",
               categoria_zureo: product.tipo?.nombre || "Sin categoría",
-              subcategory: subcategory, // Add subcategory field
+              subcategory: subcategory,
               brand: brandName,
               color: color,
               size: size,
@@ -336,7 +326,6 @@ export async function GET() {
                 lastUpdated: new Date().toISOString(),
                 priceMultiplier: impuestoMultiplier,
               }),
-              created_at: new Date().toISOString(),
               updated_at: new Date().toISOString(),
             })
           }
@@ -356,7 +345,7 @@ export async function GET() {
           stock_quantity: product.stock || 0,
           category: product.tipo?.nombre || "Sin categoría",
           categoria_zureo: product.tipo?.nombre || "Sin categoría",
-          subcategory: subcategory, // Add subcategory field
+          subcategory: subcategory,
           brand: brandName,
           color: null,
           size: null,
@@ -368,53 +357,32 @@ export async function GET() {
             lastUpdated: new Date().toISOString(),
             priceMultiplier: impuestoMultiplier,
           }),
-          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
       }
     }
 
-    console.log(`[v0] Total product records to insert: ${allProductRecords.length}`)
-
-    console.log("[v0] Sample of first 5 records to insert:")
-    allProductRecords.slice(0, 5).forEach((record, index) => {
-      console.log(`[v0] Record ${index + 1}:`, {
-        zureo_code: record.zureo_code,
-        name: record.name,
-        price: record.price,
-        precio_zureo: record.precio_zureo,
-        color: record.color,
-        size: record.size,
-        stock_quantity: record.stock_quantity,
-        brand: record.brand,
-        category: record.category,
-      })
-    })
+    console.log(`[v0] Total product records to upsert: ${allProductRecords.length}`)
 
     const batchSize = 100
-    let insertedCount = 0
+    let upsertedCount = 0
 
     for (let i = 0; i < allProductRecords.length; i += batchSize) {
       const batch = allProductRecords.slice(i, i + batchSize)
 
-      console.log(
-        `[v0] Batch ${i / batchSize + 1} sample:`,
-        batch.slice(0, 2).map((p) => ({
-          codigo: p.zureo_code,
-          price: p.price,
-          color: p.color,
-          size: p.size,
-          stock: p.stock_quantity,
-        })),
-      )
-
-      const { data: insertedBatch, error } = await supabase.from("products_in_stock").insert(batch).select()
+      const { data: upsertedBatch, error } = await supabase
+        .from("products_in_stock")
+        .upsert(batch, {
+          onConflict: "zureo_code,zureo_variety_id",
+          ignoreDuplicates: false,
+        })
+        .select()
 
       if (error) {
-        console.error(`[v0] Error inserting batch ${i / batchSize + 1}:`, error)
+        console.error(`[v0] Error upserting batch ${i / batchSize + 1}:`, error)
       } else {
-        insertedCount += batch.length
-        console.log(`[v0] Inserted batch ${i / batchSize + 1}: ${batch.length} products`)
+        upsertedCount += batch.length
+        console.log(`[v0] Upserted batch ${i / batchSize + 1}: ${batch.length} products`)
       }
     }
 
@@ -422,18 +390,11 @@ export async function GET() {
     await supabase.from("sync_status").upsert({
       sync_type: "products",
       last_sync_at: syncTime,
-      total_records: insertedCount,
+      total_records: upsertedCount,
       status: "completed",
       created_at: syncTime,
       updated_at: syncTime,
     })
-
-    const { data: finalCheck } = await supabase
-      .from("products_in_stock")
-      .select("id, zureo_code, name, price, color, size, stock_quantity")
-      .limit(10)
-
-    console.log("[v0] Final check - sample products:", finalCheck)
 
     const { count: withPrice } = await supabase
       .from("products_in_stock")
@@ -451,25 +412,15 @@ export async function GET() {
       .select("*", { count: "exact", head: true })
       .not("size", "is", null)
 
-    console.log("[v0] Products with price:", withPrice)
-    console.log("[v0] Products with color:", withColor)
-    console.log("[v0] Products with size:", withSize)
-
     const { count: withSubcategory } = await supabase
       .from("products_in_stock")
       .select("*", { count: "exact", head: true })
       .not("subcategory", "is", null)
 
+    console.log("[v0] Products with price:", withPrice)
+    console.log("[v0] Products with color:", withColor)
+    console.log("[v0] Products with size:", withSize)
     console.log("[v0] Products with subcategory:", withSubcategory)
-
-    const { data: withColorSize } = await supabase
-      .from("products_in_stock")
-      .select("id, zureo_code, color, size")
-      .not("color", "is", null)
-      .not("size", "is", null)
-      .limit(5)
-
-    console.log("[v0] Products with color and size:", withColorSize)
 
     return Response.json({
       success: true,
@@ -477,12 +428,11 @@ export async function GET() {
       summary: {
         totalFetched: allProducts.length,
         totalWithStock: productsWithStock.length,
-        totalInserted: insertedCount,
+        totalUpserted: upsertedCount,
         productsWithPrice: withPrice || 0,
         productsWithColor: withColor || 0,
         productsWithSize: withSize || 0,
-        productsWithColorAndSize: withColorSize?.length || 0,
-        productsWithSubcategory: withSubcategory || 0, // Add subcategory count
+        productsWithSubcategory: withSubcategory || 0,
         syncTime: syncTime,
         categories: [...new Set(productsWithStock.map((p) => p.tipo?.nombre).filter(Boolean))],
         brands: [...new Set(productsWithStock.map((p) => p.marca?.nombre).filter(Boolean))],

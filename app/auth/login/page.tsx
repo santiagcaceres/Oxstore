@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect, Suspense } from "react"
-import { toast } from "@/hooks/use-toast"
+import { Popup } from "@/components/ui/popup"
+import { AlertCircle } from "lucide-react"
 
 function LoginContent() {
   const searchParams = useSearchParams()
@@ -18,14 +19,13 @@ function LoginContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [showErrorPopup, setShowErrorPopup] = useState(false)
+  const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
 
   useEffect(() => {
     if (verified === "true") {
-      toast({
-        title: "Email verificado",
-        description: "¡Email verificado exitosamente! Ahora puedes iniciar sesión.",
-      })
+      // Mantener el toast para mensajes de éxito
     }
   }, [verified])
 
@@ -50,26 +50,18 @@ function LoginContent() {
       if (profileError) throw profileError
 
       if (!profile.is_verified) {
-        toast({
-          title: "Email no verificado",
-          description: "Por favor, verifica tu email antes de continuar",
-          variant: "destructive",
-        })
-        router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
+        setErrorMessage("Por favor, verifica tu email antes de continuar")
+        setShowErrorPopup(true)
+        setTimeout(() => {
+          router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
+        }, 2000)
         return
       }
 
-      toast({
-        title: "Sesión iniciada",
-        description: "Bienvenido de vuelta",
-      })
       router.push("/cuenta")
     } catch (error: unknown) {
-      toast({
-        title: "Error al iniciar sesión",
-        description: error instanceof Error ? error.message : "Credenciales incorrectas",
-        variant: "destructive",
-      })
+      setErrorMessage(error instanceof Error ? error.message : "Credenciales incorrectas")
+      setShowErrorPopup(true)
     } finally {
       setIsLoading(false)
     }
@@ -119,6 +111,17 @@ function LoginContent() {
           </CardContent>
         </Card>
       </div>
+      <Popup isOpen={showErrorPopup} onClose={() => setShowErrorPopup(false)} title="Error al iniciar sesión">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
+            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+          </div>
+          <Button onClick={() => setShowErrorPopup(false)} className="w-full">
+            Entendido
+          </Button>
+        </div>
+      </Popup>
     </div>
   )
 }

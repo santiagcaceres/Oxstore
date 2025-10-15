@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Upload, X, Save, ArrowLeft, AlertCircle, Star } from "lucide-react"
+import { Upload, X, Save, ArrowLeft, AlertCircle, Star, GripVertical } from "lucide-react"
 import { createBrowserClient } from "@supabase/ssr"
 import { useToast } from "@/hooks/use-toast"
 
@@ -114,6 +114,9 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
   const [totalStock, setTotalStock] = useState(0)
 
   const [availableColors, setAvailableColors] = useState<string[]>([])
+
+  // Added state for drag and drop
+  const [draggedImageId, setDraggedImageId] = useState<number | null>(null)
 
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -595,6 +598,80 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
     }
   }
 
+  const reorderImages = async (newOrder: ProductImage[]) => {
+    try {
+      console.log("[v0] Reordering images:", newOrder)
+
+      // Update sort_order for all images
+      const updates = newOrder.map((image, index) => ({
+        id: image.id,
+        sort_order: index,
+      }))
+
+      for (const update of updates) {
+        const { error } = await supabase
+          .from("product_images")
+          .update({ sort_order: update.sort_order })
+          .eq("id", update.id)
+
+        if (error) {
+          console.error("[v0] Error updating sort_order:", error)
+          throw new Error(`Error al reordenar imágenes: ${error.message}`)
+        }
+      }
+
+      await loadProductImages()
+
+      toast({
+        title: "✓ Orden actualizado",
+        description: "El orden de las imágenes ha sido actualizado correctamente",
+        className: "bg-green-50 border-green-200",
+      })
+
+      console.log("[v0] Images reordered successfully")
+    } catch (error) {
+      console.error("[v0] Reorder images error:", error)
+      const errorMessage = error instanceof Error ? error.message : "Error al reordenar imágenes"
+      setError(errorMessage)
+
+      toast({
+        title: "Error al reordenar imágenes",
+        description: errorMessage,
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleDragStart = (imageId: number) => {
+    setDraggedImageId(imageId)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = (targetImageId: number) => {
+    if (!draggedImageId || draggedImageId === targetImageId) {
+      setDraggedImageId(null)
+      return
+    }
+
+    const draggedIndex = productImages.findIndex((img) => img.id === draggedImageId)
+    const targetIndex = productImages.findIndex((img) => img.id === targetImageId)
+
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedImageId(null)
+      return
+    }
+
+    const newOrder = [...productImages]
+    const [draggedImage] = newOrder.splice(draggedIndex, 1)
+    newOrder.splice(targetIndex, 0, draggedImage)
+
+    reorderImages(newOrder)
+    setDraggedImageId(null)
+  }
+
   const saveChanges = async () => {
     if (!product) return
 
@@ -1012,7 +1089,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           <CardDescription>
             {availableColors.length > 0
               ? "Selecciona un color y sube imágenes específicas para ese color. Las imágenes se aplicarán a todas las variantes del color seleccionado."
-              : "Gestiona múltiples imágenes para mostrar en tu tienda. Haz clic en la estrella para marcar como imagen principal."}
+              : "Gestiona múltiples imágenes para mostrar en tu tienda. Arrastra para reordenar, haz clic en la estrella para marcar como principal, o en la X para eliminar."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -1050,7 +1127,20 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                 <Label className="text-sm font-medium mb-3 block">Imágenes actuales</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {productImages.map((image) => (
-                    <div key={image.id} className="relative group">
+                    <div
+                      key={image.id}
+                      className="relative group cursor-move"
+                      draggable
+                      onDragStart={() => handleDragStart(image.id)}
+                      onDragOver={handleDragOver}
+                      onDrop={() => handleDrop(image.id)}
+                    >
+                      <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="bg-white rounded p-1 shadow-md">
+                          <GripVertical className="h-4 w-4 text-gray-600" />
+                        </div>
+                      </div>
+
                       <div className="relative w-full h-32 border-2 rounded-lg overflow-hidden transition-all hover:border-primary">
                         <Image
                           src={image.image_url || "/placeholder.svg"}
@@ -1059,7 +1149,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
                           className="object-cover"
                         />
                         {image.is_primary && (
-                          <Badge className="absolute top-2 left-2 text-xs bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1">
+                          <Badge className="absolute bottom-2 left-2 text-xs bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1">
                             <Star className="h-3 w-3 fill-current" />
                             Principal
                           </Badge>

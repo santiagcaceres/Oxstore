@@ -10,6 +10,8 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
 
     const supabase = createClient()
 
+    console.log("[v0] Querying orders table for ID:", params.id)
+
     const { data: order, error } = await supabase
       .from("orders")
       .select(`
@@ -28,14 +30,17 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       .eq("id", params.id)
       .single()
 
+    console.log("[v0] Query result - error:", error)
+    console.log("[v0] Query result - order:", order ? "Found" : "Not found")
+
     if (error) {
-      console.error("Error fetching order:", error)
-      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+      console.error("[v0] Supabase error:", error)
+      return NextResponse.json({ error: "Order not found", details: error.message }, { status: 404 })
     }
 
     if (!order) {
-      console.error("Order not found for ID:", params.id)
-      return NextResponse.json({ error: "Order not found" }, { status: 404 })
+      console.error("[v0] Order not found for ID:", params.id)
+      return NextResponse.json({ error: "Order not found", orderId: params.id }, { status: 404 })
     }
 
     console.log("[v0] Order data loaded:", order.order_number)
@@ -52,7 +57,13 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       },
     })
   } catch (error) {
-    console.error("Error generating invoice:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("[v0] Exception in invoice generation:", error)
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }

@@ -5,7 +5,7 @@ import { notFound, useRouter } from "next/navigation"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Minus, Plus, ShoppingCart, Heart, Share2, Ruler, Truck, Package } from "lucide-react"
+import { Minus, Plus, ShoppingCart, Heart, Share2, Ruler, Truck, Package, Check } from "lucide-react"
 import type { Product } from "@/lib/database"
 import { useCart } from "@/contexts/cart-context"
 import { loadSimilarProducts } from "@/lib/loadSimilarProducts"
@@ -36,6 +36,7 @@ export default function ProductPage({ params }: ProductPageProps) {
   const [sizeGuideUrl, setSizeGuideUrl] = useState<string | null>(null)
   const { addItem } = useCart()
   const [isAddingToCart, setIsAddingToCart] = useState(false)
+  const [showCartNotification, setShowCartNotification] = useState(false)
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -197,6 +198,11 @@ export default function ProductPage({ params }: ProductPageProps) {
         color: selectedColor,
         quantity,
       })
+
+      setShowCartNotification(true)
+      setTimeout(() => {
+        setShowCartNotification(false)
+      }, 3000)
     } finally {
       setIsAddingToCart(false)
     }
@@ -229,6 +235,20 @@ export default function ProductPage({ params }: ProductPageProps) {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {showCartNotification && (
+        <div className="fixed bottom-4 left-4 z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center gap-3">
+            <div className="bg-white rounded-full p-1">
+              <Check className="h-5 w-5 text-green-500" />
+            </div>
+            <div>
+              <p className="font-semibold">Producto agregado al carrito</p>
+              <p className="text-sm opacity-90">{product?.name}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
         <div className="space-y-4">
           {/* Imagen principal */}

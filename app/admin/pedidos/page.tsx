@@ -15,7 +15,9 @@ export default function AdminOrdersPage() {
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
-    confirmed: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
     totalAmount: 0,
   })
 
@@ -58,7 +60,9 @@ export default function AdminOrdersPage() {
 
       const totalOrders = ordersData.length
       const pendingOrders = ordersData.filter((order: any) => order.order_status === "pending").length
-      const confirmedOrders = ordersData.filter((order: any) => order.order_status === "confirmed").length
+      const processingOrders = ordersData.filter((order: any) => order.order_status === "processing").length
+      const shippedOrders = ordersData.filter((order: any) => order.order_status === "shipped").length
+      const deliveredOrders = ordersData.filter((order: any) => order.order_status === "delivered").length
       const totalAmount = ordersData.reduce(
         (sum: number, order: any) => sum + Number.parseFloat(order.total_amount || 0),
         0,
@@ -67,14 +71,18 @@ export default function AdminOrdersPage() {
       setStats({
         total: totalOrders,
         pending: pendingOrders,
-        confirmed: confirmedOrders,
+        processing: processingOrders,
+        shipped: shippedOrders,
+        delivered: deliveredOrders,
         totalAmount,
       })
 
       console.log("[v0] Stats calculated:", {
         total: totalOrders,
         pending: pendingOrders,
-        confirmed: confirmedOrders,
+        processing: processingOrders,
+        shipped: shippedOrders,
+        delivered: deliveredOrders,
         totalAmount,
       })
       console.log("[v0] Orders loaded successfully:", ordersData.length)
@@ -134,7 +142,7 @@ export default function AdminOrdersPage() {
         <p className="text-muted-foreground">Gestión de pedidos y ventas</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Pedidos</CardTitle>
@@ -155,20 +163,29 @@ export default function AdminOrdersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Confirmados</CardTitle>
+            <CardTitle className="text-sm font-medium">Preparando</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.confirmed}</div>
-            <p className="text-xs text-muted-foreground">Pagos aprobados</p>
+            <div className="text-2xl font-bold text-blue-600">{stats.processing}</div>
+            <p className="text-xs text-muted-foreground">En proceso</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Ventas</CardTitle>
+            <CardTitle className="text-sm font-medium">Enviados</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">${stats.totalAmount.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Ingresos totales</p>
+            <div className="text-2xl font-bold text-green-600">{stats.shipped}</div>
+            <p className="text-xs text-muted-foreground">En camino</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Entregados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.delivered}</div>
+            <p className="text-xs text-muted-foreground">Completados</p>
           </CardContent>
         </Card>
       </div>

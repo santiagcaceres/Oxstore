@@ -96,6 +96,19 @@ export default function OtrosPagosPage() {
       console.log("[v0] All order items created successfully")
 
       try {
+        await fetch("/api/admin/orders/notify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ orderId: order.id }),
+        })
+        console.log("[v0] Admin notification sent")
+      } catch (emailError) {
+        console.error("[v0] Error sending admin notification:", emailError)
+      }
+
+      try {
         await fetch("/api/orders/send-invoice", {
           method: "POST",
           headers: {
