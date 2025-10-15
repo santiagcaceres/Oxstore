@@ -33,7 +33,6 @@ export default function OtrosPagosPage() {
       console.log("[v0] Processing cash payment...")
       const supabase = createClient()
 
-      // Generar número de orden único
       const orderNumber = `ORD-${Date.now()}`
 
       console.log("[v0] Order details:", {
@@ -43,7 +42,6 @@ export default function OtrosPagosPage() {
         itemCount: orderData.items.length,
       })
 
-      // Crear el pedido
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert({
@@ -73,7 +71,6 @@ export default function OtrosPagosPage() {
 
       console.log("[v0] Order created successfully:", order.id)
 
-      // Crear los items del pedido
       for (const item of orderData.items) {
         const itemPrice = Number.parseFloat(item.price) || 0
         const itemQuantity = Number.parseInt(item.quantity) || 1
@@ -97,6 +94,20 @@ export default function OtrosPagosPage() {
       }
 
       console.log("[v0] All order items created successfully")
+
+      try {
+        await fetch("/api/orders/send-invoice", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ orderId: order.id }),
+        })
+        console.log("[v0] Invoice email sent")
+      } catch (emailError) {
+        console.error("[v0] Error sending invoice email:", emailError)
+      }
+
       localStorage.removeItem("orderData")
       clearCart()
       router.push(`/checkout/exito-efectivo?order_id=${order.id}`)

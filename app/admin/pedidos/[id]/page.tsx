@@ -2,13 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Download, Truck, Package, User, MapPin, CreditCard } from "lucide-react"
 import Link from "next/link"
+import { Popup } from "@/components/ui/popup"
 
 export default function OrderDetailPage() {
   const params = useParams()
@@ -16,6 +15,10 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const [showOrderStatusPopup, setShowOrderStatusPopup] = useState(false)
+  const [showPaymentStatusPopup, setShowPaymentStatusPopup] = useState(false)
+  const [selectedOrderStatus, setSelectedOrderStatus] = useState("")
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState("")
 
   useEffect(() => {
     if (params.id) {
@@ -68,6 +71,7 @@ export default function OrderDetailPage() {
       console.log("[v0] Order status updated successfully:", data.order)
 
       setOrder(data.order)
+      setShowOrderStatusPopup(false)
       alert("Estado del pedido actualizado correctamente. Se ha enviado un email al cliente.")
     } catch (error) {
       console.error("Error updating order status:", error)
@@ -83,25 +87,23 @@ export default function OrderDetailPage() {
 
       console.log("[v0] Updating payment status to:", newStatus)
 
-      const supabase = createClient()
+      const response = await fetch(`/api/admin/orders/${params.id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ paymentStatus: newStatus }),
+      })
 
-      const { data, error } = await supabase
-        .from("orders")
-        .update({
-          payment_status: newStatus,
-        })
-        .eq("id", params.id)
-        .select()
-
-      if (error) {
-        console.error("Error updating payment status:", error)
-        alert("Error al actualizar el estado del pago")
-        return
+      if (!response.ok) {
+        throw new Error("Error al actualizar el estado del pago")
       }
 
-      console.log("[v0] Payment status updated successfully:", data)
+      const data = await response.json()
+      console.log("[v0] Payment status updated successfully:", data.order)
 
-      setOrder({ ...order, payment_status: newStatus })
+      setOrder(data.order)
+      setShowPaymentStatusPopup(false)
       alert("Estado del pago actualizado correctamente")
     } catch (error) {
       console.error("Error updating payment status:", error)
@@ -223,37 +225,34 @@ export default function OrderDetailPage() {
                   <p className="text-sm font-medium text-muted-foreground">Estado del Pedido</p>
                   <div className="flex items-center space-x-2">
                     {getStatusBadge(order.order_status || order.status)}
-                    <Select
-                      value={order.order_status || order.status}
-                      onValueChange={updateOrderStatus}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedOrderStatus(order.order_status || order.status)
+                        setShowOrderStatusPopup(true)
+                      }}
                       disabled={updating}
                     >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pendiente</SelectItem>
-                        <SelectItem value="processing">En Proceso</SelectItem>
-                        <SelectItem value="shipped">Enviado</SelectItem>
-                        <SelectItem value="delivered">Entregado</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      Cambiar
+                    </Button>
                   </div>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Estado del Pago</p>
                   <div className="flex items-center space-x-2">
                     {getPaymentStatusBadge(order.payment_status)}
-                    <Select value={order.payment_status} onValueChange={updatePaymentStatus} disabled={updating}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pendiente</SelectItem>
-                        <SelectItem value="approved">Aprobado</SelectItem>
-                        <SelectItem value="rejected">Rechazado</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedPaymentStatus(order.payment_status)
+                        setShowPaymentStatusPopup(true)
+                      }}
+                      disabled={updating}
+                    >
+                      Cambiar
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -407,6 +406,93 @@ export default function OrderDetailPage() {
           </Card>
         </div>
       </div>
+
+      <Popup
+        isOpen={showOrderStatusPopup}
+        onClose={() => setShowOrderStatusPopup(false)}
+        title="Cambiar Estado del Pedido"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Selecciona el nuevo estado del pedido. Se enviará un email automático al cliente.
+          </p>
+          <div className="space-y-2">
+            {[
+              { value: "pending", label: "Pendiente" },
+              { value: "processing", label: "En Proceso" },
+              { value: "shipped", label: "Enviado" },
+              { value: "delivered", label: "Entregado" },
+            ].map((status) => (
+              <button
+                key={status.value}
+                onClick={() => setSelectedOrderStatus(status.value)}
+                className={`w-full p-3 text-left border rounded-lg transition-colors ${
+                  selectedOrderStatus === status.value
+                    ? "border-primary bg-primary/10"
+                    : "border-gray-200 hover:border-primary/50"
+                }`}
+              >
+                {status.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => updateOrderStatus(selectedOrderStatus)}
+              disabled={updating || selectedOrderStatus === (order.order_status || order.status)}
+              className="flex-1"
+            >
+              {updating ? "Actualizando..." : "Confirmar"}
+            </Button>
+            <Button variant="outline" onClick={() => setShowOrderStatusPopup(false)} disabled={updating}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </Popup>
+
+      <Popup
+        isOpen={showPaymentStatusPopup}
+        onClose={() => setShowPaymentStatusPopup(false)}
+        title="Cambiar Estado del Pago"
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">Selecciona el nuevo estado del pago.</p>
+          <div className="space-y-2">
+            {[
+              { value: "pending", label: "Pendiente" },
+              { value: "approved", label: "Aprobado" },
+              { value: "rejected", label: "Rechazado" },
+            ].map((status) => (
+              <button
+                key={status.value}
+                onClick={() => setSelectedPaymentStatus(status.value)}
+                className={`w-full p-3 text-left border rounded-lg transition-colors ${
+                  selectedPaymentStatus === status.value
+                    ? "border-primary bg-primary/10"
+                    : "border-gray-200 hover:border-primary/50"
+                }`}
+              >
+                {status.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => updatePaymentStatus(selectedPaymentStatus)}
+              disabled={updating || selectedPaymentStatus === order.payment_status}
+              className="flex-1"
+            >
+              {updating ? "Actualizando..." : "Confirmar"}
+            </Button>
+            <Button variant="outline" onClick={() => setShowPaymentStatusPopup(false)} disabled={updating}>
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      </Popup>
     </div>
   )
 }

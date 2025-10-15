@@ -1,17 +1,21 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
+
+const supabaseAdmin = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+})
 
 export async function GET() {
   try {
     console.log("[v0] GET /api/admin/users - Starting request")
-    const supabase = createClient()
-
-    console.log("[v0] Supabase client created successfully")
 
     const {
       data: { users: authUsers },
       error: authError,
-    } = await supabase.auth.admin.listUsers()
+    } = await supabaseAdmin.auth.admin.listUsers()
 
     console.log("[v0] Auth users query executed")
     console.log("[v0] Auth users error:", authError)
@@ -32,7 +36,7 @@ export async function GET() {
     const usersWithProfiles = await Promise.all(
       authUsers.map(async (authUser) => {
         try {
-          const { data: profile, error: profileError } = await supabase
+          const { data: profile, error: profileError } = await supabaseAdmin
             .from("user_profiles")
             .select("*")
             .eq("id", authUser.id)

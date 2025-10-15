@@ -57,8 +57,8 @@ export default function AdminOrdersPage() {
       setOrders(ordersData)
 
       const totalOrders = ordersData.length
-      const pendingOrders = ordersData.filter((order: any) => order.status === "pending").length
-      const confirmedOrders = ordersData.filter((order: any) => order.status === "confirmed").length
+      const pendingOrders = ordersData.filter((order: any) => order.order_status === "pending").length
+      const confirmedOrders = ordersData.filter((order: any) => order.order_status === "confirmed").length
       const totalAmount = ordersData.reduce(
         (sum: number, order: any) => sum + Number.parseFloat(order.total_amount || 0),
         0,
