@@ -449,11 +449,6 @@ export default function AdminProductsPage() {
                             Disponible
                           </Badge>
                           {product.is_featured && <Badge variant="outline">Destacado</Badge>}
-                          {product.variants.length > 1 && (
-                            <Badge variant="outline" className="text-xs">
-                              {product.variants.length} variantes
-                            </Badge>
-                          )}
                         </div>
                       </TableCell>
                       <TableCell className="text-right">

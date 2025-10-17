@@ -359,7 +359,6 @@ export async function GET() {
           category: product.tipo?.nombre || "Sin categoría",
           subcategory: subcategory,
           brand: brandName,
-          image_url: `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.nombre || "producto")}`,
           is_featured: false,
           discount_percentage: 0,
           zureo_data: JSON.stringify({
@@ -380,13 +379,33 @@ export async function GET() {
       allProductRecords.find((p) => p.variants.length > 0),
     )
 
+    const { data: existingProducts } = await supabase
+      .from("products_in_stock")
+      .select("zureo_code, image_url")
+      .in(
+        "zureo_code",
+        allProductRecords.map((p) => p.zureo_code),
+      )
+
+    const existingImagesMap = new Map(existingProducts?.map((p) => [p.zureo_code, p.image_url]) || [])
+    console.log(`[v0] Found ${existingImagesMap.size} existing products with images`)
+
     const batchSize = 100
     let upsertedCount = 0
     const productIdMap = new Map()
 
     for (let i = 0; i < allProductRecords.length; i += batchSize) {
       const batch = allProductRecords.slice(i, i + batchSize)
-      const productsToUpsert = batch.map(({ variants, ...product }) => product)
+      const productsToUpsert = batch.map(({ variants, ...product }) => {
+        const existingImageUrl = existingImagesMap.get(product.zureo_code)
+        return {
+          ...product,
+          image_url:
+            existingImageUrl && !existingImageUrl.includes("placeholder")
+              ? existingImageUrl
+              : `/placeholder.svg?height=400&width=400&query=${encodeURIComponent(product.name)}`,
+        }
+      })
 
       const { data: upsertedBatch, error } = await supabase
         .from("products_in_stock")

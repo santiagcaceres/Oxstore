@@ -189,31 +189,11 @@ export function Header() {
     }
 
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
+      const response = await fetch(`/api/products/search?q=${encodeURIComponent(query)}&limit=5`)
+      const data = await response.json()
 
-      const searchTerm = query.toLowerCase()
-      const { data, error } = await supabase
-        .from("products_in_stock")
-        .select("id, name, brand, price, image_url, zureo_code")
-        .or(
-          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,brand.ilike.%${searchTerm}%,zureo_code.ilike.%${searchTerm}%`,
-        )
-        .gt("stock_quantity", 0)
-        .eq("is_active", true)
-        .limit(5)
-
-      if (!error && data) {
-        const uniqueProducts = data.reduce((acc: any[], product) => {
-          if (!acc.find((p) => p.zureo_code === product.zureo_code)) {
-            acc.push(product)
-          }
-          return acc
-        }, [])
-
-        setSearchSuggestions(uniqueProducts)
+      if (data.products) {
+        setSearchSuggestions(data.products)
         setShowSuggestions(true)
       }
     } catch (error) {
@@ -419,7 +399,7 @@ export function Header() {
                           <Link
                             key={brand.id}
                             href={`/marca/${brand.slug}`}
-                            className="text-sm hover:text-primary transition-colors p-3 hover:bg-muted/50 rounded"
+                            className="text-sm hover:text-primary transition-colors p-3 hover:bg-muted rounded"
                           >
                             {brand.name}
                           </Link>

@@ -41,7 +41,7 @@ export function ProductGrid({
   filterSize = "",
   isNew = false,
   onSale = false,
-  showCarousel = false, // Valor por defecto false
+  showCarousel = false,
 }: ProductGridProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts)
   const [loading, setLoading] = useState(false)
@@ -98,7 +98,104 @@ export function ProductGrid({
         filterSize,
         isNew,
         onSale,
+        limit, // Agregado para debug
       })
+
+      if (search && search.trim()) {
+        const response = await fetch(`/api/products/search?q=${encodeURIComponent(search)}&limit=1000`)
+        const data = await response.json()
+
+        if (data.products) {
+          const convertedProducts: Product[] = []
+          const processedCodes = new Set<string>()
+
+          for (const p of data.products) {
+            if (processedCodes.has(p.zureo_code)) {
+              continue
+            }
+            processedCodes.add(p.zureo_code)
+
+            const supabase = createClient()
+
+            // Obtener variantes
+            const { data: variants } = await supabase
+              .from("products_in_stock")
+              .select("id, color, size, stock_quantity, price")
+              .eq("zureo_code", p.zureo_code)
+              .gt("stock_quantity", 0)
+              .eq("is_active", true)
+              .order("color")
+              .order("size")
+
+            // Agrupar variantes por color+talle
+            const groupedVariants = new Map<string, any>()
+            for (const variant of variants || []) {
+              const key = `${variant.color}-${variant.size}`
+              if (groupedVariants.has(key)) {
+                const existing = groupedVariants.get(key)
+                existing.stock_quantity += variant.stock_quantity
+              } else {
+                groupedVariants.set(key, { ...variant })
+              }
+            }
+
+            const uniqueVariants = Array.from(groupedVariants.values())
+            const variantIds = variants?.map((v) => v.id) || [p.id]
+
+            // Obtener imágenes
+            const { data: productImages } = await supabase
+              .from("product_images")
+              .select("*")
+              .in("product_id", variantIds)
+              .order("sort_order")
+
+            const product: Product & { variants?: any[] } = {
+              id: p.id,
+              name: p.name,
+              slug: `${p.id}-${p.name
+                .toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, "")
+                .replace(/\s+/g, "-")
+                .trim()}`,
+              description: p.description,
+              short_description: p.description?.substring(0, 100) + "...",
+              price: p.price,
+              compare_price: p.price * 1.2,
+              sku: p.zureo_code,
+              stock_quantity: uniqueVariants.reduce((sum, v) => sum + v.stock_quantity, 0),
+              category_id: 1,
+              brand: p.brand,
+              is_active: true,
+              is_featured: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              size: p.size,
+              variants: uniqueVariants || [],
+              images:
+                productImages && productImages.length > 0
+                  ? productImages
+                  : [
+                      {
+                        id: p.id,
+                        product_id: p.id,
+                        image_url: "/placeholder.svg?height=400&width=400",
+                        alt_text: p.name,
+                        sort_order: 0,
+                        is_primary: true,
+                        created_at: new Date().toISOString(),
+                      },
+                    ],
+            }
+
+            convertedProducts.push(product)
+          }
+
+          setProducts(convertedProducts)
+          setHasMore(false)
+          setLoading(false)
+          return
+        }
+      }
 
       const supabase = createClient()
       let query = supabase.from("products_in_stock").select("*").gt("stock_quantity", 0).eq("is_active", true)
@@ -162,14 +259,6 @@ export function ProductGrid({
         }
       }
 
-      // Apply search filter
-      if (search) {
-        const searchTerm = search.toLowerCase()
-        query = query.or(
-          `name.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,brand.ilike.%${searchTerm}%,zureo_code.ilike.%${searchTerm}%`,
-        )
-      }
-
       switch (sortBy) {
         case "price-asc":
           query = query.order("price", { ascending: true })
@@ -185,6 +274,103 @@ export function ProductGrid({
           break
         default:
           query = query.order("created_at", { ascending: false })
+      }
+
+      if (limit > 100) {
+        const { data: productsData, error } = await query
+
+        if (error) {
+          console.error("[v0] Error loading products:", error)
+          setProducts([])
+          setHasMore(false)
+          return
+        }
+
+        console.log("[v0] Loaded ALL products from database:", productsData?.length || 0)
+
+        const convertedProducts: Product[] = []
+        const processedCodes = new Set<string>()
+
+        for (const p of productsData || []) {
+          if (processedCodes.has(p.zureo_code)) {
+            continue
+          }
+          processedCodes.add(p.zureo_code)
+
+          const { data: variants } = await supabase
+            .from("products_in_stock")
+            .select("id, color, size, stock_quantity, price")
+            .eq("zureo_code", p.zureo_code)
+            .gt("stock_quantity", 0)
+            .eq("is_active", true)
+            .order("color")
+            .order("size")
+
+          const groupedVariants = new Map<string, any>()
+          for (const variant of variants || []) {
+            const key = `${variant.color}-${variant.size}`
+            if (groupedVariants.has(key)) {
+              const existing = groupedVariants.get(key)
+              existing.stock_quantity += variant.stock_quantity
+            } else {
+              groupedVariants.set(key, { ...variant })
+            }
+          }
+
+          const uniqueVariants = Array.from(groupedVariants.values())
+          const variantIds = variants?.map((v) => v.id) || [p.id]
+
+          const { data: productImages } = await supabase
+            .from("product_images")
+            .select("*")
+            .in("product_id", variantIds)
+            .order("sort_order")
+
+          const product: Product & { variants?: any[] } = {
+            id: p.id,
+            name: p.name,
+            slug: `${p.id}-${p.name
+              .toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, "")
+              .replace(/\s+/g, "-")
+              .trim()}`,
+            description: p.description,
+            short_description: p.description?.substring(0, 100) + "...",
+            price: p.price,
+            compare_price: p.price * 1.2,
+            sku: p.zureo_code,
+            stock_quantity: p.stock_quantity,
+            category_id: 1,
+            brand: p.brand,
+            is_active: p.is_active,
+            is_featured: p.is_featured,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            size: p.size,
+            variants: uniqueVariants || [],
+            images:
+              productImages && productImages.length > 0
+                ? productImages
+                : [
+                    {
+                      id: p.id,
+                      product_id: p.id,
+                      image_url: "/placeholder.svg?height=400&width=400",
+                      alt_text: p.name,
+                      sort_order: 0,
+                      is_primary: true,
+                      created_at: p.created_at,
+                    },
+                  ],
+          }
+
+          convertedProducts.push(product)
+        }
+
+        setProducts(convertedProducts)
+        setHasMore(false)
+        setLoading(false)
+        return
       }
 
       const currentOffset = reset ? 0 : offset

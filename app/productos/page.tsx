@@ -107,7 +107,7 @@ export default function ProductsPage() {
         )}
 
         {/* Products Grid */}
-        <ProductGrid search={currentSearch} />
+        <ProductGrid search={currentSearch} limit={1000} sortBy={sortBy} />
       </main>
 
       <Footer />
