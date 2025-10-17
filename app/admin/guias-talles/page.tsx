@@ -180,39 +180,25 @@ export default function SizeGuidesPage() {
         throw new Error("La imagen no debe superar los 5MB")
       }
 
-      const fileName = `size-guide-${subcategorySlug}-${uploadGender || "all"}-${Date.now()}.${file.name.split(".").pop()}`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("size-guides")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: true,
-        })
-
-      if (uploadError) {
-        throw new Error(`Error subiendo imagen: ${uploadError.message}`)
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("subcategorySlug", subcategorySlug)
+      if (uploadGender) {
+        formData.append("gender", uploadGender)
       }
 
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("size-guides").getPublicUrl(fileName)
+      const response = await fetch("/api/size-guides/upload", {
+        method: "POST",
+        body: formData,
+      })
 
-      console.log(`[v0] Image uploaded: ${publicUrl}`)
+      const result = await response.json()
 
-      const { error: upsertError } = await supabase.from("size_guides").upsert(
-        {
-          subcategory: subcategorySlug,
-          gender: uploadGender,
-          image_url: publicUrl,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: "subcategory,gender",
-        },
-      )
-
-      if (upsertError) {
-        throw new Error(`Error guardando guía de talles: ${upsertError.message}`)
+      if (!response.ok) {
+        throw new Error(result.error || "Error subiendo guía de talles")
       }
+
+      console.log(`[v0] Image uploaded successfully: ${result.imageUrl}`)
 
       const subcategoryName = subcategories.find((s) => s.slug === subcategorySlug)?.name || subcategorySlug
       const genderText = uploadGender || "todas las categorías"

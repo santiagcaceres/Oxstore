@@ -20,6 +20,9 @@ export default function Page() {
   const [lastName, setLastName] = useState("")
   const [phone, setPhone] = useState("")
   const [dni, setDni] = useState("")
+  const [address, setAddress] = useState("")
+  const [city, setCity] = useState("")
+  const [postalCode, setPostalCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showErrorPopup, setShowErrorPopup] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
@@ -31,13 +34,29 @@ export default function Page() {
     setIsLoading(true)
 
     if (password !== confirmPassword) {
-      setErrorMessage("Las contraseñas no coinciden")
+      setErrorMessage("Las contraseñas no coinciden. Por favor, verifica que ambas sean iguales.")
+      setShowErrorPopup(true)
+      setIsLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setErrorMessage("La contraseña debe tener al menos 6 caracteres.")
       setShowErrorPopup(true)
       setIsLoading(false)
       return
     }
 
     try {
+      const { data: existingUser } = await supabase.from("user_profiles").select("email").eq("email", email).single()
+
+      if (existingUser) {
+        setErrorMessage("Este email ya está registrado. Por favor, inicia sesión o usa otro email.")
+        setShowErrorPopup(true)
+        setIsLoading(false)
+        return
+      }
+
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
@@ -47,6 +66,9 @@ export default function Page() {
             last_name: lastName,
             phone,
             dni,
+            address,
+            city,
+            postal_code: postalCode,
           },
         },
       })
@@ -54,24 +76,36 @@ export default function Page() {
       if (authError) {
         if (authError.message.includes("already registered")) {
           setErrorMessage("Este email ya está en uso. Por favor, inicia sesión.")
-          setShowErrorPopup(true)
-          setIsLoading(false)
-          return
+        } else if (authError.message.includes("password")) {
+          setErrorMessage("La contraseña no cumple con los requisitos de seguridad.")
+        } else {
+          setErrorMessage(authError.message)
         }
-        throw authError
+        setShowErrorPopup(true)
+        setIsLoading(false)
+        return
       }
 
-      if (!authData.user) throw new Error("Error creando usuario")
+      if (!authData.user) {
+        setErrorMessage("Error al crear la cuenta. Por favor, intenta nuevamente.")
+        setShowErrorPopup(true)
+        setIsLoading(false)
+        return
+      }
 
       const code = Math.floor(100000 + Math.random() * 900000).toString()
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
 
       const { error: profileError } = await supabase.from("user_profiles").upsert({
         id: authData.user.id,
+        email,
         first_name: firstName,
         last_name: lastName,
         phone,
         dni,
+        address,
+        city,
+        postal_code: postalCode,
         verification_code: code,
         verification_code_expires_at: expiresAt.toISOString(),
         is_verified: false,
@@ -79,7 +113,10 @@ export default function Page() {
 
       if (profileError) {
         console.error("[v0] Error guardando perfil:", profileError)
-        throw profileError
+        setErrorMessage("Error al guardar tu información. Por favor, intenta nuevamente.")
+        setShowErrorPopup(true)
+        setIsLoading(false)
+        return
       }
 
       const response = await fetch("/api/auth/send-verification-code", {
@@ -91,22 +128,24 @@ export default function Page() {
       if (!response.ok) {
         const errorData = await response.json()
         console.error("[v0] Error enviando código:", errorData)
-        throw new Error("Error enviando código de verificación")
+        setErrorMessage("Error al enviar el código de verificación. Por favor, intenta nuevamente.")
+        setShowErrorPopup(true)
+        setIsLoading(false)
+        return
       }
 
       router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
     } catch (error: unknown) {
       console.error("[v0] Error en registro:", error)
-      setErrorMessage(error instanceof Error ? error.message : "Ocurrió un error inesperado")
+      setErrorMessage("Ocurrió un error inesperado. Por favor, intenta nuevamente.")
       setShowErrorPopup(true)
-    } finally {
       setIsLoading(false)
     }
   }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold">CREAR CUENTA</CardTitle>
@@ -114,7 +153,7 @@ export default function Page() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignUp} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">NOMBRE *</Label>
                   <Input
@@ -123,6 +162,7 @@ export default function Page() {
                     required
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Juan"
                   />
                 </div>
                 <div className="space-y-2">
@@ -133,10 +173,11 @@ export default function Page() {
                     required
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Pérez"
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="phone">TELÉFONO *</Label>
                   <Input
@@ -157,6 +198,40 @@ export default function Page() {
                     placeholder="12345678"
                     value={dni}
                     onChange={(e) => setDni(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">DIRECCIÓN *</Label>
+                <Input
+                  id="address"
+                  type="text"
+                  required
+                  placeholder="Av. 18 de Julio 1234"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="city">CIUDAD *</Label>
+                  <Input
+                    id="city"
+                    type="text"
+                    required
+                    placeholder="Montevideo"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postalCode">CÓDIGO POSTAL</Label>
+                  <Input
+                    id="postalCode"
+                    type="text"
+                    placeholder="11000"
+                    value={postalCode}
+                    onChange={(e) => setPostalCode(e.target.value)}
                   />
                 </div>
               </div>
@@ -208,9 +283,9 @@ export default function Page() {
       </div>
       <Popup isOpen={showErrorPopup} onClose={() => setShowErrorPopup(false)} title="Error al crear cuenta">
         <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+          <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
+            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-800 leading-relaxed">{errorMessage}</p>
           </div>
           <Button onClick={() => setShowErrorPopup(false)} className="w-full">
             Entendido

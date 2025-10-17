@@ -11,7 +11,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect, Suspense } from "react"
 import { Popup } from "@/components/ui/popup"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, CheckCircle } from "lucide-react"
 
 function LoginContent() {
   const searchParams = useSearchParams()
@@ -20,12 +20,13 @@ function LoginContent() {
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showErrorPopup, setShowErrorPopup] = useState(false)
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
 
   useEffect(() => {
     if (verified === "true") {
-      // Mantener el toast para mensajes de éxito
+      setShowSuccessPopup(true)
     }
   }, [verified])
 
@@ -39,7 +40,19 @@ function LoginContent() {
         email,
         password,
       })
-      if (authError) throw authError
+
+      if (authError) {
+        if (authError.message.includes("Invalid login credentials")) {
+          setErrorMessage("Email o contraseña incorrectos. Por favor, verifica tus datos e intenta nuevamente.")
+        } else if (authError.message.includes("Email not confirmed")) {
+          setErrorMessage("Tu email aún no ha sido verificado. Por favor, revisa tu correo y confirma tu cuenta.")
+        } else {
+          setErrorMessage(authError.message)
+        }
+        setShowErrorPopup(true)
+        setIsLoading(false)
+        return
+      }
 
       const { data: profile, error: profileError } = await supabase
         .from("user_profiles")
@@ -47,22 +60,29 @@ function LoginContent() {
         .eq("id", authData.user.id)
         .single()
 
-      if (profileError) throw profileError
+      if (profileError) {
+        setErrorMessage("Error al verificar tu cuenta. Por favor, intenta nuevamente.")
+        setShowErrorPopup(true)
+        setIsLoading(false)
+        return
+      }
 
       if (!profile.is_verified) {
-        setErrorMessage("Por favor, verifica tu email antes de continuar")
+        setErrorMessage(
+          "Tu cuenta aún no ha sido verificada. Te redirigiremos para que ingreses el código de verificación.",
+        )
         setShowErrorPopup(true)
         setTimeout(() => {
           router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
-        }, 2000)
+        }, 3000)
         return
       }
 
       router.push("/cuenta")
     } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : "Credenciales incorrectas")
+      console.error("[v0] Error en login:", error)
+      setErrorMessage("Ocurrió un error inesperado. Por favor, intenta nuevamente.")
       setShowErrorPopup(true)
-    } finally {
       setIsLoading(false)
     }
   }
@@ -113,12 +133,25 @@ function LoginContent() {
       </div>
       <Popup isOpen={showErrorPopup} onClose={() => setShowErrorPopup(false)} title="Error al iniciar sesión">
         <div className="space-y-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-500 mt-0.5" />
-            <p className="text-sm text-muted-foreground">{errorMessage}</p>
+          <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
+            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-800 leading-relaxed">{errorMessage}</p>
           </div>
           <Button onClick={() => setShowErrorPopup(false)} className="w-full">
             Entendido
+          </Button>
+        </div>
+      </Popup>
+      <Popup isOpen={showSuccessPopup} onClose={() => setShowSuccessPopup(false)} title="¡Cuenta verificada!">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-green-800 leading-relaxed">
+              Tu cuenta ha sido verificada exitosamente. Ahora puedes iniciar sesión.
+            </p>
+          </div>
+          <Button onClick={() => setShowSuccessPopup(false)} className="w-full">
+            Continuar
           </Button>
         </div>
       </Popup>
