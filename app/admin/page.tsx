@@ -82,7 +82,26 @@ export default function AdminDashboard() {
         monthStart: monthStart.toISOString(),
       })
 
-      const approvedOrders = orders?.filter((o) => o.payment_status === "approved") || []
+      console.log(
+        "[v0] Dashboard - All orders sample:",
+        orders?.slice(0, 5).map((o) => ({
+          id: o.id,
+          total_amount: o.total_amount,
+          payment_status: o.payment_status,
+          order_status: o.order_status,
+          status: o.status,
+          created_at: o.created_at,
+        })),
+      )
+
+      const approvedOrders =
+        orders?.filter(
+          (o) =>
+            o.payment_status === "approved" ||
+            (o.order_status && o.order_status !== "pending") ||
+            (o.status && o.status !== "pending"),
+        ) || []
+
       console.log("[v0] Dashboard - Approved orders:", approvedOrders.length)
       console.log(
         "[v0] Dashboard - Sample approved orders:",
@@ -91,6 +110,7 @@ export default function AdminDashboard() {
           total_amount: o.total_amount,
           created_at: o.created_at,
           payment_status: o.payment_status,
+          order_status: o.order_status,
         })),
       )
 
