@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { ProductGrid } from "@/components/product-grid"
 import { ProductFilters } from "@/components/product-filters"
-import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 
 interface Product {
@@ -112,7 +111,6 @@ export default function CategoryPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">Cargando productos...</div>
         </div>
@@ -123,8 +121,6 @@ export default function CategoryPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">{title}</h1>

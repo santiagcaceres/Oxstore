@@ -3,7 +3,6 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ProductGrid } from "@/components/product-grid"
 import { Button } from "@/components/ui/button"
@@ -36,7 +35,7 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      {/* Header is removed as it's now in the layout principal */}
 
       <main className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}

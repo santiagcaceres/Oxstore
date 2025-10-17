@@ -75,7 +75,24 @@ export default function AdminDashboard() {
       const weekStart = new Date(today.getTime() - today.getDay() * 24 * 60 * 60 * 1000)
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
+      console.log("[v0] Dashboard - Total orders:", orders?.length || 0)
+      console.log("[v0] Dashboard - Date ranges:", {
+        today: today.toISOString(),
+        weekStart: weekStart.toISOString(),
+        monthStart: monthStart.toISOString(),
+      })
+
       const approvedOrders = orders?.filter((o) => o.payment_status === "approved") || []
+      console.log("[v0] Dashboard - Approved orders:", approvedOrders.length)
+      console.log(
+        "[v0] Dashboard - Sample approved orders:",
+        approvedOrders.slice(0, 3).map((o) => ({
+          id: o.id,
+          total_amount: o.total_amount,
+          created_at: o.created_at,
+          payment_status: o.payment_status,
+        })),
+      )
 
       const salesToday = approvedOrders
         .filter((o) => new Date(o.created_at) >= today)
@@ -88,6 +105,15 @@ export default function AdminDashboard() {
       const salesThisMonth = approvedOrders
         .filter((o) => new Date(o.created_at) >= monthStart)
         .reduce((sum, o) => sum + (Number.parseFloat(o.total_amount) || 0), 0)
+
+      console.log("[v0] Dashboard - Sales calculations:", {
+        salesToday,
+        salesThisWeek,
+        salesThisMonth,
+        ordersToday: approvedOrders.filter((o) => new Date(o.created_at) >= today).length,
+        ordersThisWeek: approvedOrders.filter((o) => new Date(o.created_at) >= weekStart).length,
+        ordersThisMonth: approvedOrders.filter((o) => new Date(o.created_at) >= monthStart).length,
+      })
 
       const newPendingOrders =
         orders?.filter(

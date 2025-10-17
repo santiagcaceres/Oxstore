@@ -20,7 +20,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Subcategory {
   id: number
@@ -41,7 +40,6 @@ export default function SizeGuidesPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [selectedGender, setSelectedGender] = useState<Record<string, string>>({})
 
   const supabase = createClient()
 
@@ -165,7 +163,7 @@ export default function SizeGuidesPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    const uploadGender = selectedGender[subcategorySlug] || subcategoryGender || "all"
+    const uploadGender = subcategoryGender
 
     try {
       setUploading(subcategorySlug)
@@ -182,7 +180,7 @@ export default function SizeGuidesPage() {
         throw new Error("La imagen no debe superar los 5MB")
       }
 
-      const fileName = `size-guide-${subcategorySlug}-${uploadGender}-${Date.now()}.${file.name.split(".").pop()}`
+      const fileName = `size-guide-${subcategorySlug}-${uploadGender || "all"}-${Date.now()}.${file.name.split(".").pop()}`
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("size-guides")
         .upload(fileName, file, {
@@ -203,7 +201,7 @@ export default function SizeGuidesPage() {
       const { error: upsertError } = await supabase.from("size_guides").upsert(
         {
           subcategory: subcategorySlug,
-          gender: uploadGender === "all" ? null : uploadGender,
+          gender: uploadGender,
           image_url: publicUrl,
           updated_at: new Date().toISOString(),
         },
@@ -217,7 +215,7 @@ export default function SizeGuidesPage() {
       }
 
       const subcategoryName = subcategories.find((s) => s.slug === subcategorySlug)?.name || subcategorySlug
-      const genderText = uploadGender === "all" ? "todas las categorías" : uploadGender
+      const genderText = uploadGender || "todas las categorías"
       setSuccess(`Guía de talles actualizada para ${subcategoryName} (${genderText})`)
       await loadSubcategories()
 
@@ -431,24 +429,6 @@ export default function SizeGuidesPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {!subcategory.size_guide_url && (
-                          <Select
-                            value={selectedGender[subcategory.slug] || subcategory.gender || "all"}
-                            onValueChange={(value) =>
-                              setSelectedGender((prev) => ({ ...prev, [subcategory.slug]: value }))
-                            }
-                          >
-                            <SelectTrigger className="w-[120px]">
-                              <SelectValue placeholder="Género" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">Todos</SelectItem>
-                              <SelectItem value="hombre">Hombre</SelectItem>
-                              <SelectItem value="mujer">Mujer</SelectItem>
-                              <SelectItem value="unisex">Unisex</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
                         <label htmlFor={`upload-${subcategory.id}`}>
                           <Button
                             variant="outline"
