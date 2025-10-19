@@ -238,12 +238,28 @@ export default function SizeGuidesPage() {
         throw new Error(`Error eliminando guía: ${deleteError.message}`)
       }
 
+      console.log("[v0] Size guide deleted from database successfully")
+
       const fileName = imageUrl.split("/").pop()
       if (fileName) {
-        await supabase.storage.from("size-guides").remove([fileName])
+        const { error: storageError } = await supabase.storage.from("size-guides").remove([fileName])
+        if (storageError) {
+          console.error("[v0] Error deleting from storage:", storageError)
+        } else {
+          console.log("[v0] Size guide deleted from storage successfully")
+        }
       }
 
+      setSubcategories((prev) =>
+        prev.map((sub) =>
+          sub.slug === subcategorySlug && sub.gender === subcategoryGender
+            ? { ...sub, size_guide_url: undefined }
+            : sub,
+        ),
+      )
+
       setSuccess(`Guía de talles eliminada para ${subcategoryName} (${genderText})`)
+
       await loadSubcategories()
 
       setTimeout(() => setSuccess(null), 3000)

@@ -6,7 +6,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { CartProvider } from "@/contexts/cart-context"
 import { FloatingCart } from "@/components/floating-cart"
-import { Header } from "@/components/header"
+import { ConditionalHeader } from "@/components/conditional-header"
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
@@ -25,10 +25,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} antialiased`}>
+      <body className={`font-sans antialiased ${GeistSans.variable} ${GeistMono.variable}`}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <CartProvider>
-            <Header />
+            <ConditionalHeader />
             {children}
             <FloatingCart />
             <Toaster />

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { User, Package, LogOut, Mail, Phone, Calendar, Eye, Edit, Save, X, MapPin } from "lucide-react"
+import Link from "next/link"
+import { User, Package, LogOut, Mail, Phone, Calendar, Eye, Edit, Save, X, MapPin, ShoppingBag } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/client"
+import { useCart } from "@/contexts/cart-context"
 
 interface Order {
   id: string
@@ -54,6 +56,7 @@ export default function CuentaPage() {
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const { state: cartState } = useCart()
   const [editData, setEditData] = useState({
     first_name: "",
     last_name: "",
@@ -263,7 +266,7 @@ export default function CuentaPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-1 space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
@@ -442,6 +445,50 @@ export default function CuentaPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {cartState.itemCount > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShoppingBag className="h-5 w-5" />
+                      Carrito Actual ({cartState.itemCount})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {cartState.items.slice(0, 3).map((item) => (
+                        <div key={`${item.id}-${item.size}-${item.color}`} className="flex gap-2">
+                          <div className="relative w-12 h-12 flex-shrink-0">
+                            <Image
+                              src={item.image || "/placeholder.svg"}
+                              alt={item.name}
+                              fill
+                              className="object-cover rounded"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {item.quantity} × ${item.price.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {cartState.items.length > 3 && (
+                        <p className="text-xs text-muted-foreground">+{cartState.items.length - 3} productos más</p>
+                      )}
+                    </div>
+                    <Separator className="my-3" />
+                    <div className="flex justify-between font-semibold mb-3">
+                      <span>Total</span>
+                      <span>${cartState.total.toFixed(2)}</span>
+                    </div>
+                    <Button asChild className="w-full" size="sm">
+                      <Link href="/checkout">Finalizar Compra</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             <div className="lg:col-span-2">

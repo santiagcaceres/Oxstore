@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { CreditCard, Truck, Shield, MapPin, Banknote, User, LogIn } from "lucide-react"
+import { CreditCard, Truck, Shield, MapPin, Banknote, User, LogIn, CheckCircle, AlertCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,7 +26,7 @@ export default function CheckoutPage() {
   const [shippingMethod, setShippingMethod] = useState("pickup")
   const [user, setUser] = useState(null)
   const [showAuthForm, setShowAuthForm] = useState(false)
-  const [authMode, setAuthMode] = useState("login") // "login" or "register"
+  const [authMode, setAuthMode] = useState<"login" | "register">("login") // "login" or "register"
   const [authData, setAuthData] = useState({
     email: "",
     password: "",
@@ -43,6 +43,9 @@ export default function CheckoutPage() {
     postalCode: "",
     phone: "",
   })
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+  const [showErrorPopup, setShowErrorPopup] = useState(false)
+  const [popupMessage, setPopupMessage] = useState("")
 
   useEffect(() => {
     checkUser()
@@ -51,28 +54,37 @@ export default function CheckoutPage() {
   const checkUser = async () => {
     const supabase = createClient()
     const {
-      data: { user },
+      data: { user: authUser },
     } = await supabase.auth.getUser()
 
-    if (user) {
-      setUser(user)
-      const { data: profile } = await supabase.from("users").select("*").eq("id", user.id).single()
+    console.log("[v0] Checkout - Auth user:", authUser)
+
+    if (authUser) {
+      setUser(authUser)
+
+      // Buscar perfil en user_profiles primero
+      const { data: profile } = await supabase.from("user_profiles").select("*").eq("id", authUser.id).single()
+
+      console.log("[v0] Checkout - User profile:", profile)
+
       if (profile) {
-        console.log("[v0] User profile loaded:", profile)
         setFormData((prev) => ({
           ...prev,
-          email: profile.email || user.email || "",
-          firstName: profile.first_name || user.user_metadata?.first_name || "",
-          lastName: profile.last_name || user.user_metadata?.last_name || "",
+          email: profile.email || authUser.email || "",
+          firstName: profile.first_name || "",
+          lastName: profile.last_name || "",
           phone: profile.phone || "",
+          address: profile.address || "",
+          city: profile.city || "",
+          postalCode: profile.postal_code || "",
         }))
       } else {
-        console.log("[v0] No profile found, using auth data")
+        // Si no hay perfil, usar datos de auth
         setFormData((prev) => ({
           ...prev,
-          email: user.email || "",
-          firstName: user.user_metadata?.first_name || "",
-          lastName: user.user_metadata?.last_name || "",
+          email: authUser.email || "",
+          firstName: authUser.user_metadata?.first_name || "",
+          lastName: authUser.user_metadata?.last_name || "",
         }))
       }
     }
@@ -102,7 +114,7 @@ export default function CheckoutPage() {
         setUser(data.user)
         setShowAuthForm(false)
 
-        const { data: profile } = await supabase.from("users").select("*").eq("id", data.user.id).single()
+        const { data: profile } = await supabase.from("user_profiles").select("*").eq("id", data.user.id).single()
         if (profile) {
           setFormData((prev) => ({
             ...prev,
@@ -110,19 +122,27 @@ export default function CheckoutPage() {
             firstName: profile.first_name || "",
             lastName: profile.last_name || "",
             phone: profile.phone || "",
+            address: profile.address || "",
+            city: profile.city || "",
+            postalCode: profile.postal_code || "",
           }))
         }
       } else {
         if (authData.password !== authData.confirmPassword) {
-          alert("Las contraseñas no coinciden")
+          setPopupMessage("Las contraseñas no coinciden. Por favor, verifica que ambas sean iguales.")
+          setShowErrorPopup(true)
           return
         }
 
-        // Verificar si ya existe el email
-        const { data: existingUser } = await supabase.from("users").select("email").eq("email", authData.email).single()
+        const { data: existingUser } = await supabase
+          .from("user_profiles")
+          .select("email")
+          .eq("email", authData.email)
+          .single()
 
         if (existingUser) {
-          alert("Ya existe una cuenta con este email")
+          setPopupMessage("Este email ya está registrado. Por favor, inicia sesión o usa otro email.")
+          setShowErrorPopup(true)
           return
         }
 
@@ -140,9 +160,9 @@ export default function CheckoutPage() {
 
         if (error) throw error
 
-        // Crear perfil en tabla users
+        // Crear perfil en tabla user_profiles
         if (data.user) {
-          await supabase.from("users").insert({
+          await supabase.from("user_profiles").insert({
             id: data.user.id,
             email: authData.email,
             first_name: authData.firstName,
@@ -161,11 +181,13 @@ export default function CheckoutPage() {
             lastName: authData.lastName,
           }))
 
-          alert("Cuenta creada exitosamente.")
+          setPopupMessage("¡Cuenta creada exitosamente! Ahora puedes continuar con tu compra.")
+          setShowSuccessPopup(true)
         }
       }
     } catch (error) {
-      alert(`Error: ${error.message}`)
+      setPopupMessage(`Error: ${error.message}`)
+      setShowErrorPopup(true)
     }
   }
 
@@ -180,7 +202,8 @@ export default function CheckoutPage() {
 
   const handleCashPayment = async () => {
     if (!isFormValid) {
-      alert("Por favor completa todos los campos requeridos")
+      setPopupMessage("Por favor completa todos los campos requeridos para continuar con tu pedido.")
+      setShowErrorPopup(true)
       return
     }
 
@@ -195,7 +218,7 @@ export default function CheckoutPage() {
       const supabase = createClient()
 
       let numericUserId = null
-      const { data: userRecord } = await supabase.from("users").select("id").eq("email", user.email).single()
+      const { data: userRecord } = await supabase.from("user_profiles").select("id").eq("email", user.email).single()
 
       if (userRecord) {
         numericUserId = userRecord.id
@@ -220,7 +243,7 @@ export default function CheckoutPage() {
         .from("orders")
         .insert({
           order_number: orderNumber,
-          user_id: numericUserId, // Usar el ID numérico de la tabla users
+          user_id: numericUserId, // Usar el ID numérico de la tabla user_profiles
           customer_email: formData.email,
           customer_name: `${formData.firstName} ${formData.lastName}`,
           customer_phone: formData.phone,
@@ -271,11 +294,17 @@ export default function CheckoutPage() {
 
       console.log("[v0] All order items created successfully")
       clearCart()
-      alert("¡Pedido creado exitosamente!")
-      router.push(`/checkout/exito?order_id=${order.id}`)
+      setPopupMessage("¡Pedido creado exitosamente! Serás redirigido a la página de confirmación.")
+      setShowSuccessPopup(true)
+      setTimeout(() => {
+        router.push(`/checkout/exito?order_id=${order.id}`)
+      }, 2000)
     } catch (error) {
       console.error("[v0] Error creating cash order:", error)
-      alert(`Error al procesar el pedido: ${error.message || "Error desconocido"}. Por favor intente nuevamente.`)
+      setPopupMessage(
+        `Error al procesar el pedido: ${error.message || "Error desconocido"}. Por favor intente nuevamente.`,
+      )
+      setShowErrorPopup(true)
     } finally {
       setIsProcessing(false)
     }
@@ -696,6 +725,30 @@ export default function CheckoutPage() {
             </button>
           </div>
         </form>
+      </Popup>
+
+      <Popup isOpen={showSuccessPopup} onClose={() => setShowSuccessPopup(false)} title="¡Éxito!">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-green-800 leading-relaxed">{popupMessage}</p>
+          </div>
+          <Button onClick={() => setShowSuccessPopup(false)} className="w-full">
+            Continuar
+          </Button>
+        </div>
+      </Popup>
+
+      <Popup isOpen={showErrorPopup} onClose={() => setShowErrorPopup(false)} title="Error">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
+            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-red-800 leading-relaxed">{popupMessage}</p>
+          </div>
+          <Button onClick={() => setShowErrorPopup(false)} className="w-full">
+            Entendido
+          </Button>
+        </div>
       </Popup>
 
       <Footer />

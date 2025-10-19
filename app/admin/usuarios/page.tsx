@@ -100,13 +100,23 @@ export default function UsuariosAdminPage() {
   const handleDeleteUser = async (userId: string) => {
     try {
       setDeleting(userId)
+
+      console.log("[v0] Deleting user:", userId)
+
       const response = await fetch(`/api/admin/users/${userId}`, {
         method: "DELETE",
       })
 
       if (!response.ok) {
+        const errorText = await response.text()
+        console.error("[v0] Error deleting user:", errorText)
         throw new Error("Error al eliminar usuario")
       }
+
+      console.log("[v0] User deleted successfully from database")
+
+      setUsers((prev) => prev.filter((user) => user.id !== userId))
+      setFilteredUsers((prev) => prev.filter((user) => user.id !== userId))
 
       toast({
         title: "Usuario eliminado",

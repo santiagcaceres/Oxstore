@@ -10,7 +10,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { Popup } from "@/components/ui/popup"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, CheckCircle } from "lucide-react"
 
 export default function Page() {
   const [email, setEmail] = useState("")
@@ -25,6 +25,7 @@ export default function Page() {
   const [postalCode, setPostalCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showErrorPopup, setShowErrorPopup] = useState(false)
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
 
@@ -70,6 +71,7 @@ export default function Page() {
             city,
             postal_code: postalCode,
           },
+          emailRedirectTo: `${window.location.origin}/auth/login`,
         },
       })
 
@@ -93,9 +95,6 @@ export default function Page() {
         return
       }
 
-      const code = Math.floor(100000 + Math.random() * 900000).toString()
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
-
       const { error: profileError } = await supabase.from("user_profiles").upsert({
         id: authData.user.id,
         email,
@@ -106,9 +105,6 @@ export default function Page() {
         address,
         city,
         postal_code: postalCode,
-        verification_code: code,
-        verification_code_expires_at: expiresAt.toISOString(),
-        is_verified: false,
       })
 
       if (profileError) {
@@ -119,22 +115,16 @@ export default function Page() {
         return
       }
 
-      const response = await fetch("/api/auth/send-verification-code", {
+      await fetch("/api/auth/send-verification-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+        body: JSON.stringify({ email, firstName, lastName }),
       })
 
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error("[v0] Error enviando código:", errorData)
-        setErrorMessage("Error al enviar el código de verificación. Por favor, intenta nuevamente.")
-        setShowErrorPopup(true)
-        setIsLoading(false)
-        return
-      }
-
-      router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
+      setShowSuccessPopup(true)
+      setTimeout(() => {
+        router.push("/auth/login")
+      }, 2000)
     } catch (error: unknown) {
       console.error("[v0] Error en registro:", error)
       setErrorMessage("Ocurrió un error inesperado. Por favor, intenta nuevamente.")
@@ -290,6 +280,17 @@ export default function Page() {
           <Button onClick={() => setShowErrorPopup(false)} className="w-full">
             Entendido
           </Button>
+        </div>
+      </Popup>
+      <Popup isOpen={showSuccessPopup} onClose={() => {}} title="¡Cuenta creada exitosamente!">
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
+            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-green-800 leading-relaxed">
+              Tu cuenta ha sido creada correctamente. Te hemos enviado un email de bienvenida. Serás redirigido al
+              inicio de sesión en unos segundos.
+            </p>
+          </div>
         </div>
       </Popup>
     </div>

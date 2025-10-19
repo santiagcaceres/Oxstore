@@ -9,26 +9,18 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useState, useEffect, Suspense } from "react"
+import { useState, Suspense } from "react"
 import { Popup } from "@/components/ui/popup"
-import { AlertCircle, CheckCircle } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 
 function LoginContent() {
   const searchParams = useSearchParams()
-  const verified = searchParams.get("verified")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [showErrorPopup, setShowErrorPopup] = useState(false)
-  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
-
-  useEffect(() => {
-    if (verified === "true") {
-      setShowSuccessPopup(true)
-    }
-  }, [verified])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,37 +36,11 @@ function LoginContent() {
       if (authError) {
         if (authError.message.includes("Invalid login credentials")) {
           setErrorMessage("Email o contraseña incorrectos. Por favor, verifica tus datos e intenta nuevamente.")
-        } else if (authError.message.includes("Email not confirmed")) {
-          setErrorMessage("Tu email aún no ha sido verificado. Por favor, revisa tu correo y confirma tu cuenta.")
         } else {
           setErrorMessage(authError.message)
         }
         setShowErrorPopup(true)
         setIsLoading(false)
-        return
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("user_profiles")
-        .select("is_verified")
-        .eq("id", authData.user.id)
-        .single()
-
-      if (profileError) {
-        setErrorMessage("Error al verificar tu cuenta. Por favor, intenta nuevamente.")
-        setShowErrorPopup(true)
-        setIsLoading(false)
-        return
-      }
-
-      if (!profile.is_verified) {
-        setErrorMessage(
-          "Tu cuenta aún no ha sido verificada. Te redirigiremos para que ingreses el código de verificación.",
-        )
-        setShowErrorPopup(true)
-        setTimeout(() => {
-          router.push(`/auth/verificar?email=${encodeURIComponent(email)}`)
-        }, 3000)
         return
       }
 
@@ -131,6 +97,7 @@ function LoginContent() {
           </CardContent>
         </Card>
       </div>
+
       <Popup isOpen={showErrorPopup} onClose={() => setShowErrorPopup(false)} title="Error al iniciar sesión">
         <div className="space-y-4">
           <div className="flex items-start gap-3 p-4 bg-red-50 rounded-lg border border-red-200">
@@ -139,19 +106,6 @@ function LoginContent() {
           </div>
           <Button onClick={() => setShowErrorPopup(false)} className="w-full">
             Entendido
-          </Button>
-        </div>
-      </Popup>
-      <Popup isOpen={showSuccessPopup} onClose={() => setShowSuccessPopup(false)} title="¡Cuenta verificada!">
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
-            <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-green-800 leading-relaxed">
-              Tu cuenta ha sido verificada exitosamente. Ahora puedes iniciar sesión.
-            </p>
-          </div>
-          <Button onClick={() => setShowSuccessPopup(false)} className="w-full">
-            Continuar
           </Button>
         </div>
       </Popup>
