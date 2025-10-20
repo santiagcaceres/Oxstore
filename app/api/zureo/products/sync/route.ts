@@ -438,11 +438,8 @@ export async function GET() {
         const productId = productIdMap.get(productRecord.zureo_code)
 
         if (productId) {
-          // Eliminar variantes antiguas
-          await supabase.from("product_variants").delete().eq("product_id", productId)
-
-          // Insertar nuevas variantes
-          const variantsToInsert = productRecord.variants.map((variant: any) => ({
+          // En lugar de eliminar todas las variantes, usar UPSERT para actualizar solo el stock
+          const variantsToUpsert = productRecord.variants.map((variant: any) => ({
             product_id: productId,
             zureo_variety_id: variant.zureo_variety_id,
             color: variant.color,
@@ -453,18 +450,22 @@ export async function GET() {
             variety_data: variant.variety_data,
           }))
 
-          const { error: variantError } = await supabase.from("product_variants").insert(variantsToInsert)
+          // UPSERT basado en product_id + zureo_variety_id para preservar variantes existentes
+          const { error: variantError } = await supabase.from("product_variants").upsert(variantsToUpsert, {
+            onConflict: "product_id,zureo_variety_id",
+            ignoreDuplicates: false,
+          })
 
           if (variantError) {
-            console.error(`[v0] Error inserting variants for product ${productId}:`, variantError)
+            console.error(`[v0] Error upserting variants for product ${productId}:`, variantError)
           } else {
-            variantsInserted += variantsToInsert.length
+            variantsInserted += variantsToUpsert.length
           }
         }
       }
     }
 
-    console.log(`[v0] Total variants inserted: ${variantsInserted}`)
+    console.log(`[v0] Total variants upserted: ${variantsInserted}`)
 
     const syncTime = new Date().toISOString()
     await supabase.from("sync_status").upsert({

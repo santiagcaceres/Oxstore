@@ -14,25 +14,25 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
 
     const { id } = params
 
+    console.log("[v0] Attempting to delete auth user...")
     const { error: authError } = await supabase.auth.admin.deleteUser(id)
 
     if (authError) {
-      console.error("[v0] Error deleting auth user:", authError)
-      return NextResponse.json({ error: "Error al eliminar usuario de autenticación" }, { status: 500 })
+      console.warn("[v0] Could not delete auth user (may not exist in auth.users):", authError.message)
+      // Don't return error - continue to delete profile
+    } else {
+      console.log("[v0] Auth user deleted successfully")
     }
 
-    console.log("[v0] Auth user deleted successfully")
-
+    console.log("[v0] Attempting to delete user profile...")
     const { error: profileError } = await supabase.from("user_profiles").delete().eq("id", id)
 
     if (profileError) {
       console.error("[v0] Error deleting user profile:", profileError)
-      // Auth user is already deleted, so we log but don't fail
-      console.warn("[v0] Auth user deleted but profile deletion failed")
-    } else {
-      console.log("[v0] User profile deleted successfully")
+      return NextResponse.json({ error: "Error al eliminar perfil de usuario" }, { status: 500 })
     }
 
+    console.log("[v0] User profile deleted successfully")
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("[v0] Error in DELETE /api/admin/users/[id]:", error)

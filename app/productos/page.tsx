@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { Footer } from "@/components/footer"
 import { ProductGrid } from "@/components/product-grid"
@@ -16,15 +15,29 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { Search, Filter } from "lucide-react"
+
+const PRODUCTS_PER_PAGE = 15
 
 export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("featured")
   const [currentSearch, setCurrentSearch] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalProducts, setTotalProducts] = useState(0)
 
   const handleSearch = () => {
     setCurrentSearch(searchTerm)
+    setCurrentPage(1)
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -33,10 +46,51 @@ export default function ProductsPage() {
     }
   }
 
+  const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE)
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page)
+    // Scroll to top cuando cambia la página
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const getPageNumbers = () => {
+    const pages = []
+    const maxPagesToShow = 5
+
+    if (totalPages <= maxPagesToShow) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i)
+        }
+        pages.push("ellipsis")
+        pages.push(totalPages)
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1)
+        pages.push("ellipsis")
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i)
+        }
+      } else {
+        pages.push(1)
+        pages.push("ellipsis")
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i)
+        }
+        pages.push("ellipsis")
+        pages.push(totalPages)
+      }
+    }
+
+    return pages
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header is removed as it's now in the layout principal */}
-
       <main className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <Breadcrumb className="mb-6">
@@ -105,8 +159,72 @@ export default function ProductsPage() {
           </div>
         )}
 
+        {totalProducts > 0 && (
+          <div className="mb-4 text-sm text-muted-foreground">
+            Mostrando {(currentPage - 1) * PRODUCTS_PER_PAGE + 1} -{" "}
+            {Math.min(currentPage * PRODUCTS_PER_PAGE, totalProducts)} de {totalProducts} productos
+          </div>
+        )}
+
         {/* Products Grid */}
-        <ProductGrid search={currentSearch} limit={1000} sortBy={sortBy} />
+        <ProductGrid
+          search={currentSearch}
+          limit={PRODUCTS_PER_PAGE}
+          sortBy={sortBy}
+          currentPage={currentPage}
+          onTotalChange={setTotalProducts}
+        />
+
+        {totalPages > 1 && (
+          <div className="mt-8">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (currentPage > 1) handlePageChange(currentPage - 1)
+                    }}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+
+                {getPageNumbers().map((page, index) =>
+                  page === "ellipsis" ? (
+                    <PaginationItem key={`ellipsis-${index}`}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  ) : (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handlePageChange(page as number)
+                        }}
+                        isActive={currentPage === page}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ),
+                )}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      if (currentPage < totalPages) handlePageChange(currentPage + 1)
+                    }}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </main>
 
       <Footer />

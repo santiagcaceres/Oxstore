@@ -216,7 +216,7 @@ export default function HomePage() {
         <section className="w-full py-8 bg-white" ref={(el) => (sectionsRef.current[3] = el)}>
           <div className="container mx-auto px-4">
             <div className="relative">
-              <ProductGrid limit={5} showCarousel={true} />
+              <ProductGrid random={true} limit={15} showCarousel={true} />
             </div>
           </div>
         </section>
