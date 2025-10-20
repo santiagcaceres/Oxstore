@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Popup } from "@/components/ui/popup"
 import { createClient } from "@/lib/supabase/client"
-import { Upload, Search, AlertCircle, CheckCircle, Trash2, Eye } from "lucide-react"
+import { Upload, Search, Trash2, Eye } from "lucide-react"
 import Image from "next/image"
 import {
   Dialog,
@@ -37,8 +37,17 @@ export default function SizeGuidesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+  const [popup, setPopup] = useState<{
+    isOpen: boolean
+    type: "success" | "error"
+    title: string
+    message: string
+  }>({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  })
   const [previewImage, setPreviewImage] = useState<string | null>(null)
 
   const supabase = createClient()
@@ -54,7 +63,7 @@ export default function SizeGuidesPage() {
   const loadSubcategories = async () => {
     try {
       setLoading(true)
-      setError(null)
+      setPopup({ ...popup, isOpen: false })
 
       console.log("[v0] Loading ALL subcategories from subcategories table...")
 
@@ -138,7 +147,12 @@ export default function SizeGuidesPage() {
       setSubcategories(subcategoriesWithData)
     } catch (error) {
       console.error("Error loading subcategories:", error)
-      setError(error instanceof Error ? error.message : "Error cargando subcategorías")
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Error al cargar subcategorías",
+        message: error instanceof Error ? error.message : "Error cargando subcategorías",
+      })
       setSubcategories([])
     } finally {
       setLoading(false)
@@ -167,8 +181,6 @@ export default function SizeGuidesPage() {
 
     try {
       setUploading(subcategorySlug)
-      setError(null)
-      setSuccess(null)
 
       console.log(`[v0] Uploading size guide for subcategory: ${subcategorySlug}, gender: ${uploadGender}`)
 
@@ -202,13 +214,24 @@ export default function SizeGuidesPage() {
 
       const subcategoryName = subcategories.find((s) => s.slug === subcategorySlug)?.name || subcategorySlug
       const genderText = uploadGender || "todas las categorías"
-      setSuccess(`Guía de talles actualizada para ${subcategoryName} (${genderText})`)
-      await loadSubcategories()
 
-      setTimeout(() => setSuccess(null), 3000)
+      setPopup({
+        isOpen: true,
+        type: "success",
+        title: "¡Guía actualizada!",
+        message: `La guía de talles para ${subcategoryName} (${genderText}) se ha actualizado correctamente.`,
+      })
+
+      await loadSubcategories()
     } catch (error) {
       console.error("Error uploading size guide:", error)
-      setError(error instanceof Error ? error.message : "Error subiendo guía de talles")
+
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Error al subir guía",
+        message: error instanceof Error ? error.message : "Error subiendo guía de talles",
+      })
     } finally {
       setUploading(null)
       event.target.value = ""
@@ -223,8 +246,7 @@ export default function SizeGuidesPage() {
     }
 
     try {
-      setError(null)
-      setSuccess(null)
+      setPopup({ ...popup, isOpen: false })
 
       console.log(`[v0] Deleting size guide for subcategory: ${subcategorySlug}, gender: ${subcategoryGender}`)
 
@@ -258,39 +280,42 @@ export default function SizeGuidesPage() {
         ),
       )
 
-      setSuccess(`Guía de talles eliminada para ${subcategoryName} (${genderText})`)
+      setPopup({
+        isOpen: true,
+        type: "success",
+        title: "¡Guía eliminada!",
+        message: `La guía de talles para ${subcategoryName} (${genderText}) se ha eliminado correctamente.`,
+      })
 
       await loadSubcategories()
-
-      setTimeout(() => setSuccess(null), 3000)
     } catch (error) {
       console.error("Error deleting size guide:", error)
-      setError(error instanceof Error ? error.message : "Error eliminando guía de talles")
+
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Error al eliminar guía",
+        message: error instanceof Error ? error.message : "Error eliminando guía de talles",
+      })
     }
   }
 
   return (
     <div className="space-y-6">
+      <Popup
+        isOpen={popup.isOpen}
+        onClose={() => setPopup({ ...popup, isOpen: false })}
+        title={popup.title}
+        message={popup.message}
+        type={popup.type}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Guías de Talles</h1>
           <p className="text-muted-foreground">Gestiona las guías de talles para cada subcategoría y género</p>
         </div>
       </div>
-
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {success && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>{success}</AlertDescription>
-        </Alert>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>

@@ -19,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { Search, Trash2, Mail, Phone, MapPin, Calendar } from "lucide-react"
+import { Popup } from "@/components/ui/popup"
 
 interface UserProfile {
   id: string
@@ -42,6 +43,17 @@ export default function UsuariosAdminPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [popup, setPopup] = useState<{
+    isOpen: boolean
+    type: "success" | "error"
+    title: string
+    message: string
+  }>({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: "",
+  })
 
   const loadUsers = async () => {
     try {
@@ -115,21 +127,33 @@ export default function UsuariosAdminPage() {
 
       console.log("[v0] User deleted successfully from database")
 
-      setUsers((prev) => prev.filter((user) => user.id !== userId))
-      setFilteredUsers((prev) => prev.filter((user) => user.id !== userId))
+      setUsers((prev) => {
+        const updated = prev.filter((user) => user.id !== userId)
+        console.log("[v0] Users state updated, new count:", updated.length)
+        return updated
+      })
+      setFilteredUsers((prev) => {
+        const updated = prev.filter((user) => user.id !== userId)
+        console.log("[v0] Filtered users state updated, new count:", updated.length)
+        return updated
+      })
 
-      toast({
-        title: "Usuario eliminado",
-        description: "El usuario ha sido eliminado correctamente",
+      setPopup({
+        isOpen: true,
+        type: "success",
+        title: "¡Usuario eliminado!",
+        message: "El usuario ha sido eliminado correctamente del sistema.",
       })
 
       await loadUsers()
     } catch (error) {
       console.error("Error deleting user:", error)
-      toast({
+
+      setPopup({
+        isOpen: true,
+        type: "error",
         title: "Error al eliminar usuario",
-        description: "No se pudo eliminar el usuario. Inténtalo de nuevo.",
-        variant: "destructive",
+        message: "No se pudo eliminar el usuario. Inténtalo de nuevo.",
       })
     } finally {
       setDeleting(null)
@@ -152,6 +176,14 @@ export default function UsuariosAdminPage() {
 
   return (
     <div className="container mx-auto p-6">
+      <Popup
+        isOpen={popup.isOpen}
+        onClose={() => setPopup({ ...popup, isOpen: false })}
+        title={popup.title}
+        message={popup.message}
+        type={popup.type}
+      />
+
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Gestión de Usuarios</h1>
         <p className="text-muted-foreground">Administra los usuarios registrados en la plataforma</p>
