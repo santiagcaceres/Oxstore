@@ -13,10 +13,11 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File
-    const subcategorySlug = formData.get("subcategorySlug") as string
+    const subcategorySlug = formData.get("subcategorySlug") as string | null
     const gender = formData.get("gender") as string | null
+    const brandName = formData.get("brandName") as string | null
 
-    if (!file || !subcategorySlug) {
+    if (!file || (!subcategorySlug && !brandName)) {
       return NextResponse.json({ error: "Faltan parámetros requeridos" }, { status: 400 })
     }
 
@@ -30,8 +31,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "La imagen no debe superar los 5MB" }, { status: 400 })
     }
 
-    // Upload file to storage
-    const fileName = `size-guide-${subcategorySlug}-${gender || "all"}-${Date.now()}.${file.name.split(".").pop()}`
+    const fileName = brandName
+      ? `size-guide-brand-${brandName.replace(/\s+/g, "-")}-${Date.now()}.${file.name.split(".").pop()}`
+      : `size-guide-${subcategorySlug}-${gender || "all"}-${Date.now()}.${file.name.split(".").pop()}`
+
     const fileBuffer = await file.arrayBuffer()
 
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
@@ -52,22 +55,44 @@ export async function POST(request: NextRequest) {
       data: { publicUrl },
     } = supabaseAdmin.storage.from("size-guides").getPublicUrl(fileName)
 
-    // Upsert size guide record using service role (bypasses RLS)
-    const { error: upsertError } = await supabaseAdmin.from("size_guides").upsert(
-      {
-        subcategory: subcategorySlug,
-        gender: gender,
-        image_url: publicUrl,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "subcategory,gender",
-      },
-    )
+    if (brandName) {
+      // Guía por marca
+      const { error: upsertError } = await supabaseAdmin.from("size_guides").upsert(
+        {
+          brand: brandName,
+          subcategory: null,
+          gender: null,
+          image_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "brand",
+        },
+      )
 
-    if (upsertError) {
-      console.error("Error upserting size guide:", upsertError)
-      return NextResponse.json({ error: `Error guardando guía de talles: ${upsertError.message}` }, { status: 500 })
+      if (upsertError) {
+        console.error("Error upserting brand size guide:", upsertError)
+        return NextResponse.json({ error: `Error guardando guía de talles: ${upsertError.message}` }, { status: 500 })
+      }
+    } else {
+      // Guía por subcategoría (código existente)
+      const { error: upsertError } = await supabaseAdmin.from("size_guides").upsert(
+        {
+          subcategory: subcategorySlug,
+          gender: gender,
+          brand: null,
+          image_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "subcategory,gender",
+        },
+      )
+
+      if (upsertError) {
+        console.error("Error upserting size guide:", upsertError)
+        return NextResponse.json({ error: `Error guardando guía de talles: ${upsertError.message}` }, { status: 500 })
+      }
     }
 
     return NextResponse.json({

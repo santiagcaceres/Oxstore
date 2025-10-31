@@ -514,15 +514,11 @@ export function ProductGrid({
       <div className={className}>
         {/* Desktop Grid */}
         <div className="hidden md:block">
-          <div
-            className={`grid gap-6 ${
-              limit === 5
-                ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
-                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            }`}
-          >
+          <div className="flex overflow-x-auto gap-6 pb-4 scrollbar-hide snap-x snap-mandatory">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} className="animate-fade-in-up" />
+              <div key={product.id} className="flex-shrink-0 w-64 snap-start">
+                <ProductCard product={product} className="animate-fade-in-up" />
+              </div>
             ))}
           </div>
         </div>
@@ -564,7 +560,7 @@ export function ProductGrid({
         </div>
 
         {loading && (
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+          <div className="flex overflow-x-auto gap-6 pb-4 scrollbar-hide snap-x snap-mandatory">
             {Array.from({ length: Math.min(8, limit) }).map((_, i) => (
               <div key={i} className="space-y-4">
                 <Skeleton className="aspect-square w-full" />

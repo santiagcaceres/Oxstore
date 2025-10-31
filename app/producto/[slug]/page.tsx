@@ -48,6 +48,7 @@ export default function ProductPage({ params }: ProductPageProps) {
 
           console.log("[v0] Product data loaded:", {
             name: data.name,
+            brand: data.brand,
             imagesCount: data.images?.length || 0,
             images: data.images,
           })
@@ -75,14 +76,34 @@ export default function ProductPage({ params }: ProductPageProps) {
             }
           }
 
-          if (data.subcategory) {
+          if (data.brand) {
+            console.log("[v0] Attempting to load size guide for brand:", data.brand)
+            const brandGuideResponse = await fetch(`/api/size-guides/brand/${encodeURIComponent(data.brand)}`)
+            if (brandGuideResponse.ok) {
+              const brandGuideData = await brandGuideResponse.json()
+              setSizeGuideUrl(brandGuideData.image_url)
+              console.log("[v0] Size guide loaded for brand:", data.brand, brandGuideData.image_url)
+            } else {
+              console.log("[v0] No brand-specific size guide found, trying subcategory")
+              // Si no hay guía por marca, intentar por subcategoría
+              if (data.subcategory) {
+                const sizeGuideResponse = await fetch(`/api/size-guides/${encodeURIComponent(data.subcategory)}`)
+                if (sizeGuideResponse.ok) {
+                  const sizeGuideData = await sizeGuideResponse.json()
+                  setSizeGuideUrl(sizeGuideData.image_url)
+                  console.log("[v0] Size guide loaded for subcategory:", data.subcategory, sizeGuideData.image_url)
+                } else {
+                  console.log("[v0] No size guide found for subcategory:", data.subcategory)
+                }
+              }
+            }
+          } else if (data.subcategory) {
+            // Si no hay marca, buscar solo por subcategoría
             const sizeGuideResponse = await fetch(`/api/size-guides/${encodeURIComponent(data.subcategory)}`)
             if (sizeGuideResponse.ok) {
               const sizeGuideData = await sizeGuideResponse.json()
               setSizeGuideUrl(sizeGuideData.image_url)
               console.log("[v0] Size guide loaded for subcategory:", data.subcategory, sizeGuideData.image_url)
-            } else {
-              console.log("[v0] No size guide found for subcategory:", data.subcategory)
             }
           }
 

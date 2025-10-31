@@ -71,7 +71,6 @@ export default function Page() {
             city,
             postal_code: postalCode,
           },
-          emailRedirectTo: `${window.location.origin}/auth/login`,
         },
       })
 
@@ -114,12 +113,6 @@ export default function Page() {
         setIsLoading(false)
         return
       }
-
-      await fetch("/api/auth/send-verification-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, firstName, lastName }),
-      })
 
       setShowSuccessPopup(true)
       setTimeout(() => {
@@ -287,8 +280,7 @@ export default function Page() {
           <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
             <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-green-800 leading-relaxed">
-              Tu cuenta ha sido creada correctamente. Te hemos enviado un email de bienvenida. Serás redirigido al
-              inicio de sesión en unos segundos.
+              Tu cuenta ha sido creada correctamente y ya puedes iniciar sesión. Serás redirigido en unos segundos.
             </p>
           </div>
         </div>
