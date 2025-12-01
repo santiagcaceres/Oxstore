@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { Popup } from "@/components/ui/popup"
 import { AlertCircle, CheckCircle } from "lucide-react"
@@ -26,11 +26,21 @@ export default function Page() {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
-    // Redirect to cart/checkout where registration is handled
-    router.replace("/carrito")
-  }, [router])
+    const returnTo = searchParams.get("returnTo")
+
+    // Si el usuario accedió directamente o viene del perfil, no redirigir
+    if (!returnTo || returnTo === "/cuenta") {
+      return
+    }
+
+    // Solo redirigir al carrito si viene de checkout
+    if (returnTo.includes("/carrito") || returnTo.includes("/checkout")) {
+      router.replace(`/carrito?returnTo=${encodeURIComponent(returnTo)}`)
+    }
+  }, [router, searchParams])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -123,7 +133,8 @@ export default function Page() {
 
       setShowSuccessPopup(true)
       setTimeout(() => {
-        router.push("/cuenta")
+        const returnTo = searchParams.get("returnTo") || "/cuenta"
+        router.push(returnTo)
       }, 2000)
     } catch (error: unknown) {
       console.error("[v0] Error en registro:", error)
