@@ -262,25 +262,49 @@ export default function OrderDetailPage() {
           {/* Productos */}
           <Card>
             <CardHeader>
-              <CardTitle>Productos</CardTitle>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center">
+                  <Package className="h-5 w-5 mr-2" />
+                  Productos
+                </span>
+                <Badge variant="secondary">{order.order_items?.length || 0} productos</Badge>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {order.order_items?.map((item: any, index: number) => (
-                  <div key={index} className="flex items-center space-x-4 p-4 border rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center space-x-4 p-4 border rounded-lg hover:bg-muted/30 transition-colors"
+                  >
                     <img
-                      src={item.products_in_stock?.image_url || "/placeholder.svg?height=60&width=60"}
+                      src={item.products_in_stock?.image_url || "/placeholder.svg?height=80&width=80"}
                       alt={item.products_in_stock?.name || "Producto"}
-                      className="w-15 h-15 object-cover rounded"
+                      className="w-20 h-20 object-cover rounded border-2"
                     />
                     <div className="flex-1">
-                      <h4 className="font-semibold">{item.products_in_stock?.name || item.product_name}</h4>
-                      <p className="text-sm text-muted-foreground">{item.products_in_stock?.brand}</p>
-                      <p className="text-sm">Cantidad: {item.quantity}</p>
+                      <h4 className="font-bold text-lg">{item.products_in_stock?.name || item.product_name}</h4>
+                      <div className="mt-1 space-y-1">
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium">Marca:</span> {item.products_in_stock?.brand || "N/A"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          <span className="font-medium">Talle:</span> {item.products_in_stock?.size || "N/A"} •{" "}
+                          <span className="font-medium">Color:</span> {item.products_in_stock?.color || "N/A"}
+                        </p>
+                        <p className="text-sm font-medium">
+                          <span className="font-medium">Cantidad:</span> {item.quantity} unidad(es)
+                        </p>
+                        {item.products_in_stock?.zureo_code && (
+                          <p className="text-xs text-muted-foreground font-mono">
+                            Código: {item.products_in_stock.zureo_code}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">${item.total_price || item.total}</p>
-                      <p className="text-sm text-muted-foreground">${item.price} c/u</p>
+                      <p className="text-xl font-bold text-primary">${item.total_price || item.total}</p>
+                      <p className="text-sm text-muted-foreground">${item.price} por unidad</p>
                     </div>
                   </div>
                 ))}
@@ -310,22 +334,28 @@ export default function OrderDetailPage() {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <User className="h-5 w-5" />
-                <span>Cliente</span>
+                <span>Información del Cliente</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Nombre</p>
-                <p className="font-semibold">{order.customer_name || "N/A"}</p>
+            <CardContent className="space-y-4">
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Nombre Completo</p>
+                <p className="font-semibold text-lg">{order.customer_name || "No especificado"}</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Email</p>
-                <p className="font-semibold">{order.customer_email || "N/A"}</p>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Email</p>
+                <p className="font-semibold break-all">{order.customer_email || "No especificado"}</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
-                <p className="font-semibold">{order.customer_phone || "N/A"}</p>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs font-medium text-muted-foreground mb-1">Teléfono</p>
+                <p className="font-semibold">{order.customer_phone || "No especificado"}</p>
               </div>
+              {order.customer_dni && (
+                <div className="p-3 bg-muted/30 rounded-lg">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Cédula</p>
+                  <p className="font-semibold">{order.customer_dni}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

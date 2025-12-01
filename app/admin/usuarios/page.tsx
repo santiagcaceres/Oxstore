@@ -43,6 +43,7 @@ export default function UsuariosAdminPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
   const [popup, setPopup] = useState<{
     isOpen: boolean
     type: "success" | "error"
@@ -160,6 +161,44 @@ export default function UsuariosAdminPage() {
     }
   }
 
+  const handleBulkDeleteUsers = async () => {
+    try {
+      setBulkDeleting(true)
+
+      console.log("[v0] Starting bulk user deletion...")
+
+      const response = await fetch("/api/admin/delete-users", {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        throw new Error("Error al eliminar usuarios")
+      }
+
+      const result = await response.json()
+      console.log("[v0] Bulk deletion result:", result)
+
+      setPopup({
+        isOpen: true,
+        type: "success",
+        title: "Usuarios eliminados",
+        message: `Se eliminaron ${result.deleted} de ${result.total} usuarios clientes correctamente.`,
+      })
+
+      await loadUsers()
+    } catch (error) {
+      console.error("[v0] Error in bulk deletion:", error)
+      setPopup({
+        isOpen: true,
+        type: "error",
+        title: "Error al eliminar usuarios",
+        message: "No se pudieron eliminar los usuarios. Por favor, intenta nuevamente.",
+      })
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   useEffect(() => {
     loadUsers()
   }, [])
@@ -189,6 +228,51 @@ export default function UsuariosAdminPage() {
         <p className="text-muted-foreground">Administra los usuarios registrados en la plataforma</p>
       </div>
 
+      {users.length > 0 && (
+        <Card className="mb-6 border-yellow-200 bg-yellow-50">
+          <CardHeader>
+            <CardTitle className="text-yellow-800 flex items-center gap-2">
+              <Trash2 className="h-5 w-5" />
+              Eliminar Todos los Usuarios Clientes
+            </CardTitle>
+            <CardDescription className="text-yellow-700">
+              Esta acción eliminará permanentemente todos los usuarios clientes (excepto administradores). Los pedidos
+              asociados se mantendrán en el sistema.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" disabled={bulkDeleting || users.length === 0}>
+                  {bulkDeleting ? "Eliminando..." : `Eliminar ${users.length} usuarios clientes`}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción NO se puede deshacer. Se eliminarán permanentemente TODOS los usuarios clientes de la
+                    base de datos (se mantendrán los administradores).
+                    <br />
+                    <br />
+                    <strong className="text-destructive">Se eliminarán aproximadamente {users.length} usuarios.</strong>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleBulkDeleteUsers}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Sí, eliminar todos los usuarios
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Usuarios Registrados</CardTitle>
@@ -199,7 +283,7 @@ export default function UsuariosAdminPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               type="search"
-              placeholder="Buscar por email, nombre o DNI..."
+              placeholder="Buscar por email, nombre o cédula..."
               className="pl-10"
               value={searchTerm}
               onChange={(e) => handleSearch(e.target.value)}
@@ -238,7 +322,7 @@ export default function UsuariosAdminPage() {
                             <Mail className="h-3 w-3" />
                             {user.email}
                           </div>
-                          {user.dni && <div className="text-xs text-muted-foreground">DNI: {user.dni}</div>}
+                          {user.dni && <div className="text-xs text-muted-foreground">Cédula: {user.dni}</div>}
                         </div>
                       </TableCell>
                       <TableCell>

@@ -14,8 +14,6 @@ import { AlertCircle, CheckCircle } from "lucide-react"
 
 export default function Page() {
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
   const [phone, setPhone] = useState("")
@@ -34,19 +32,7 @@ export default function Page() {
     const supabase = createClient()
     setIsLoading(true)
 
-    if (password !== confirmPassword) {
-      setErrorMessage("Las contraseñas no coinciden. Por favor, verifica que ambas sean iguales.")
-      setShowErrorPopup(true)
-      setIsLoading(false)
-      return
-    }
-
-    if (password.length < 6) {
-      setErrorMessage("La contraseña debe tener al menos 6 caracteres.")
-      setShowErrorPopup(true)
-      setIsLoading(false)
-      return
-    }
+    const generatedPassword = Math.random().toString(36).slice(-8) + "Temp123!"
 
     try {
       const { data: existingUser } = await supabase.from("user_profiles").select("email").eq("email", email).single()
@@ -60,8 +46,9 @@ export default function Page() {
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
-        password,
+        password: generatedPassword, // Use generated password
         options: {
+          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
           data: {
             first_name: firstName,
             last_name: lastName,
@@ -77,8 +64,6 @@ export default function Page() {
       if (authError) {
         if (authError.message.includes("already registered")) {
           setErrorMessage("Este email ya está en uso. Por favor, inicia sesión.")
-        } else if (authError.message.includes("password")) {
-          setErrorMessage("La contraseña no cumple con los requisitos de seguridad.")
         } else {
           setErrorMessage(authError.message)
         }
@@ -114,9 +99,20 @@ export default function Page() {
         return
       }
 
+      try {
+        await fetch("/api/auth/send-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, firstName, lastName, password: generatedPassword }),
+        })
+      } catch (emailError) {
+        console.error("[v0] Error sending welcome email:", emailError)
+        // Don't block registration if email fails
+      }
+
       setShowSuccessPopup(true)
       setTimeout(() => {
-        router.push("/auth/login")
+        router.push("/cuenta")
       }, 2000)
     } catch (error: unknown) {
       console.error("[v0] Error en registro:", error)
@@ -173,7 +169,7 @@ export default function Page() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dni">DNI/CI *</Label>
+                  <Label htmlFor="dni">Cédula *</Label>
                   <Input
                     id="dni"
                     type="text"
@@ -229,27 +225,11 @@ export default function Page() {
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">CONTRASEÑA *</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">Mínimo 6 caracteres</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">CONFIRMAR CONTRASEÑA *</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  Tu contraseña será generada automáticamente y enviada a tu correo electrónico. Podrás cambiarla
+                  después desde tu perfil.
+                </p>
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "CREANDO CUENTA..." : "CREAR CUENTA"}
@@ -280,7 +260,8 @@ export default function Page() {
           <div className="flex items-start gap-3 p-4 bg-green-50 rounded-lg border border-green-200">
             <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
             <p className="text-sm text-green-800 leading-relaxed">
-              Tu cuenta ha sido creada correctamente y ya puedes iniciar sesión. Serás redirigido en unos segundos.
+              Tu cuenta ha sido creada correctamente. Te hemos enviado un email con tu contraseña temporal. Serás
+              redirigido a tu cuenta en unos segundos.
             </p>
           </div>
         </div>

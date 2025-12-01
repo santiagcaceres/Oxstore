@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Search, RefreshCw, Package, Eye, Download, Truck } from "lucide-react"
+import { Search, RefreshCw, Package, Eye, Download, Truck, User, MapPin } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminOrdersPage() {
@@ -235,40 +235,63 @@ export default function AdminOrdersPage() {
               {filteredOrders.map((order) => (
                 <Card key={order.id} className="p-4">
                   <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold">{order.order_number}</h3>
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-lg">{order.order_number}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(order.created_at).toLocaleDateString()} - ${order.total_amount}
+                        {new Date(order.created_at).toLocaleDateString()} a las{" "}
+                        {new Date(order.created_at).toLocaleTimeString()}
                       </p>
-                      <p className="text-sm text-muted-foreground">
-                        {order.shipping_method === "pickup" ? "Retiro en sucursal" : "Envío a domicilio"}
-                        {order.shipping_cost > 0 && ` (+$${order.shipping_cost})`}
-                      </p>
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm font-medium">
+                          <User className="h-3 w-3 inline mr-1" />
+                          {order.customer_name || "Sin nombre"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          {order.customer_email || "Sin email"} • {order.customer_phone || "Sin teléfono"}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {getStatusBadge(order.order_status || order.status)}
-                      {getPaymentStatusBadge(order.payment_status)}
+                    <div className="flex flex-col items-end space-y-2">
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-primary">${order.total_amount}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {order.shipping_method === "pickup" ? "Retiro en sucursal" : "Envío a domicilio"}
+                          {order.shipping_cost > 0 && ` (+$${order.shipping_cost})`}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {getStatusBadge(order.order_status || order.status)}
+                        {getPaymentStatusBadge(order.payment_status)}
+                      </div>
                     </div>
                   </div>
 
                   {order.order_items && order.order_items.length > 0 && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-2">Productos:</h4>
+                    <div className="mb-4 p-3 bg-muted/30 rounded-lg">
+                      <h4 className="text-sm font-semibold mb-3 flex items-center">
+                        <Package className="h-4 w-4 mr-1" />
+                        Productos ({order.order_items.length})
+                      </h4>
                       <div className="space-y-2">
                         {order.order_items.map((item: any, index: number) => (
-                          <div key={index} className="flex items-center space-x-3 text-sm">
+                          <div key={index} className="flex items-center space-x-3 text-sm bg-background p-2 rounded">
                             <img
-                              src={item.products_in_stock?.image_url || "/placeholder.svg?height=40&width=40"}
+                              src={item.products_in_stock?.image_url || "/placeholder.svg?height=50&width=50"}
                               alt={item.products_in_stock?.name || "Producto"}
-                              className="w-10 h-10 object-cover rounded"
+                              className="w-12 h-12 object-cover rounded border"
                             />
-                            <div className="flex-1">
-                              <p className="font-medium">{item.products_in_stock?.name || "Producto"}</p>
-                              <p className="text-muted-foreground">
-                                {item.products_in_stock?.brand} - Cantidad: {item.quantity}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold truncate">{item.products_in_stock?.name || "Producto"}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {item.products_in_stock?.brand} • Talle: {item.products_in_stock?.size || "N/A"} •
+                                Color: {item.products_in_stock?.color || "N/A"}
                               </p>
+                              <p className="text-xs font-medium">Cantidad: {item.quantity}</p>
                             </div>
-                            <p className="font-medium">${item.total}</p>
+                            <div className="text-right">
+                              <p className="font-bold text-primary">${item.total}</p>
+                              <p className="text-xs text-muted-foreground">${item.price} c/u</p>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -276,24 +299,27 @@ export default function AdminOrdersPage() {
                   )}
 
                   {order.shipping_address && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-1">Dirección de envío:</h4>
-                      <p className="text-sm text-muted-foreground">{order.shipping_address}</p>
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h4 className="text-sm font-semibold mb-1 flex items-center text-blue-900">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Dirección de envío:
+                      </h4>
+                      <p className="text-sm text-blue-800">{order.shipping_address}</p>
                     </div>
                   )}
 
                   {order.notes && (
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium mb-1">Notas:</h4>
-                      <p className="text-sm text-muted-foreground">{order.notes}</p>
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <h4 className="text-sm font-semibold mb-1 text-amber-900">Notas del cliente:</h4>
+                      <p className="text-sm text-amber-800">{order.notes}</p>
                     </div>
                   )}
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 pt-2 border-t">
                     <Link href={`/admin/pedidos/${order.id}`}>
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="default">
                         <Eye className="h-4 w-4 mr-2" />
-                        Ver Detalles
+                        Ver Detalles Completos
                       </Button>
                     </Link>
                     <Button size="sm" variant="outline" onClick={() => generateInvoice(order)}>
@@ -304,7 +330,7 @@ export default function AdminOrdersPage() {
                       <Link href={`/admin/pedidos/${order.id}/etiqueta`}>
                         <Button size="sm" variant="outline">
                           <Truck className="h-4 w-4 mr-2" />
-                          Etiqueta de Envío
+                          Etiqueta
                         </Button>
                       </Link>
                     )}

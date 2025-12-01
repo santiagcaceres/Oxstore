@@ -43,7 +43,7 @@ export async function GET() {
           (items || []).map(async (item) => {
             const { data: product, error: productError } = await supabase
               .from("products_in_stock")
-              .select("name, image_url, brand")
+              .select("name, image_url, brand, size, color, zureo_code")
               .eq("id", item.product_id)
               .single()
 

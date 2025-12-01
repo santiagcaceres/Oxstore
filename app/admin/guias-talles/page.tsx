@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+import { Ruler } from "lucide-react"
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -412,7 +413,24 @@ export default function SizeGuidesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Guías de Talles</h1>
-          <p className="text-muted-foreground">Gestiona las guías de talles por marca o subcategoría</p>
+          <p className="text-muted-foreground mt-1">Gestiona las guías de talles por subcategoría o marca</p>
+        </div>
+      </div>
+
+      <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="flex gap-3">
+          <div className="flex-shrink-0">
+            <Ruler className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Cómo funcionan las guías de talle</h3>
+            <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+              <li>• Las guías se muestran automáticamente en cada producto según su marca o subcategoría</li>
+              <li>• Prioridad: primero busca por marca, luego por subcategoría</li>
+              <li>• Sube imágenes claras con las medidas de cada talle</li>
+              <li>• Los productos sin guía asignada no mostrarán la sección de talles en la página de producto</li>
+            </ul>
+          </div>
         </div>
       </div>
 

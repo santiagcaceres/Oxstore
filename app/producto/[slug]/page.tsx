@@ -76,34 +76,15 @@ export default function ProductPage({ params }: ProductPageProps) {
             }
           }
 
-          if (data.brand) {
-            console.log("[v0] Attempting to load size guide for brand:", data.brand)
-            const brandGuideResponse = await fetch(`/api/size-guides/brand/${encodeURIComponent(data.brand)}`)
-            if (brandGuideResponse.ok) {
-              const brandGuideData = await brandGuideResponse.json()
-              setSizeGuideUrl(brandGuideData.image_url)
-              console.log("[v0] Size guide loaded for brand:", data.brand, brandGuideData.image_url)
-            } else {
-              console.log("[v0] No brand-specific size guide found, trying subcategory")
-              // Si no hay guía por marca, intentar por subcategoría
-              if (data.subcategory) {
-                const sizeGuideResponse = await fetch(`/api/size-guides/${encodeURIComponent(data.subcategory)}`)
-                if (sizeGuideResponse.ok) {
-                  const sizeGuideData = await sizeGuideResponse.json()
-                  setSizeGuideUrl(sizeGuideData.image_url)
-                  console.log("[v0] Size guide loaded for subcategory:", data.subcategory, sizeGuideData.image_url)
-                } else {
-                  console.log("[v0] No size guide found for subcategory:", data.subcategory)
-                }
-              }
-            }
-          } else if (data.subcategory) {
-            // Si no hay marca, buscar solo por subcategoría
+          if (data.subcategory) {
+            console.log("[v0] Attempting to load size guide for subcategory:", data.subcategory)
             const sizeGuideResponse = await fetch(`/api/size-guides/${encodeURIComponent(data.subcategory)}`)
             if (sizeGuideResponse.ok) {
               const sizeGuideData = await sizeGuideResponse.json()
               setSizeGuideUrl(sizeGuideData.image_url)
               console.log("[v0] Size guide loaded for subcategory:", data.subcategory, sizeGuideData.image_url)
+            } else {
+              console.log("[v0] No size guide found for subcategory:", data.subcategory)
             }
           }
 
@@ -477,63 +458,73 @@ export default function ProductPage({ params }: ProductPageProps) {
               {isAddingToCart ? "Agregando..." : "Agregar al Carrito"}
             </Button>
 
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
-              {sizeGuideUrl && (
-                <Collapsible>
-                  <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
-                    <span className="font-medium text-muted-foreground">Guía de talles</span>
-                    <Ruler className="h-4 w-4 text-muted-foreground" />
+            {sizeGuideUrl && (
+              <div className="border-b pb-3">
+                <Collapsible defaultOpen>
+                  <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors group">
+                    <div className="flex items-center gap-2">
+                      <Ruler className="h-5 w-5 text-primary" />
+                      <span className="font-semibold text-foreground">Guía de Talles</span>
+                    </div>
+                    <span className="text-xs text-primary font-medium group-hover:underline">Ver tabla</span>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-2">
-                    <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-background">
+                  <CollapsibleContent className="pt-3">
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-background border">
                       <Image
                         src={sizeGuideUrl || "/placeholder.svg"}
-                        alt={`Guía de talles - ${product.brand}`}
+                        alt={`Guía de talles - ${product.brand || product.subcategory}`}
                         fill
                         className="object-contain"
                         unoptimized
                       />
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      Consultá la tabla para elegir tu talle ideal
+                    </p>
                   </CollapsibleContent>
                 </Collapsible>
-              )}
+              </div>
+            )}
 
-              <Collapsible>
-                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
-                  <span className="font-medium text-muted-foreground">Condiciones de envío</span>
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
+                <div className="flex items-center gap-2">
                   <Truck className="h-4 w-4 text-muted-foreground" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2 text-muted-foreground space-y-1">
-                  <p>• CABA y GBA: 2-4 días hábiles</p>
-                  <p>• Interior del país: 5-7 días hábiles</p>
-                  <p>• Envío gratis en compras superiores a $50.000</p>
-                </CollapsibleContent>
-              </Collapsible>
+                  <span className="font-medium text-muted-foreground">Condiciones de envío</span>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 text-muted-foreground space-y-1">
+                <p>• CABA y GBA: 2-4 días hábiles</p>
+                <p>• Interior del país: 5-7 días hábiles</p>
+                <p>• Envío gratis en compras superiores a $50.000</p>
+              </CollapsibleContent>
+            </Collapsible>
 
-              <Collapsible>
-                <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
-                  <span className="font-medium text-muted-foreground">Condiciones de cambio</span>
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors">
+                <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-muted-foreground" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2 text-muted-foreground space-y-1">
-                  <p>• Cambios sin cargo dentro de los 30 días</p>
-                  <p>• El producto debe estar sin uso y con etiquetas</p>
-                  <p>• Presentar comprobante de compra</p>
-                  <p>• No se aceptan cambios en productos en oferta</p>
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
+                  <span className="font-medium text-muted-foreground">Condiciones de cambio</span>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 text-muted-foreground space-y-1">
+                <p>• Cambios sin cargo dentro de los 30 días</p>
+                <p>• El producto debe estar sin uso y con etiquetas</p>
+                <p>• Presentar comprobante de compra</p>
+                <p>• No se aceptan cambios en productos en oferta</p>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" size="lg" className="flex-1 bg-transparent">
-                <Heart className="h-5 w-5 mr-2" />
-                Favoritos
-              </Button>
-              <Button variant="outline" size="lg" className="flex-1 bg-transparent">
-                <Share2 className="h-5 w-5 mr-2" />
-                Compartir
-              </Button>
-            </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="lg" className="flex-1 bg-transparent">
+              <Heart className="h-5 w-5 mr-2" />
+              Favoritos
+            </Button>
+            <Button variant="outline" size="lg" className="flex-1 bg-transparent">
+              <Share2 className="h-5 w-5 mr-2" />
+              Compartir
+            </Button>
           </div>
 
           {/* Información adicional */}

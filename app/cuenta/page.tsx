@@ -4,7 +4,21 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { User, Package, LogOut, Mail, Phone, Calendar, Eye, Edit, Save, X, MapPin, ShoppingBag } from "lucide-react"
+import {
+  User,
+  Package,
+  LogOut,
+  Mail,
+  Phone,
+  Calendar,
+  Eye,
+  Edit,
+  Save,
+  X,
+  MapPin,
+  ShoppingBag,
+  Lock,
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +26,6 @@ import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { createClient } from "@/lib/supabase/client"
 import { useCart } from "@/contexts/cart-context"
@@ -56,6 +69,14 @@ export default function CuentaPage() {
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [showPasswordChange, setShowPasswordChange] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmNewPassword, setConfirmNewPassword] = useState("")
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [showPasswordSuccess, setShowPasswordSuccess] = useState(false)
+  const [showPasswordError, setShowPasswordError] = useState(false)
+  const [passwordErrorMessage, setPasswordErrorMessage] = useState("")
   const { state: cartState } = useCart()
   const [editData, setEditData] = useState({
     first_name: "",
@@ -171,6 +192,63 @@ export default function CuentaPage() {
     router.push("/")
   }
 
+  const handlePasswordChange = async () => {
+    if (newPassword !== confirmNewPassword) {
+      setPasswordErrorMessage("Las contraseñas no coinciden")
+      setShowPasswordError(true)
+      return
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordErrorMessage("La contraseña debe tener al menos 6 caracteres")
+      setShowPasswordError(true)
+      return
+    }
+
+    setPasswordLoading(true)
+
+    try {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: currentPassword,
+      })
+
+      if (signInError) {
+        setPasswordErrorMessage("La contraseña actual es incorrecta")
+        setShowPasswordError(true)
+        setPasswordLoading(false)
+        return
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      })
+
+      if (updateError) {
+        setPasswordErrorMessage(updateError.message)
+        setShowPasswordError(true)
+        setPasswordLoading(false)
+        return
+      }
+
+      setShowPasswordSuccess(true)
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmNewPassword("")
+      setShowPasswordChange(false)
+
+      setTimeout(() => {
+        setShowPasswordSuccess(false)
+      }, 3000)
+    } catch (error) {
+      console.error("Error changing password:", error)
+      setPasswordErrorMessage("Error al cambiar la contraseña")
+      setShowPasswordError(true)
+    } finally {
+      setPasswordLoading(false)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
@@ -221,7 +299,6 @@ export default function CuentaPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
@@ -238,7 +315,6 @@ export default function CuentaPage() {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col">
-        <Header />
         <main className="flex-1 container mx-auto px-4 py-8">
           <div className="text-center">
             <p>No se pudo cargar la cuenta. Por favor, inicia sesión nuevamente.</p>
@@ -254,7 +330,6 @@ export default function CuentaPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-8">
@@ -362,13 +437,13 @@ export default function CuentaPage() {
                       <>
                         <div className="space-y-2">
                           <Label htmlFor="dni" className="text-xs">
-                            DNI
+                            Cédula
                           </Label>
                           <Input
                             id="dni"
                             value={editData.dni}
                             onChange={(e) => setEditData((prev) => ({ ...prev, dni: e.target.value }))}
-                            placeholder="DNI"
+                            placeholder="Cédula"
                             className="h-8 text-sm"
                           />
                         </div>
@@ -443,6 +518,97 @@ export default function CuentaPage() {
                       <span className="text-sm">Miembro desde {new Date(user.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Lock className="h-5 w-5" />
+                    Seguridad
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!showPasswordChange ? (
+                    <Button
+                      variant="outline"
+                      className="w-full bg-transparent"
+                      onClick={() => setShowPasswordChange(true)}
+                    >
+                      Cambiar Contraseña
+                    </Button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="currentPassword" className="text-xs">
+                          Contraseña Actual
+                        </Label>
+                        <Input
+                          id="currentPassword"
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="newPassword" className="text-xs">
+                          Nueva Contraseña
+                        </Label>
+                        <Input
+                          id="newPassword"
+                          type="password"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmNewPassword" className="text-xs">
+                          Confirmar Nueva Contraseña
+                        </Label>
+                        <Input
+                          id="confirmNewPassword"
+                          type="password"
+                          value={confirmNewPassword}
+                          onChange={(e) => setConfirmNewPassword(e.target.value)}
+                          className="h-9 text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1" onClick={handlePasswordChange} disabled={passwordLoading}>
+                          {passwordLoading ? "Cambiando..." : "Guardar"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setShowPasswordChange(false)
+                            setCurrentPassword("")
+                            setNewPassword("")
+                            setConfirmNewPassword("")
+                          }}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {showPasswordSuccess && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-green-800">Contraseña cambiada exitosamente</p>
+                    </div>
+                  )}
+
+                  {showPasswordError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                      <p className="text-sm text-red-800">{passwordErrorMessage}</p>
+                      <Button size="sm" variant="ghost" className="mt-2" onClick={() => setShowPasswordError(false)}>
+                        Cerrar
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

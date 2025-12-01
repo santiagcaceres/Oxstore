@@ -13,6 +13,7 @@ import {
   Percent,
   Ruler,
   Users,
+  Download,
 } from "lucide-react"
 
 const navigation = [
@@ -55,6 +56,11 @@ const navigation = [
     name: "Popups",
     href: "/admin/popups",
     icon: MessageSquare,
+  },
+  {
+    name: "Sincronizar Imágenes",
+    href: "/admin/sincronizar-imagenes",
+    icon: Download,
   },
   {
     name: "Configuración Zureo",

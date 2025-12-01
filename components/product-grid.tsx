@@ -224,9 +224,9 @@ export function ProductGrid({
       }
 
       if (gender && gender !== "unisex") {
-        countQuery = countQuery.or(`categoria_genero.eq.${gender},categoria_genero.eq.unisex`)
+        countQuery = countQuery.or(`gender.eq.${gender},gender.eq.unisex`)
       } else if (gender === "unisex") {
-        countQuery = countQuery.eq("categoria_genero", "unisex")
+        countQuery = countQuery.eq("gender", "unisex")
       }
 
       if (featured) {
@@ -299,9 +299,9 @@ export function ProductGrid({
       }
 
       if (gender && gender !== "unisex") {
-        query = query.or(`categoria_genero.eq.${gender},categoria_genero.eq.unisex`)
+        query = query.or(`gender.eq.${gender},gender.eq.unisex`)
       } else if (gender === "unisex") {
-        query = query.eq("categoria_genero", "unisex")
+        query = query.eq("gender", "unisex")
       }
 
       if (featured) {

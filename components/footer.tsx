@@ -20,29 +20,23 @@ export function Footer() {
             <h3 className="font-bold text-lg">Enlaces Rápidos</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link
-                  href="/categoria/vestimenta"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Vestimenta
+                <Link href="/productos" className="text-muted-foreground hover:text-primary transition-colors">
+                  Productos
                 </Link>
               </li>
               <li>
-                <Link href="/categoria/calzado" className="text-muted-foreground hover:text-primary transition-colors">
-                  Calzado
+                <Link href="/nuevo" className="text-muted-foreground hover:text-primary transition-colors">
+                  Novedades
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/categoria/accesorios"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Accesorios
+                <Link href="/ofertas" className="text-muted-foreground hover:text-primary transition-colors">
+                  Ofertas
                 </Link>
               </li>
               <li>
-                <Link href="/admin/guias-talles" className="text-muted-foreground hover:text-primary transition-colors">
-                  Guías de Talles
+                <Link href="/sale" className="text-muted-foreground hover:text-primary transition-colors">
+                  Sale
                 </Link>
               </li>
             </ul>
@@ -63,10 +57,14 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="text-muted-foreground">Cambios y Devoluciones</span>
+                <Link href="/buscar" className="text-muted-foreground hover:text-primary transition-colors">
+                  Buscar Productos
+                </Link>
               </li>
               <li>
-                <span className="text-muted-foreground">Preguntas Frecuentes</span>
+                <Link href="/auth/login" className="text-muted-foreground hover:text-primary transition-colors">
+                  Iniciar Sesión
+                </Link>
               </li>
             </ul>
           </div>
@@ -77,27 +75,51 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li className="flex items-center gap-2 text-muted-foreground">
                 <Phone className="h-4 w-4" />
-                <span>+54 11 1234-5678</span>
+                <a
+                  href="https://wa.me/59892152947"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors"
+                >
+                  092 152 947
+                </a>
               </li>
               <li className="flex items-center gap-2 text-muted-foreground">
                 <Mail className="h-4 w-4" />
-                <span>info@oxstore.com</span>
+                <a href="mailto:info@oxstore.com" className="hover:text-primary transition-colors">
+                  info@oxstore.com
+                </a>
               </li>
               <li className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="h-4 w-4" />
-                <span>Buenos Aires, Argentina</span>
+                <span>Santa Lucía, Canelones</span>
               </li>
             </ul>
             <div className="flex gap-4 pt-2">
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+              <a
+                href="https://facebook.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
                 <Facebook className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+              </a>
+              <a
+                href="https://instagram.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
                 <Instagram className="h-5 w-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-primary transition-colors">
+              </a>
+              <a
+                href="https://twitter.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
                 <Twitter className="h-5 w-5" />
-              </Link>
+              </a>
             </div>
           </div>
         </div>

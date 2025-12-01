@@ -26,16 +26,18 @@ export default function LoginPage() {
     setError("")
 
     try {
-      // Simulate login - in real app, call your auth API
       if (email === "admin@oxstore.com" && password === "admin123") {
-        // Set auth cookie/token
-        document.cookie = "auth-token=admin-token; path=/"
+        // Set auth cookie
+        document.cookie = "auth-token=admin-token; path=/; max-age=86400"
+        console.log("[v0] Admin login successful")
         router.push("/admin")
       } else {
-        setError("Credenciales incorrectas")
+        setError("Credenciales incorrectas. Verifica tu email y contraseña.")
+        console.log("[v0] Login failed - invalid credentials")
       }
     } catch (error) {
-      setError("Error al iniciar sesión")
+      console.error("[v0] Login error:", error)
+      setError("Error al iniciar sesión. Por favor, intenta nuevamente.")
     } finally {
       setLoading(false)
     }
