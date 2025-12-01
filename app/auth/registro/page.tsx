@@ -29,6 +29,11 @@ export default function Page() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (isLoading) {
+      return
+    }
+
     const supabase = createClient()
     setIsLoading(true)
 
@@ -53,10 +58,22 @@ export default function Page() {
       })
 
       if (authError) {
-        if (authError.message.includes("already registered") || authError.message.includes("already been registered")) {
-          setErrorMessage("Este email ya está en uso. Por favor, inicia sesión.")
+        if (authError.message.includes("rate limit") || authError.message.includes("429")) {
+          setErrorMessage(
+            "Has intentado registrarte demasiadas veces. Por favor, espera unos minutos antes de intentar nuevamente.",
+          )
+        } else if (
+          authError.message.includes("already registered") ||
+          authError.message.includes("already been registered") ||
+          authError.message.includes("User already registered")
+        ) {
+          setErrorMessage("Este correo electrónico ya está registrado. Por favor, inicia sesión o usa otro correo.")
+        } else if (authError.message.includes("Invalid email")) {
+          setErrorMessage("El correo electrónico ingresado no es válido.")
+        } else if (authError.message.includes("Password")) {
+          setErrorMessage("Error con la contraseña. Por favor, intenta nuevamente.")
         } else {
-          setErrorMessage(authError.message)
+          setErrorMessage(`Error: ${authError.message}`)
         }
         setShowErrorPopup(true)
         setIsLoading(false)
@@ -70,23 +87,23 @@ export default function Page() {
         return
       }
 
-      const { error: profileError } = await supabase.from("user_profiles").upsert({
-        id: authData.user.id,
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        dni,
-        address,
-        city,
-        postal_code: postalCode,
-      })
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      const { error: profileError } = await supabase
+        .from("user_profiles")
+        .update({
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          dni,
+          address,
+          city,
+          postal_code: postalCode,
+        })
+        .eq("id", authData.user.id)
 
       if (profileError) {
         console.error("[v0] Error guardando perfil:", profileError)
-        setErrorMessage("Error al guardar tu información. Por favor, intenta nuevamente.")
-        setShowErrorPopup(true)
-        setIsLoading(false)
-        return
       }
 
       try {

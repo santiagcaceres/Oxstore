@@ -16,7 +16,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { Search, Trash2, Mail, Phone, MapPin, Calendar } from "lucide-react"
 import { Popup } from "@/components/ui/popup"
@@ -298,7 +297,6 @@ export default function UsuariosAdminPage() {
                   <TableHead>Usuario</TableHead>
                   <TableHead>Contacto</TableHead>
                   <TableHead>Ubicación</TableHead>
-                  <TableHead>Estado</TableHead>
                   <TableHead>Fecha de Registro</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
@@ -306,7 +304,7 @@ export default function UsuariosAdminPage() {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       No se encontraron usuarios
                     </TableCell>
                   </TableRow>
@@ -343,15 +341,6 @@ export default function UsuariosAdminPage() {
                           </div>
                         ) : (
                           <span className="text-muted-foreground text-sm">Sin ubicación</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {user.is_verified ? (
-                          <Badge variant="default" className="bg-green-500">
-                            Verificado
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary">Pendiente</Badge>
                         )}
                       </TableCell>
                       <TableCell>

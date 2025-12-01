@@ -494,9 +494,8 @@ export default function ProductPage({ params }: ProductPageProps) {
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-2 text-muted-foreground space-y-1">
-                <p>• CABA y GBA: 2-4 días hábiles</p>
-                <p>• Interior del país: 5-7 días hábiles</p>
-                <p>• Envío gratis en compras superiores a $50.000</p>
+                <p>• Tiempo de entrega: 1 a 4 días hábiles</p>
+                <p>• Envío gratis en compras superiores a $3.500</p>
               </CollapsibleContent>
             </Collapsible>
 

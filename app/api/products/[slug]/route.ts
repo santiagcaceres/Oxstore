@@ -200,6 +200,7 @@ export async function GET(request: Request, { params }: { params: { slug: string
       sku: product.zureo_code || product.sku,
       brand: product.brand,
       category: product.category,
+      subcategory: product.subcategory,
       is_featured: product.is_featured,
       slug: params.slug,
       color: product.color,
