@@ -231,6 +231,20 @@ export default function CuentaPage() {
         return
       }
 
+      try {
+        await fetch("/api/auth/password-changed", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: email,
+            firstName: user.first_name,
+            lastName: user.last_name,
+          }),
+        })
+      } catch (emailError) {
+        console.error("Error sending password change email:", emailError)
+      }
+
       setShowPasswordSuccess(true)
       setCurrentPassword("")
       setNewPassword("")

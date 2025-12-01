@@ -33,6 +33,11 @@ export default function CheckoutPage() {
     confirmPassword: "",
     firstName: "",
     lastName: "",
+    phone: "",
+    dni: "",
+    address: "",
+    city: "",
+    postalCode: "",
   })
   const [formData, setFormData] = useState({
     email: "",
@@ -134,18 +139,6 @@ export default function CheckoutPage() {
           return
         }
 
-        const { data: existingUser } = await supabase
-          .from("user_profiles")
-          .select("email")
-          .eq("email", authData.email)
-          .single()
-
-        if (existingUser) {
-          setPopupMessage("Este email ya está registrado. Por favor, inicia sesión o usa otro email.")
-          setShowErrorPopup(true)
-          return
-        }
-
         const { data, error } = await supabase.auth.signUp({
           email: authData.email,
           password: authData.password,
@@ -154,36 +147,91 @@ export default function CheckoutPage() {
             data: {
               first_name: authData.firstName,
               last_name: authData.lastName,
+              phone: authData.phone,
+              dni: authData.dni,
+              address: authData.address,
+              city: authData.city,
+              postal_code: authData.postalCode,
             },
           },
         })
 
-        if (error) throw error
+        if (error) {
+          if (error.message.includes("rate limit") || error.message.includes("429")) {
+            setPopupMessage(
+              "Has intentado registrarte demasiadas veces. Por favor, espera unos minutos antes de intentar nuevamente.",
+            )
+          } else if (
+            error.message.includes("already registered") ||
+            error.message.includes("already been registered") ||
+            error.message.includes("User already registered")
+          ) {
+            setPopupMessage("Este correo electrónico ya está registrado. Por favor, inicia sesión o usa otro correo.")
+          } else {
+            setPopupMessage(`Error al crear la cuenta: ${error.message}`)
+          }
+          setShowErrorPopup(true)
+          return
+        }
 
-        // Crear perfil en tabla user_profiles
-        if (data.user) {
-          await supabase.from("user_profiles").insert({
-            id: data.user.id,
-            email: authData.email,
+        if (!data.user) {
+          setPopupMessage("Error al crear la cuenta. Por favor, intenta nuevamente.")
+          setShowErrorPopup(true)
+          return
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000))
+
+        const { error: profileError } = await supabase
+          .from("user_profiles")
+          .update({
             first_name: authData.firstName,
             last_name: authData.lastName,
-            role: "customer",
+            phone: authData.phone,
+            dni: authData.dni,
+            address: authData.address,
+            city: authData.city,
+            postal_code: authData.postalCode,
           })
+          .eq("id", data.user.id)
 
-          setUser(data.user)
-          setShowAuthForm(false)
-
-          // Prellenar formulario
-          setFormData((prev) => ({
-            ...prev,
-            email: authData.email,
-            firstName: authData.firstName,
-            lastName: authData.lastName,
-          }))
-
-          setPopupMessage("¡Cuenta creada exitosamente! Ahora puedes continuar con tu compra.")
-          setShowSuccessPopup(true)
+        if (profileError) {
+          console.error("[v0] Error updating profile:", profileError)
         }
+
+        try {
+          await fetch("/api/auth/send-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: authData.email,
+              firstName: authData.firstName,
+              lastName: authData.lastName,
+              password: authData.password,
+            }),
+          })
+        } catch (emailError) {
+          console.error("[v0] Error sending welcome email:", emailError)
+        }
+
+        setUser(data.user)
+        setShowAuthForm(false)
+
+        setFormData((prev) => ({
+          ...prev,
+          email: authData.email,
+          firstName: authData.firstName,
+          lastName: authData.lastName,
+          phone: authData.phone,
+          address: authData.address,
+          city: authData.city,
+          postalCode: authData.postalCode,
+        }))
+
+        setPopupMessage(
+          "¡Cuenta creada exitosamente! Te hemos enviado un email de bienvenida. Ahora puedes continuar con tu compra.",
+        )
+        setShowSuccessPopup(true)
       }
     } catch (error) {
       setPopupMessage(`Error: ${error.message}`)
@@ -224,10 +272,8 @@ export default function CheckoutPage() {
         numericUserId = userRecord.id
       }
 
-      // Generar número de orden único
       const orderNumber = `ORD-${Date.now()}`
 
-      // Calcular total con envío
       const shippingCost = shippingMethod === "delivery" ? 250 : 0
       const totalAmount = state.total + shippingCost
 
@@ -243,7 +289,7 @@ export default function CheckoutPage() {
         .from("orders")
         .insert({
           order_number: orderNumber,
-          user_id: numericUserId, // Usar el ID numérico de la tabla user_profiles
+          user_id: numericUserId,
           customer_email: formData.email,
           customer_name: `${formData.firstName} ${formData.lastName}`,
           customer_phone: formData.phone,
@@ -269,15 +315,14 @@ export default function CheckoutPage() {
 
       console.log("[v0] Order created successfully:", order.id)
 
-      // Crear los items del pedido
       for (const item of state.items) {
         const itemPrice = Number.parseFloat(item.price) || 0
         const itemQuantity = Number.parseInt(item.quantity) || 1
         const itemTotal = itemPrice * itemQuantity
 
         const { error: itemError } = await supabase.from("order_items").insert({
-          order_id: order.id, // Este es un integer SERIAL
-          product_id: Number.parseInt(item.id) || null, // Convertir a integer
+          order_id: order.id,
+          product_id: Number.parseInt(item.id) || null,
           product_name: item.name,
           product_image: item.image,
           quantity: itemQuantity,
@@ -313,7 +358,6 @@ export default function CheckoutPage() {
   const handleOtherPaymentMethods = () => {
     if (!isFormValid) return
 
-    // Guardar datos del pedido en localStorage para la página de selección
     const orderData = {
       items: state.items,
       total: totalWithShipping,
@@ -379,9 +423,7 @@ export default function CheckoutPage() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Checkout Form */}
             <div className="space-y-6">
-              {/* Contact Information */}
               <Card>
                 <CardHeader>
                   <CardTitle>Información de Contacto</CardTitle>
@@ -430,7 +472,6 @@ export default function CheckoutPage() {
                 </CardContent>
               </Card>
 
-              {/* Método de Entrega */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -573,7 +614,6 @@ export default function CheckoutPage() {
               </Card>
             </div>
 
-            {/* Order Summary */}
             <div className="space-y-6">
               <Card>
                 <CardHeader>
@@ -619,7 +659,6 @@ export default function CheckoutPage() {
                 </CardContent>
               </Card>
 
-              {/* Security Features */}
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -643,11 +682,11 @@ export default function CheckoutPage() {
         isOpen={showAuthForm}
         onClose={() => setShowAuthForm(false)}
         title={authMode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
-        maxWidth="max-w-md"
+        maxWidth="max-w-2xl"
       >
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
-            <Label htmlFor="authEmail">Email</Label>
+            <Label htmlFor="authEmail">Email *</Label>
             <Input
               id="authEmail"
               type="email"
@@ -661,7 +700,7 @@ export default function CheckoutPage() {
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="authFirstName">Nombre</Label>
+                  <Label htmlFor="authFirstName">Nombre *</Label>
                   <Input
                     id="authFirstName"
                     required
@@ -670,7 +709,7 @@ export default function CheckoutPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="authLastName">Apellido</Label>
+                  <Label htmlFor="authLastName">Apellido *</Label>
                   <Input
                     id="authLastName"
                     required
@@ -679,11 +718,72 @@ export default function CheckoutPage() {
                   />
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="authPhone">Teléfono *</Label>
+                  <Input
+                    id="authPhone"
+                    type="tel"
+                    required
+                    placeholder="099 123 456"
+                    value={authData.phone}
+                    onChange={(e) => handleAuthInputChange("phone", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="authDni">Cédula *</Label>
+                  <Input
+                    id="authDni"
+                    type="text"
+                    required
+                    placeholder="12345678"
+                    value={authData.dni}
+                    onChange={(e) => handleAuthInputChange("dni", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="authAddress">Dirección *</Label>
+                <Input
+                  id="authAddress"
+                  type="text"
+                  required
+                  placeholder="Av. 18 de Julio 1234"
+                  value={authData.address}
+                  onChange={(e) => handleAuthInputChange("address", e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="authCity">Ciudad *</Label>
+                  <Input
+                    id="authCity"
+                    type="text"
+                    required
+                    placeholder="Montevideo"
+                    value={authData.city}
+                    onChange={(e) => handleAuthInputChange("city", e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="authPostalCode">Código Postal</Label>
+                  <Input
+                    id="authPostalCode"
+                    type="text"
+                    placeholder="11000"
+                    value={authData.postalCode}
+                    onChange={(e) => handleAuthInputChange("postalCode", e.target.value)}
+                  />
+                </div>
+              </div>
             </>
           )}
 
           <div>
-            <Label htmlFor="authPassword">Contraseña</Label>
+            <Label htmlFor="authPassword">Contraseña *</Label>
             <Input
               id="authPassword"
               type="password"
@@ -695,7 +795,7 @@ export default function CheckoutPage() {
 
           {authMode === "register" && (
             <div>
-              <Label htmlFor="authConfirmPassword">Confirmar Contraseña</Label>
+              <Label htmlFor="authConfirmPassword">Confirmar Contraseña *</Label>
               <Input
                 id="authConfirmPassword"
                 type="password"

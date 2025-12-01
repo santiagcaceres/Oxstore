@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Popup } from "@/components/ui/popup"
 import { AlertCircle, CheckCircle } from "lucide-react"
 
@@ -26,6 +26,11 @@ export default function Page() {
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [errorMessage, setErrorMessage] = useState("")
   const router = useRouter()
+
+  useEffect(() => {
+    // Redirect to cart/checkout where registration is handled
+    router.replace("/carrito")
+  }, [router])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()

@@ -460,7 +460,7 @@ export default function ProductPage({ params }: ProductPageProps) {
 
             {sizeGuideUrl && (
               <div className="border-b pb-3">
-                <Collapsible defaultOpen>
+                <Collapsible>
                   <CollapsibleTrigger className="flex items-center justify-between w-full text-left hover:text-primary transition-colors group">
                     <div className="flex items-center gap-2">
                       <Ruler className="h-5 w-5 text-primary" />
