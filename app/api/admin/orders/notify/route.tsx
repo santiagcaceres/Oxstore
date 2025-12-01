@@ -19,7 +19,6 @@ export async function POST(request: Request) {
           product_name,
           product_image,
           quantity,
-          unit_price,
           price,
           total_price,
           total,
@@ -48,7 +47,7 @@ export async function POST(request: Request) {
           <div style="flex: 1;">
             <h4 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #1f2937;">${item.product_name}</h4>
             <p style="margin: 0; font-size: 14px; color: #6b7280;">
-              Cantidad: ${item.quantity} × $${(Number.parseFloat(item.unit_price || item.price) || 0).toFixed(2)}
+              Cantidad: ${item.quantity} × $${(Number.parseFloat(item.price) || 0).toFixed(2)}
             </p>
             ${
               item.size || item.color

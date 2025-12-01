@@ -340,27 +340,45 @@ export function ProductGrid({
       }
 
       if (random) {
-        // Para productos aleatorios, primero obtenemos todos los códigos únicos
-        const { data: allCodes } = await supabase
-          .from("products_in_stock")
-          .select("zureo_code")
-          .gt("stock_quantity", 0)
-          .eq("is_active", true)
-          .not("category", "is", null)
-          .not("brand", "is", null)
+        const supabase = createClient()
 
-        if (allCodes && allCodes.length > 0) {
-          // Obtener códigos únicos
-          const uniqueCodes = Array.from(new Set(allCodes.map((item) => item.zureo_code)))
+        // Get all product IDs that have real images
+        const { data: productsWithImages } = await supabase
+          .from("product_images")
+          .select("product_id")
+          .neq("image_url", "/placeholder.svg?height=400&width=400")
+          .not("image_url", "like", "%placeholder.svg%")
 
-          // Mezclar aleatoriamente los códigos
-          const shuffledCodes = uniqueCodes.sort(() => Math.random() - 0.5)
+        if (productsWithImages && productsWithImages.length > 0) {
+          const productIdsWithImages = productsWithImages.map((item) => item.product_id)
 
-          // Tomar solo los primeros 'limit' códigos
-          const selectedCodes = shuffledCodes.slice(0, limit)
+          // Get zureo_codes for products that have images
+          const { data: productsData } = await supabase
+            .from("products_in_stock")
+            .select("zureo_code")
+            .in("id", productIdsWithImages)
+            .gt("stock_quantity", 0)
+            .eq("is_active", true)
+            .not("category", "is", null)
+            .not("brand", "is", null)
 
-          // Obtener los productos para esos códigos
-          query = query.in("zureo_code", selectedCodes)
+          if (productsData && productsData.length > 0) {
+            const uniqueCodes = Array.from(new Set(productsData.map((item) => item.zureo_code)))
+            const shuffledCodes = uniqueCodes.sort(() => Math.random() - 0.5)
+            const selectedCodes = shuffledCodes.slice(0, limit)
+
+            query = query.in("zureo_code", selectedCodes)
+          } else {
+            // No products with images found, return empty
+            setProducts([])
+            setLoading(false)
+            return
+          }
+        } else {
+          // No images found, return empty
+          setProducts([])
+          setLoading(false)
+          return
         }
       } else {
         // Ordenamiento normal

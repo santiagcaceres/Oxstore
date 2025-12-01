@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Trash2, Plus, Edit, RefreshCw, Percent } from "lucide-react"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createClient } from "@/lib/supabase/client"
 import { Popup } from "@/components/ui/popup"
 
 interface DiscountRule {
@@ -73,7 +73,7 @@ export default function DescuentosPage() {
     subcategory_id: "",
   })
 
-  const supabase = createClientComponentClient()
+  const supabase = createClient()
 
   useEffect(() => {
     loadData()

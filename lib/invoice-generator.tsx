@@ -382,7 +382,7 @@ export function generateInvoiceHTML(order: any): string {
                       }
                     </td>
                     <td class="quantity">${item.quantity || 1}</td>
-                    <td class="price">$${(Number.parseFloat(item.unit_price || item.price) || 0).toFixed(2)}</td>
+                    <td class="price">$${(Number.parseFloat(item.price) || 0).toFixed(2)}</td>
                     <td class="price">$${(Number.parseFloat(item.total_price || item.total) || 0).toFixed(2)}</td>
                   </tr>
                 `,

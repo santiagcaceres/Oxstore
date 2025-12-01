@@ -35,18 +35,9 @@ export default function Page() {
     const generatedPassword = Math.random().toString(36).slice(-8) + "Temp123!"
 
     try {
-      const { data: existingUser } = await supabase.from("user_profiles").select("email").eq("email", email).single()
-
-      if (existingUser) {
-        setErrorMessage("Este email ya está registrado. Por favor, inicia sesión o usa otro email.")
-        setShowErrorPopup(true)
-        setIsLoading(false)
-        return
-      }
-
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
-        password: generatedPassword, // Use generated password
+        password: generatedPassword,
         options: {
           emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || window.location.origin,
           data: {
@@ -62,7 +53,7 @@ export default function Page() {
       })
 
       if (authError) {
-        if (authError.message.includes("already registered")) {
+        if (authError.message.includes("already registered") || authError.message.includes("already been registered")) {
           setErrorMessage("Este email ya está en uso. Por favor, inicia sesión.")
         } else {
           setErrorMessage(authError.message)
@@ -81,7 +72,6 @@ export default function Page() {
 
       const { error: profileError } = await supabase.from("user_profiles").upsert({
         id: authData.user.id,
-        email,
         first_name: firstName,
         last_name: lastName,
         phone,
@@ -107,7 +97,6 @@ export default function Page() {
         })
       } catch (emailError) {
         console.error("[v0] Error sending welcome email:", emailError)
-        // Don't block registration if email fails
       }
 
       setShowSuccessPopup(true)

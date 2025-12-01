@@ -6,70 +6,149 @@ const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
-    const { status } = await request.json()
+    const body = await request.json()
+    const { status, paymentStatus } = body
 
-    console.log(`[v0] PATCH /api/admin/orders/${params.id}/status - New status: ${status}`)
+    console.log(
+      `[v0] PATCH /api/admin/orders/${params.id}/status - Status: ${status}, Payment Status: ${paymentStatus}`,
+    )
     const supabase = createClient()
 
-    const { data: order, error: updateError } = await supabase
-      .from("orders")
-      .update({
-        order_status: status,
-        status: status,
-      })
-      .eq("id", params.id)
-      .select()
-      .single()
+    if (paymentStatus) {
+      const { data: order, error: updateError } = await supabase
+        .from("orders")
+        .update({
+          payment_status: paymentStatus,
+        })
+        .eq("id", params.id)
+        .select()
+        .single()
 
-    if (updateError || !order) {
-      console.error("[v0] Error updating order status:", updateError)
-      return NextResponse.json({ error: "Error al actualizar el estado del pedido" }, { status: 500 })
+      if (updateError || !order) {
+        console.error("[v0] Error updating payment status:", updateError)
+        return NextResponse.json({ error: "Error al actualizar el estado del pago" }, { status: 500 })
+      }
+
+      console.log(`[v0] Order ${params.id} payment status updated to ${paymentStatus}`)
+      return NextResponse.json({ order })
     }
 
-    const statusMessages = {
-      pending: {
-        subject: "📦 Pedido Recibido - Oxstore",
-        title: "¡Hemos recibido tu pedido!",
-        message:
-          "Tu pedido ha sido recibido exitosamente y está siendo revisado por nuestro equipo. Te notificaremos cuando comencemos a prepararlo.",
-        icon: "📦",
-        color: "#f59e0b",
-      },
-      processing: {
-        subject: "⚙️ Pedido en Preparación - Oxstore",
-        title: "¡Estamos preparando tu pedido!",
-        message:
-          "Nuestro equipo está empaquetando cuidadosamente tus productos. Pronto estará listo para el envío o retiro.",
-        icon: "⚙️",
-        color: "#3b82f6",
-      },
-      shipped: {
-        subject: "🚚 Pedido Enviado - Oxstore",
-        title: "¡Tu pedido está en camino!",
-        message:
-          "Tu pedido ha sido despachado y está en camino hacia ti. Recibirás una notificación cuando esté cerca de ser entregado.",
-        icon: "🚚",
-        color: "#8b5cf6",
-      },
-      delivered: {
-        subject: "✅ Pedido Entregado - Oxstore",
-        title: "¡Tu pedido ha sido entregado!",
-        message:
-          "Tu pedido ha sido entregado exitosamente. ¡Esperamos que disfrutes tus productos! Si tienes alguna consulta, no dudes en contactarnos.",
-        icon: "✅",
-        color: "#10b981",
-      },
-    }
+    if (status) {
+      const { data: order, error: fetchError } = await supabase
+        .from("orders")
+        .select(`
+          *,
+          order_items (
+            product_name,
+            product_image,
+            quantity,
+            price,
+            total_price,
+            total,
+            size,
+            color
+          )
+        `)
+        .eq("id", params.id)
+        .single()
 
-    const statusInfo = statusMessages[status as keyof typeof statusMessages]
+      if (fetchError || !order) {
+        console.error("[v0] Error fetching order:", fetchError)
+        return NextResponse.json({ error: "Error al obtener el pedido" }, { status: 500 })
+      }
 
-    if (statusInfo && order.customer_email) {
-      try {
-        await resend.emails.send({
-          from: "Oxstore <info@oxstoreuy.com>",
-          to: order.customer_email,
-          subject: statusInfo.subject,
-          html: `
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({
+          order_status: status,
+          status: status,
+        })
+        .eq("id", params.id)
+
+      if (updateError) {
+        console.error("[v0] Error updating order status:", updateError)
+        return NextResponse.json({ error: "Error al actualizar el estado del pedido" }, { status: 500 })
+      }
+
+      const statusMessages = {
+        pending: {
+          subject: "📦 Pedido Recibido - Oxstore",
+          title: "¡Hemos recibido tu pedido!",
+          message:
+            "Tu pedido ha sido recibido exitosamente y está siendo revisado por nuestro equipo. Te notificaremos cuando comencemos a prepararlo.",
+          icon: "📦",
+          color: "#f59e0b",
+        },
+        processing: {
+          subject: "⚙️ Pedido en Preparación - Oxstore",
+          title: "¡Estamos preparando tu pedido!",
+          message:
+            "Nuestro equipo está empaquetando cuidadosamente tus productos. Pronto estará listo para el envío o retiro.",
+          icon: "⚙️",
+          color: "#3b82f6",
+        },
+        shipped: {
+          subject: "🚚 Pedido Enviado - Oxstore",
+          title: "¡Tu pedido está en camino!",
+          message:
+            "Tu pedido ha sido despachado y está en camino hacia ti. Recibirás una notificación cuando esté cerca de ser entregado.",
+          icon: "🚚",
+          color: "#8b5cf6",
+        },
+        delivered: {
+          subject: "✅ Pedido Entregado - Oxstore",
+          title: "¡Tu pedido ha sido entregado!",
+          message:
+            "Tu pedido ha sido entregado exitosamente. ¡Esperamos que disfrutes tus productos! Si tienes alguna consulta, no dudes en contactarnos.",
+          icon: "✅",
+          color: "#10b981",
+        },
+      }
+
+      const statusInfo = statusMessages[status as keyof typeof statusMessages]
+
+      if (statusInfo && order.customer_email) {
+        try {
+          const orderItems = order.order_items || []
+          const productsHTML = orderItems
+            .map(
+              (item: any) => `
+            <div style="display: flex; align-items: center; padding: 16px; border-bottom: 1px solid #e5e7eb; background: white;">
+              <img 
+                src="${item.product_image || "/placeholder.svg?height=80&width=80"}" 
+                alt="${item.product_name}"
+                style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; margin-right: 16px; border: 1px solid #e5e7eb;"
+              />
+              <div style="flex: 1;">
+                <h4 style="margin: 0 0 4px 0; font-size: 16px; font-weight: 600; color: #1f2937;">${item.product_name}</h4>
+                <p style="margin: 0; font-size: 14px; color: #6b7280;">
+                  Cantidad: ${item.quantity} × $${(Number.parseFloat(item.price) || 0).toFixed(2)}
+                </p>
+                ${
+                  item.size || item.color
+                    ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #9ca3af;">
+                  ${item.size ? `Talla: ${item.size}` : ""}
+                  ${item.size && item.color ? " • " : ""}
+                  ${item.color ? `Color: ${item.color}` : ""}
+                </p>`
+                    : ""
+                }
+              </div>
+              <div style="text-align: right;">
+                <p style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;">
+                  $${(Number.parseFloat(item.total_price || item.total) || 0).toFixed(2)}
+                </p>
+              </div>
+            </div>
+          `,
+            )
+            .join("")
+
+          await resend.emails.send({
+            from: "Oxstore <info@oxstoreuy.com>",
+            to: order.customer_email,
+            subject: statusInfo.subject,
+            html: `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
               <!-- Header -->
               <div style="background: linear-gradient(135deg, ${statusInfo.color} 0%, ${statusInfo.color}dd 100%); color: white; padding: 40px; text-align: center;">
@@ -101,11 +180,17 @@ export async function PATCH(request: Request, { params }: { params: { id: string
                   </div>
                 </div>
                 
+                <!-- Products Section -->
+                <h3 style="color: #1f2937; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">Productos de tu pedido</h3>
+                <div style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; margin-bottom: 32px;">
+                  ${productsHTML}
+                </div>
+                
                 <!-- Contact Info -->
                 <div style="background: #f3f4f6; padding: 24px; border-radius: 8px; text-align: center;">
                   <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 14px;">¿Tienes alguna pregunta?</p>
                   <p style="margin: 0; color: #3b82f6; font-weight: 600; font-size: 16px;">
-                    📧 info@oxstoreuy.com | 📞 (598) 1234-5678
+                    📧 info@oxstoreuy.com | 📞 092 152 947
                   </p>
                 </div>
               </div>
@@ -118,15 +203,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
               </div>
             </div>
           `,
-        })
-        console.log(`[v0] Email sent to ${order.customer_email}`)
-      } catch (emailError) {
-        console.error("[v0] Error sending email:", emailError)
+          })
+          console.log(`[v0] Email sent to ${order.customer_email}`)
+        } catch (emailError) {
+          console.error("[v0] Error sending email:", emailError)
+        }
       }
+
+      console.log(`[v0] Order ${params.id} status updated to ${status}`)
+      return NextResponse.json({ order })
     }
 
-    console.log(`[v0] Order ${params.id} status updated to ${status}`)
-    return NextResponse.json({ order })
+    return NextResponse.json(
+      { error: "Se requiere 'status' o 'paymentStatus' en el cuerpo de la solicitud" },
+      { status: 400 },
+    )
   } catch (error) {
     console.error("[v0] Error in PATCH /api/admin/orders/[id]/status:", error)
     return NextResponse.json(

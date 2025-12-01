@@ -8,8 +8,9 @@ export function ConditionalHeader() {
 
   const isAdminRoute = pathname?.startsWith("/admin")
   const isAuthRoute = pathname?.startsWith("/auth")
+  const isLoginRoute = pathname?.startsWith("/login")
 
-  if (isAdminRoute || isAuthRoute) {
+  if (isAdminRoute || isAuthRoute || isLoginRoute) {
     return null
   }
 

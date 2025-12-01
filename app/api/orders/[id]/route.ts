@@ -14,8 +14,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         order_items (
           product_name,
           quantity,
-          unit_price,
+          price,
           total_price,
+          total,
           size,
           color
         )
