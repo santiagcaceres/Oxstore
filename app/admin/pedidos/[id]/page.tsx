@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Download, Truck, Package, User, MapPin, CreditCard } from "lucide-react"
 import Link from "next/link"
 import { Popup } from "@/components/ui/popup"
+import { useToast } from "@/hooks/use-toast"
 
 export default function OrderDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { toast } = useToast()
   const [order, setOrder] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
@@ -72,10 +74,18 @@ export default function OrderDetailPage() {
 
       setOrder(data.order)
       setShowOrderStatusPopup(false)
-      alert("Estado del pedido actualizado correctamente. Se ha enviado un email al cliente.")
+      toast({
+        title: "✅ Estado actualizado",
+        description: "El estado del pedido se actualizó correctamente. Se ha enviado un email al cliente.",
+        variant: "default",
+      })
     } catch (error) {
       console.error("Error updating order status:", error)
-      alert("Error al actualizar el estado del pedido")
+      toast({
+        title: "❌ Error",
+        description: "No se pudo actualizar el estado del pedido. Por favor, intenta nuevamente.",
+        variant: "destructive",
+      })
     } finally {
       setUpdating(false)
     }
@@ -104,10 +114,18 @@ export default function OrderDetailPage() {
 
       setOrder(data.order)
       setShowPaymentStatusPopup(false)
-      alert("Estado del pago actualizado correctamente")
+      toast({
+        title: "✅ Pago actualizado",
+        description: "El estado del pago se actualizó correctamente.",
+        variant: "default",
+      })
     } catch (error) {
       console.error("Error updating payment status:", error)
-      alert("Error al actualizar el estado del pago")
+      toast({
+        title: "❌ Error",
+        description: "No se pudo actualizar el estado del pago. Por favor, intenta nuevamente.",
+        variant: "destructive",
+      })
     } finally {
       setUpdating(false)
     }
@@ -160,7 +178,11 @@ export default function OrderDetailPage() {
       }
     } catch (error) {
       console.error("Error generating invoice:", error)
-      alert("Error al generar la factura. Por favor, intenta nuevamente.")
+      toast({
+        title: "❌ Error",
+        description: "Error al generar la factura. Por favor, intenta nuevamente.",
+        variant: "destructive",
+      })
     }
   }
 

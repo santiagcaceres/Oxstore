@@ -18,9 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
           quantity,
           price,
           total_price,
-          total,
-          size,
-          color
+          total
         )
       `)
       .eq("id", params.id)
@@ -293,18 +291,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
                 <div class="item-row">
                   <div>
                     <div class="item-name">${item.product_name || "Producto"}</div>
-                    ${
-                      item.size || item.color
-                        ? `
-                      <div class="item-details">
-                        ${item.size ? `Talla: ${item.size}` : ""}
-                        ${item.size && item.color ? " • " : ""}
-                        ${item.color ? `Color: ${item.color}` : ""}
-                        • Cantidad: ${item.quantity}
-                      </div>
-                    `
-                        : `<div class="item-details">Cantidad: ${item.quantity}</div>`
-                    }
+                    <div class="item-details">Cantidad: ${item.quantity}</div>
                   </div>
                   <div class="item-price">$${(Number.parseFloat(item.total_price) || 0).toFixed(2)}</div>
                 </div>

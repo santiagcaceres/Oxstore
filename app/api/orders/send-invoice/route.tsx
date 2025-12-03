@@ -22,9 +22,7 @@ export async function POST(request: Request) {
           quantity,
           price,
           total_price,
-          total,
-          size,
-          color
+          total
         )
       `)
       .eq("id", orderId)
@@ -57,15 +55,6 @@ export async function POST(request: Request) {
             <p style="margin: 0; font-size: 14px; color: #6b7280;">
               Cantidad: ${item.quantity} × $${(Number.parseFloat(item.price) || 0).toFixed(2)}
             </p>
-            ${
-              item.size || item.color
-                ? `<p style="margin: 4px 0 0 0; font-size: 12px; color: #9ca3af;">
-              ${item.size ? `Talla: ${item.size}` : ""}
-              ${item.size && item.color ? " • " : ""}
-              ${item.color ? `Color: ${item.color}` : ""}
-            </p>`
-                : ""
-            }
           </div>
           <div style="text-align: right;">
             <p style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;">
